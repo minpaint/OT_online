@@ -1,0 +1,42 @@
+{% extends "core/base.html" %}
+    {% load crispy_forms_tags %}
+
+    {% block title %}
+        {% if form.instance.pk %}
+            Редактирование {{ form.instance.short_name_ru }}
+        {% else %}
+            Новая организация
+        {% endif %}
+    {% endblock %}
+
+    {% block content %}
+        <div class="row justify-content-center">
+            <div class="col-12 col-md-8 col-lg-6">
+                <div class="card">
+                    <div class="card-header">
+                        <h4 class="card-title mb-0">
+                            {% if form.instance.pk %}
+                                Редактирование организации
+                            {% else %}
+                                Новая организация
+                            {% endif %}
+                        </h4>
+                    </div>
+                    <div class="card-body">
+                        <form method="post" novalidate>
+                            {% csrf_token %}
+                            {{ form|crispy }}
+                            <div class="d-grid gap-2 d-md-flex justify-content-md-end">
+                                <a href="{% url 'core:organization_list' %}" class="btn btn-secondary">
+                                    <i class="bi bi-x-lg"></i> Отмена
+                                </a>
+                                <button type="submit" class="btn btn-primary">
+                                    <i class="bi bi-check-lg"></i> Сохранить
+                                </button>
+                            </div>
+                        </form>
+                    </div>
+                </div>
+            </div>
+        </div>
+    {% endblock %}

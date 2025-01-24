@@ -1,0 +1,66 @@
+{% extends "core/base.html" %}
+{% load mptt_tags %}
+
+{% block title %}Организационная структура{% endblock %}
+
+{% block content %}
+<div class="container">
+    <h1 class="mb-4">Организационная структура</h1>
+    
+    <div class="card">
+        <div class="card-body">
+            <ul class="tree">
+                {% recursetree nodes %}
+                    <li>
+                        <div class="d-flex align-items-center mb-2">
+                            <span class="badge bg-{{ node.unit_type|default:'secondary' }} me-2">
+                                {{ node.get_unit_type_display }}
+                            </span>
+                            <strong>{{ node.name }}</strong>
+                            {% if node.code %}
+                                <small class="text-muted ms-2">({{ node.code }})</small>
+                            {% endif %}
+                            
+                            <div class="btn-group ms-auto">
+                                <a href="{% url 'core:unit_detail' node.id %}" 
+                                   class="btn btn-sm btn-outline-primary">
+                                    <i class="bi bi-eye"></i>
+                                </a>
+                                <a href="{% url 'core:unit_update' node.id %}" 
+                                   class="btn btn-sm btn-outline-secondary">
+                                    <i class="bi bi-pencil"></i>
+                                </a>
+                            </div>
+                        </div>
+                        
+                        {% if not node.is_leaf_node %}
+                            <ul>
+                                {{ children }}
+                            </ul>
+                        {% endif %}
+                    </li>
+                {% endrecursetree %}
+            </ul>
+        </div>
+    </div>
+</div>
+
+<style>
+    .tree {
+        list-style: none;
+        padding-left: 0;
+    }
+    .tree ul {
+        list-style: none;
+        padding-left: 2rem;
+        border-left: 1px dashed #ccc;
+        margin-left: 0.5rem;
+    }
+    .tree li {
+        padding: 0.25rem 0;
+    }
+    .badge.bg-organization { background-color: #28a745; }
+    .badge.bg-department { background-color: #007bff; }
+    .badge.bg-division { background-color: #6c757d; }
+</style>
+{% endblock %}

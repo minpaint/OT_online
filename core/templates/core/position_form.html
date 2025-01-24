@@ -1,0 +1,99 @@
+{% extends 'core/base.html' %}
+{% load static %}
+
+{% block content %}
+<div class="container mt-4">
+    <div class="card">
+        <div class="card-header">
+            <h2>{% if form.instance.pk %}Редактировать{% else %}Добавить{% endif %} Должность</h2>
+        </div>
+        <div class="card-body">
+            <form method="post" novalidate>
+                {% csrf_token %}
+                
+                <div class="form-group mb-3">
+                    <label for="id_name" class="form-label">Наименование должности:</label>
+                    <input type="text" name="name" id="id_name" class="form-control {% if form.name.errors %}is-invalid{% endif %}" value="{{ form.name.value|default:'' }}">
+                    {% if form.name.errors %}
+                    <div class="invalid-feedback">
+                        {{ form.name.errors }}
+                    </div>
+                    {% endif %}
+                </div>
+
+                <div class="form-group mb-3">
+                    <label for="id_organization" class="form-label">Организация:</label>
+                    {{ form.organization }}
+                    {% if form.organization.errors %}
+                    <div class="invalid-feedback d-block">
+                        {{ form.organization.errors }}
+                    </div>
+                    {% endif %}
+                </div>
+
+                <div class="form-group mb-3">
+                    <label for="id_department" class="form-label">Структурное подразделение:</label>
+                    {{ form.department }}
+                    {% if form.department.errors %}
+                    <div class="invalid-feedback d-block">
+                        {{ form.department.errors }}
+                    </div>
+                    {% endif %}
+                </div>
+
+                <div class="form-group mb-3">
+                    <label for="id_division" class="form-label">Отдел:</label>
+                    {{ form.division }}
+                    {% if form.division.errors %}
+                    <div class="invalid-feedback d-block">
+                        {{ form.division.errors }}
+                    </div>
+                    {% endif %}
+                </div>
+
+                <div class="form-group mb-3">
+                    <label for="id_instruction_numbers" class="form-label">Номера инструкций по охране труда:</label>
+                    <input type="text" name="instruction_numbers" id="id_instruction_numbers" class="form-control {% if form.instruction_numbers.errors %}is-invalid{% endif %}" value="{{ form.instruction_numbers.value|default:'' }}">
+                    <small class="form-text text-muted">Укажите номера инструкций через запятую</small>
+                    {% if form.instruction_numbers.errors %}
+                    <div class="invalid-feedback">
+                        {{ form.instruction_numbers.errors }}
+                    </div>
+                    {% endif %}
+                </div>
+
+                <div class="form-group mb-3">
+                    <label for="id_electrical_safety_group" class="form-label">Группа по электробезопасности:</label>
+                    {{ form.electrical_safety_group }}
+                    <small class="form-text text-muted">Римская цифра от I до V</small>
+                    {% if form.electrical_safety_group.errors %}
+                    <div class="invalid-feedback d-block">
+                        {{ form.electrical_safety_group.errors }}
+                    </div>
+                    {% endif %}
+                </div>
+
+                <div class="form-group mb-3">
+                    <label for="id_internship_duration" class="form-label">Срок стажировки:</label>
+                    <input type="number" name="internship_duration" id="id_internship_duration" class="form-control {% if form.internship_duration.errors %}is-invalid{% endif %}" value="{{ form.internship_duration.value|default:'' }}">
+                    <small class="form-text text-muted">Двузначная цифра (дни)</small>
+                    {% if form.internship_duration.errors %}
+                    <div class="invalid-feedback">
+                        {{ form.internship_duration.errors }}
+                    </div>
+                    {% endif %}
+                </div>
+
+                <div class="form-group">
+                    <button type="submit" class="btn btn-primary">Сохранить</button>
+                    <a href="{% url 'core:position_list' %}" class="btn btn-secondary">Отмена</a>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
+
+{% block extra_js %}
+<script src="{% static 'js/dependent_dropdowns.js' %}"></script>
+{% endblock %}
+{% endblock %}

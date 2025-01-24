@@ -1,0 +1,48 @@
+{% extends "core/base.html" %}
+{% block title %}Подразделения{% endblock %}
+
+{% block content %}
+<div class="d-flex justify-content-between align-items-center mb-4">
+    <h1>Подразделения {{ organization.short_name_ru }}</h1>
+    <a href="{% url 'core:department_create' organization.id %}" class="btn btn-primary">
+        <i class="bi bi-plus-lg"></i> Добавить подразделение
+    </a>
+</div>
+
+<div class="row row-cols-1 row-cols-md-2 row-cols-lg-3 g-4">
+    {% for dept in departments %}
+        <div class="col">
+            <div class="card h-100">
+                <div class="card-body">
+                    <h5 class="card-title">{{ dept.name }}</h5>
+                    <p class="card-text">
+                        <small class="text-muted">
+                            <i class="bi bi-diagram-2"></i> Отделов: {{ dept.divisions.count }}<br>
+                            <i class="bi bi-people"></i> Сотрудников: {{ dept.get_employees_count }}
+                        </small>
+                    </p>
+                </div>
+                <div class="card-footer bg-transparent">
+                    <div class="btn-group w-100">
+                        <a href="{% url 'core:division_list' dept.id %}" class="btn btn-outline-primary">
+                            <i class="bi bi-diagram-2"></i> Отделы
+                        </a>
+                        <a href="{% url 'core:department_update' dept.id %}" class="btn btn-outline-primary">
+                            <i class="bi bi-pencil"></i> Изменить
+                        </a>
+                    </div>
+                </div>
+            </div>
+        </div>
+    {% empty %}
+        <div class="col-12">
+            <div class="alert alert-info">
+                Подразделения не найдены. 
+                <a href="{% url 'core:department_create' organization.id %}">
+                    Добавить первое подразделение
+                </a>
+            </div>
+        </div>
+    {% endfor %}
+</div>
+{% endblock %}
