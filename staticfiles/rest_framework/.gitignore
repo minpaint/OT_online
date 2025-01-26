@@ -1,5 +1,0 @@
-# .gitignore
-media/*
-!media/.gitkeep
-staticfiles/*
-!staticfiles/.gitkeep
