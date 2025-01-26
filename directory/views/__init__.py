@@ -16,7 +16,8 @@ from .positions import (
     PositionCreateView,
     PositionUpdateView,
     PositionDeleteView,
-    get_positions
+    get_positions,
+    get_departments  # Добавляем импорт get_departments
 )
 
 class HomeView(LoginRequiredMixin, TemplateView):
@@ -40,4 +41,5 @@ __all__ = [
     'PositionDeleteView',
     'get_subdivisions',
     'get_positions',
+    'get_departments'  # Добавляем в список экспорта
 ]

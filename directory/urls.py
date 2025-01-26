@@ -3,7 +3,7 @@ from directory.views import (
     HomeView,
     EmployeeListView, EmployeeCreateView, EmployeeUpdateView, EmployeeDeleteView,
     PositionListView, PositionCreateView, PositionUpdateView, PositionDeleteView,
-    get_subdivisions, get_positions
+    get_subdivisions, get_positions,get_departments
 )
 
 app_name = 'directory'
@@ -27,4 +27,5 @@ urlpatterns = [
     # AJAX endpoints
     path('api/subdivisions/', get_subdivisions, name='api-subdivisions'),
     path('api/positions/', get_positions, name='api-positions'),
+    path('api/departments/', get_departments, name='api-departments'),
 ]

@@ -1,14 +1,17 @@
 import os
 from pathlib import Path
-from django.core.management.utils import get_random_secret_key
+from dotenv import load_dotenv
+
+# Load environment variables from .env file
+load_dotenv()
 
 # Build paths inside the project like this: BASE_DIR / 'subdir'.
 BASE_DIR = Path(__file__).resolve().parent
 
 # Quick-start development settings - unsuitable for production
-SECRET_KEY = os.environ.get('DJANGO_SECRET_KEY', get_random_secret_key())
-DEBUG = os.environ.get('DJANGO_DEBUG', 'False') == 'True'
-ALLOWED_HOSTS = os.environ.get('DJANGO_ALLOWED_HOSTS', 'localhost,127.0.0.1').split(',')
+SECRET_KEY = os.getenv('DJANGO_SECRET_KEY')
+DEBUG = os.getenv('DJANGO_DEBUG', 'False') == 'True'
+ALLOWED_HOSTS = os.getenv('DJANGO_ALLOWED_HOSTS', 'localhost,127.0.0.1').split(',')
 
 # Application definition
 INSTALLED_APPS = [
@@ -78,28 +81,33 @@ AUTH_PASSWORD_VALIDATORS = [
 ]
 
 # Internationalization
-LANGUAGE_CODE = 'ru-ru'
-TIME_ZONE = 'Europe/Moscow'
+LANGUAGE_CODE = os.getenv('LANGUAGE_CODE', 'ru-ru')
+TIME_ZONE = os.getenv('TIME_ZONE', 'Europe/Moscow')
 USE_I18N = True
 USE_TZ = True
 
 # Static files (CSS, JavaScript, Images)
-STATIC_URL = 'static/'
+STATIC_URL = os.getenv('STATIC_URL', 'static/')
 STATIC_ROOT = os.path.join(BASE_DIR, 'staticfiles')
 STATICFILES_DIRS = [
     os.path.join(BASE_DIR, 'static'),
 ]
 
 # Media files
-MEDIA_URL = 'media/'
+MEDIA_URL = os.getenv('MEDIA_URL', 'media/')
 MEDIA_ROOT = os.path.join(BASE_DIR, 'media')
 
 # Default primary key field type
-DEFAULT_AUTO_FIELD = 'django.db.models.BigAutoField'
+DEFAULT_AUTO_FIELD = os.getenv('DEFAULT_AUTO_FIELD', 'django.db.models.BigAutoField')
 
 # Crispy Forms
 CRISPY_ALLOWED_TEMPLATE_PACKS = "bootstrap5"
 CRISPY_TEMPLATE_PACK = "bootstrap5"
+
+# Security settings
+CSRF_COOKIE_SECURE = os.getenv('CSRF_COOKIE_SECURE', 'False') == 'True'
+SESSION_COOKIE_SECURE = os.getenv('SESSION_COOKIE_SECURE', 'False') == 'True'
+SECURE_SSL_REDIRECT = os.getenv('SECURE_SSL_REDIRECT', 'False') == 'True'
 
 # Login URL
 LOGIN_URL = '/admin/login/'

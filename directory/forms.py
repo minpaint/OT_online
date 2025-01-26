@@ -59,6 +59,7 @@ class DepartmentForm(forms.ModelForm):
                 .filter(organization=self.instance.organization)
             )
 
+
 class PositionForm(forms.ModelForm):
     class Meta:
         model = Position
@@ -70,16 +71,77 @@ class PositionForm(forms.ModelForm):
         self.helper.form_method = 'post'
         self.helper.add_input(Submit('submit', 'Сохранить'))
 
-        # Фильтруем подразделения и отделы по выбранной организации
+        # Если есть экземпляр и организация
         if self.instance.pk and self.instance.organization:
+            # Фильтруем подразделения по организации
             self.fields['subdivision'].queryset = (
                 StructuralSubdivision.objects
                 .filter(organization=self.instance.organization)
             )
+
+            # Фильтруем отделы по организации
             self.fields['department'].queryset = (
                 Department.objects
                 .filter(organization=self.instance.organization)
             )
+
+            # Фильтруем документы по организации и подразделению
+            if self.instance.subdivision:
+                self.fields['documents'].queryset = (
+                    Document.objects
+                    .filter(
+                        organization=self.instance.organization,
+                        subdivision=self.instance.subdivision
+                    )
+                )
+                if self.instance.department:
+                    # Дополнительно фильтруем по отделу, если он указан
+                    self.fields['documents'].queryset = (
+                        self.fields['documents'].queryset
+                        .filter(department=self.instance.department)
+                    )
+
+            # Фильтруем оборудование по организации и подразделению
+            if self.instance.subdivision:
+                self.fields['equipment'].queryset = (
+                    Equipment.objects
+                    .filter(
+                        organization=self.instance.organization,
+                        subdivision=self.instance.subdivision
+                    )
+                )
+                if self.instance.department:
+                    # Дополнительно фильтруем по отделу, если он указан
+                    self.fields['equipment'].queryset = (
+                        self.fields['equipment'].queryset
+                        .filter(department=self.instance.department)
+                    )
+
+    def clean(self):
+        """
+        Дополнительная валидация для проверки корректности иерархии
+        """
+        cleaned_data = super().clean()
+        organization = cleaned_data.get('organization')
+        subdivision = cleaned_data.get('subdivision')
+        department = cleaned_data.get('department')
+
+        if subdivision and subdivision.organization != organization:
+            raise forms.ValidationError(
+                'Выбранное подразделение не принадлежит выбранной организации'
+            )
+
+        if department:
+            if department.organization != organization:
+                raise forms.ValidationError(
+                    'Выбранный отдел не принадлежит выбранной организации'
+                )
+            if department.subdivision != subdivision:
+                raise forms.ValidationError(
+                    'Выбранный отдел не принадлежит выбранному подразделению'
+                )
+
+        return cleaned_data
 
 class EmployeeForm(forms.ModelForm):
     class Meta:

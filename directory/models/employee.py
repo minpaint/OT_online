@@ -1,6 +1,6 @@
 from django.db import models
-from .subdivision import StructuralSubdivision
 from .position import Position
+
 
 class Employee(models.Model):
     """Справочник: Сотрудники."""
@@ -22,16 +22,51 @@ class Employee(models.Model):
 
     SHOE_SIZE_CHOICES = [(str(i), str(i)) for i in range(36, 49)]
 
-    full_name_nominative = models.CharField(max_length=255, verbose_name="ФИО (именительный)")
-    full_name_dative = models.CharField(max_length=255, verbose_name="ФИО (дательный)")
+    # Основные поля
+    full_name_nominative = models.CharField(
+        max_length=255,
+        verbose_name="ФИО (именительный)"
+    )
+    full_name_dative = models.CharField(
+        max_length=255,
+        verbose_name="ФИО (дательный)"
+    )
     date_of_birth = models.DateField(verbose_name="Дата рождения")
-    position = models.ForeignKey(Position, on_delete=models.SET_NULL, null=True, blank=True, related_name="employees", verbose_name="Должность")
-    structural_subdivision = models.ForeignKey(StructuralSubdivision, on_delete=models.SET_NULL, null=True, blank=True, related_name="employees", verbose_name="Подразделение")
+
+    # Изменяем связь с Position
+    position = models.ForeignKey(
+        Position,
+        on_delete=models.PROTECT,  # Изменили на PROTECT
+        related_name="employees",
+        verbose_name="Должность"
+    )
+
+    # Убираем прямую связь с подразделением, так как оно определяется через должность
+
+    # Остальные поля
     place_of_residence = models.TextField(verbose_name="Место проживания")
-    height = models.CharField(max_length=15, choices=HEIGHT_CHOICES, blank=True, verbose_name="Рост")
-    clothing_size = models.CharField(max_length=5, choices=CLOTHING_SIZE_CHOICES, blank=True, verbose_name="Размер одежды")
-    shoe_size = models.CharField(max_length=2, choices=SHOE_SIZE_CHOICES, blank=True, verbose_name="Размер обуви")
-    is_contractor = models.BooleanField(default=False, verbose_name="Договор подряда")
+    height = models.CharField(
+        max_length=15,
+        choices=HEIGHT_CHOICES,
+        blank=True,
+        verbose_name="Рост"
+    )
+    clothing_size = models.CharField(
+        max_length=5,
+        choices=CLOTHING_SIZE_CHOICES,
+        blank=True,
+        verbose_name="Размер одежды"
+    )
+    shoe_size = models.CharField(
+        max_length=2,
+        choices=SHOE_SIZE_CHOICES,
+        blank=True,
+        verbose_name="Размер обуви"
+    )
+    is_contractor = models.BooleanField(
+        default=False,
+        verbose_name="Договор подряда"
+    )
 
     def __str__(self):
         return self.full_name_nominative

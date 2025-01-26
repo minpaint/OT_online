@@ -2,7 +2,7 @@ from django.views.generic import ListView, CreateView, UpdateView, DeleteView
 from django.contrib.auth.mixins import LoginRequiredMixin
 from django.urls import reverse_lazy
 from django.http import JsonResponse
-from directory.models import Position, Organization, StructuralSubdivision
+from directory.models import Position, Organization, StructuralSubdivision, Department  # добавляем Department
 from directory.forms import PositionForm
 
 class PositionListView(LoginRequiredMixin, ListView):
@@ -71,3 +71,16 @@ def get_positions(request):
         subdivision_id=subdivision_id
     ).values('id', 'position_name')  # Используем position_name вместо name
     return JsonResponse(list(positions), safe=False)
+
+
+def get_departments(request):
+    """AJAX представление для получения отделов по организации и подразделению"""
+    organization_id = request.GET.get('organization')
+    subdivision_id = request.GET.get('subdivision')
+
+    departments = Department.objects.filter(
+        organization_id=organization_id,
+        subdivision_id=subdivision_id
+    ).values('id', 'name')
+
+    return JsonResponse(list(departments), safe=False)
