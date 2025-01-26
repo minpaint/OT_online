@@ -1,0 +1,40 @@
+{% extends 'base.html' %}
+{% load crispy_forms_tags %}
+
+{% block title %}{{ title }}{% endblock %}
+
+{% block content %}
+    <h1>{{ title }}</h1>
+    <form method="post">
+        {% csrf_token %}
+        {% crispy form %}
+    </form>
+
+    <script>
+        $(document).ready(function() {
+            $('#id_position').change(function() {
+                const positionId = $(this).val();
+                $.ajax({
+                    url: "{% url 'directory:api-subdivisions' %}",
+                    data: {
+                        organization: $('#id_position option:selected').data('organization')
+                    },
+                    success: function(data) {
+                        $('#id_subdivision').html('<option value="">---------</option>');
+                        data.forEach(subdivision => {
+                            $('#id_subdivision').append(
+                                `<option value="${subdivision.id}">${subdivision.name}</option>`
+                            );
+                        });
+                    }
+                });
+            });
+
+            // Заполняем данные организации при загрузке страницы, если должность уже выбрана
+            const initialPositionId = $('#id_position').val();
+            if (initialPositionId) {
+                $('#id_position').trigger('change');
+            }
+        });
+    </script>
+{% endblock %}

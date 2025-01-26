@@ -1,0 +1,66 @@
+/* Общие стили */
+.required-field::after {
+    content: "*";
+    color: red;
+    margin-left: 4px;
+}
+
+/* Стили для таблиц */
+.table-responsive {
+    margin-top: 1rem;
+}
+
+.table th {
+    background-color: #f8f9fa;
+}
+
+/* Стили для форм */
+.form-group {
+    margin-bottom: 1rem;
+}
+
+.help-text {
+    font-size: 0.875rem;
+    color: #6c757d;
+    margin-top: 0.25rem;
+}
+
+/* Стили для кнопок действий */
+.action-buttons {
+    white-space: nowrap;
+}
+
+.action-buttons .btn {
+    margin-right: 0.5rem;
+}
+
+/* Стили для фильтров */
+.filters-section {
+    background-color: #f8f9fa;
+    padding: 1rem;
+    margin-bottom: 1rem;
+    border-radius: 0.25rem;
+}
+
+/* Стили для пагинации */
+.pagination {
+    margin-top: 1rem;
+    justify-content: center;
+}
+
+/* Стили для сообщений */
+.alert {
+    margin-bottom: 1rem;
+}
+
+/* Адаптивные стили */
+@media (max-width: 768px) {
+    .action-buttons .btn {
+        margin-bottom: 0.5rem;
+        width: 100%;
+    }
+
+    .filters-section {
+        padding: 0.5rem;
+    }
+}
