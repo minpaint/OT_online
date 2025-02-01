@@ -1,6 +1,8 @@
 from django.db import models
 from .position import Position
-
+from .organization import Organization
+from .subdivision import StructuralSubdivision
+from .department import Department
 
 class Employee(models.Model):
     """Справочник: Сотрудники."""
@@ -33,15 +35,31 @@ class Employee(models.Model):
     )
     date_of_birth = models.DateField(verbose_name="Дата рождения")
 
-    # Изменяем связь с Position
+    # Добавляем поля для иерархии
+    organization = models.ForeignKey(
+        Organization,
+        on_delete=models.CASCADE,
+        verbose_name="Организация",
+        related_name='employees'
+    )
+    subdivision = models.ForeignKey(
+        StructuralSubdivision,
+        on_delete=models.CASCADE,
+        verbose_name="Структурное подразделение",
+        related_name='employees'
+    )
+    department = models.ForeignKey(
+        Department,
+        on_delete=models.CASCADE,
+        verbose_name="Отдел",
+        related_name='employees'
+    )
     position = models.ForeignKey(
         Position,
-        on_delete=models.PROTECT,  # Изменили на PROTECT
+        on_delete=models.PROTECT,
         related_name="employees",
         verbose_name="Должность"
     )
-
-    # Убираем прямую связь с подразделением, так как оно определяется через должность
 
     # Остальные поля
     place_of_residence = models.TextField(verbose_name="Место проживания")
