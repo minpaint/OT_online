@@ -25,7 +25,7 @@ INSTALLED_APPS = [
     'crispy_bootstrap5',
     'directory.apps.DirectoryConfig',
     'smart_selects',
-]
+    ]
 SMART_SELECTS_USE_DJANGO_JQUERY = True
 
 MIDDLEWARE = [

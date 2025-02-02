@@ -1,4 +1,5 @@
 from django.db import models
+from smart_selects.db_fields import ChainedForeignKey
 from .organization import Organization
 from .subdivision import StructuralSubdivision
 from .department import Department
@@ -20,19 +21,31 @@ class Equipment(models.Model):
         related_name="equipment",
         verbose_name="Организация"
     )
-    subdivision = models.ForeignKey(
+    subdivision = ChainedForeignKey(
         StructuralSubdivision,
+        chained_field="organization",
+        chained_model_field="organization",
+        show_all=False,
+        auto_choose=True,
+        sort=True,
         on_delete=models.CASCADE,
         related_name="equipment",
-        verbose_name="Структурное подразделение"
-    )
-    department = models.ForeignKey(
-        Department,
-        on_delete=models.SET_NULL,
+        verbose_name="Структурное подразделение",
         null=True,
-        blank=True,
+        blank=True
+    )
+    department = ChainedForeignKey(
+        Department,
+        chained_field="subdivision",
+        chained_model_field="subdivision",
+        show_all=False,
+        auto_choose=True,
+        sort=True,
+        on_delete=models.CASCADE,
         related_name="equipment",
-        verbose_name="Отдел"
+        verbose_name="Отдел",
+        null=True,
+        blank=True
     )
 
     def __str__(self):

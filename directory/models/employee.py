@@ -1,6 +1,5 @@
-# directory/models/employee.py
-
 from django.db import models
+from smart_selects.db_fields import ChainedForeignKey
 from .position import Position
 from .organization import Organization
 from .subdivision import StructuralSubdivision
@@ -37,30 +36,51 @@ class Employee(models.Model):
     )
     date_of_birth = models.DateField(verbose_name="Дата рождения")
 
-    # Иерархия с обязательными полями
+    # Иерархия с необязательными полями subdivision и department
     organization = models.ForeignKey(
         Organization,
         on_delete=models.CASCADE,
         verbose_name="Организация",
         related_name='employees'
     )
-    subdivision = models.ForeignKey(
+    subdivision = ChainedForeignKey(
         StructuralSubdivision,
+        chained_field="organization",
+        chained_model_field="organization",
+        show_all=False,
+        auto_choose=True,
+        sort=True,
         on_delete=models.CASCADE,
         verbose_name="Структурное подразделение",
-        related_name='employees'
+        related_name='employees',
+        null=True,
+        blank=True
     )
-    department = models.ForeignKey(
+    department = ChainedForeignKey(
         Department,
+        chained_field="subdivision",
+        chained_model_field="subdivision",
+        show_all=False,
+        auto_choose=True,
+        sort=True,
         on_delete=models.CASCADE,
         verbose_name="Отдел",
-        related_name='employees'
+        related_name='employees',
+        null=True,
+        blank=True
     )
-    position = models.ForeignKey(
+    position = ChainedForeignKey(
         Position,
+        chained_field="department",
+        chained_model_field="department",
+        show_all=False,
+        auto_choose=True,
+        sort=True,
         on_delete=models.PROTECT,
+        verbose_name="Должность",
         related_name="employees",
-        verbose_name="Должность"
+        null=True,
+        blank=True
     )
 
     # Остальные поля

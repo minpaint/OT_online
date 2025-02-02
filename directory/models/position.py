@@ -1,10 +1,11 @@
 from django.db import models
+from smart_selects.db_fields import ChainedForeignKey
 from .organization import Organization
 from .subdivision import StructuralSubdivision
 from .department import Department
 from .document import Document
 from .equipment import Equipment
-from smart_selects.db_fields import ChainedForeignKey
+
 
 class Position(models.Model):
     """Профессии и должности."""
@@ -15,7 +16,8 @@ class Position(models.Model):
         ("IV", "IV"),
         ("V", "V"),
     ]
-    # Основные связи
+
+    position_name = models.CharField(max_length=255, verbose_name="Название")
     organization = models.ForeignKey(
         Organization,
         on_delete=models.CASCADE,
@@ -29,7 +31,9 @@ class Position(models.Model):
         show_all=False,
         auto_choose=True,
         sort=True,
-        verbose_name="Структурное подразделение"
+        verbose_name="Структурное подразделение",
+        null=True,
+        blank=True
     )
     department = ChainedForeignKey(
         Department,
@@ -42,8 +46,6 @@ class Position(models.Model):
         blank=True,
         verbose_name="Отдел"
     )
-    # Остальные поля
-    position_name = models.CharField(max_length=255, verbose_name="Название")
     safety_instructions_numbers = models.CharField(
         max_length=255,
         blank=True,

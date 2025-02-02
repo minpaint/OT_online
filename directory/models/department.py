@@ -1,7 +1,7 @@
 from django.db import models
+from smart_selects.db_fields import ChainedForeignKey
 from .organization import Organization
 from .subdivision import StructuralSubdivision
-from smart_selects.db_fields import ChainedForeignKey
 
 class Department(models.Model):
     """Отдел – опциональный третий уровень иерархии."""
@@ -10,7 +10,7 @@ class Department(models.Model):
     organization = models.ForeignKey(
         Organization,
         on_delete=models.CASCADE,
-        related_name="departments",  # Обратная связь: instance.departments
+        related_name="departments",
         verbose_name="Организация"
     )
     subdivision = ChainedForeignKey(
@@ -21,7 +21,7 @@ class Department(models.Model):
         auto_choose=True,
         sort=True,
         verbose_name="Структурное подразделение",
-        related_name="departments"  # Обязательно: обратная связь от структурного подразделения к отделам
+        related_name="departments"
     )
 
     def __str__(self):
