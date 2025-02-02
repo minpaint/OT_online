@@ -1,7 +1,6 @@
 from django.db import models
 from .organization import Organization
 
-
 class StructuralSubdivision(models.Model):
     """Структурное подразделение - второй уровень иерархии"""
     name = models.CharField("Наименование", max_length=255)

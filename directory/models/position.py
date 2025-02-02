@@ -4,9 +4,10 @@ from .subdivision import StructuralSubdivision
 from .department import Department
 from .document import Document
 from .equipment import Equipment
+from smart_selects.db_fields import ChainedForeignKey
 
 class Position(models.Model):
-    """Справочник: Профессии и должности."""
+    """Профессии и должности."""
     ELECTRICAL_GROUP_CHOICES = [
         ("I", "I"),
         ("II", "II"),
@@ -14,29 +15,33 @@ class Position(models.Model):
         ("IV", "IV"),
         ("V", "V"),
     ]
-
-    # Основные поля связей
+    # Основные связи
     organization = models.ForeignKey(
         Organization,
         on_delete=models.CASCADE,
         related_name="positions",
         verbose_name="Организация"
     )
-    subdivision = models.ForeignKey(
+    subdivision = ChainedForeignKey(
         StructuralSubdivision,
-        on_delete=models.CASCADE,  # Изменили на CASCADE
-        related_name="positions",
+        chained_field="organization",
+        chained_model_field="organization",
+        show_all=False,
+        auto_choose=True,
+        sort=True,
         verbose_name="Структурное подразделение"
     )
-    department = models.ForeignKey(
+    department = ChainedForeignKey(
         Department,
-        on_delete=models.SET_NULL,
+        chained_field="subdivision",
+        chained_model_field="subdivision",
+        show_all=False,
+        auto_choose=True,
+        sort=True,
         null=True,
         blank=True,
-        related_name="positions",
         verbose_name="Отдел"
     )
-
     # Остальные поля
     position_name = models.CharField(max_length=255, verbose_name="Название")
     safety_instructions_numbers = models.CharField(

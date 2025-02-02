@@ -1,3 +1,5 @@
+# directory/models/employee.py
+
 from django.db import models
 from .position import Position
 from .organization import Organization
@@ -35,7 +37,7 @@ class Employee(models.Model):
     )
     date_of_birth = models.DateField(verbose_name="Дата рождения")
 
-    # Добавляем поля для иерархии
+    # Иерархия с обязательными полями
     organization = models.ForeignKey(
         Organization,
         on_delete=models.CASCADE,

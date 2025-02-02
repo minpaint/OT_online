@@ -4,8 +4,9 @@ from django.conf import settings
 from django.conf.urls.static import static
 
 urlpatterns = [
+    path('smart-selects/', include('smart_selects.urls')),
+    path('directory/', include('directory.urls', namespace='directory')),
     path('admin/', admin.site.urls),
-    path('', include('directory.urls')),
 ]
 
 if settings.DEBUG:
