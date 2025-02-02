@@ -1,0 +1,18 @@
+{% extends 'directory/../../base.html' %}
+
+{% block title %}{{ title }}{% endblock %}
+
+{% block content %}
+    <h1>{{ title }}</h1>
+
+    <div class="alert alert-danger">
+        <p>Вы уверены, что хотите удалить должность "{{ object.position_name }}"?</p>
+        <p><strong>Внимание:</strong> Это действие нельзя будет отменить.</p>
+    </div>
+
+    <form method="post">
+        {% csrf_token %}
+        <button type="submit" class="btn btn-danger">Удалить</button>
+        <a href="{% url 'directory:position-list' %}" class="btn btn-secondary">Отмена</a>
+    </form>
+{% endblock %}

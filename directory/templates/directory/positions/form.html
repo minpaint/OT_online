@@ -1,0 +1,61 @@
+{% extends 'base.html' %}
+{% load crispy_forms_tags %}
+{% load static %}
+
+{% block title %}{{ title }}{% endblock %}
+
+{% block content %}
+    <h1>{{ title }}</h1>
+    <form method="post">
+        {% csrf_token %}
+        {{ form|crispy }}
+        <button type="submit" class="btn btn-primary">Сохранить</button>
+        <a href="{% url 'directory:position-list' %}" class="btn btn-secondary">Отмена</a>
+    </form>
+{% endblock %}
+
+{% block scripts %}
+<script>
+$(document).ready(function() {
+    $('#id_organization').change(function() {
+        const organizationId = $(this).val();
+        if (organizationId) {
+            $.ajax({
+                url: "{% url 'directory:api-subdivisions' %}",
+                data: { organization: organizationId },
+                success: function(data) {
+                    let options = '<option value="">---------</option>';
+                    data.forEach(item => {
+                        options += `<option value="${item.id}">${item.name}</option>`;
+                    });
+                    $('#id_subdivision').html(options).prop('disabled', false);
+                    $('#id_department').html('<option value="">---------</option>').prop('disabled', true);
+                }
+            });
+        } else {
+            $('#id_subdivision').html('<option value="">---------</option>').prop('disabled', true);
+            $('#id_department').html('<option value="">---------</option>').prop('disabled', true);
+        }
+    });
+
+    $('#id_subdivision').change(function() {
+        const subdivisionId = $(this).val();
+        if (subdivisionId) {
+            $.ajax({
+                url: "{% url 'directory:api-departments' %}",
+                data: { subdivision: subdivisionId },
+                success: function(data) {
+                    let options = '<option value="">---------</option>';
+                    data.forEach(item => {
+                        options += `<option value="${item.id}">${item.name}</option>`;
+                    });
+                    $('#id_department').html(options).prop('disabled', false);
+                }
+            });
+        } else {
+            $('#id_department').html('<option value="">---------</option>').prop('disabled', true);
+        }
+    });
+});
+</script>
+{% endblock %}

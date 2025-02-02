@@ -1,0 +1,302 @@
+{% extends 'base.html' %}
+{% load static %}
+{% block extra_css %}
+<style>
+    /* Стили для иерархических уровней */
+    .org-row td:first-child strong {
+        color: #0d6efd;
+    }
+
+    .subdivision-row td:first-child strong {
+        color: #198754;
+    }
+
+    .department-row td:first-child strong {
+        color: #6c757d;
+    }
+
+    /* Отступы для уровней */
+    .tree-level {
+        margin-left: 24px;
+        display: flex;
+        align-items: center;
+    }
+
+    .tree-level-2 {
+        margin-left: 48px;
+    }
+
+    .tree-level-3 {
+        margin-left: 72px;
+    }
+
+    /* Стили для таблицы и ячеек */
+    .tree-table td {
+        padding: 8px;
+        vertical-align: middle;
+    }
+
+    .tree-table tr.hidden {
+        display: none;
+    }
+
+    .tree-table th {
+        position: sticky;
+        top: 0;
+        background: white;
+        z-index: 1;
+        padding: 12px 8px;
+        border-bottom: 2px solid #dee2e6;
+    }
+
+    /* Стили для иконок */
+    .tree-table .toggle-icon {
+        cursor: pointer;
+        width: 24px;
+        height: 24px;
+        display: inline-flex;
+        align-items: center;
+        justify-content: center;
+        background-color: #f8f9fa;
+        border: 1px solid #dee2e6;
+        border-radius: 4px;
+        margin-right: 8px;
+        transition: all 0.2s ease;
+    }
+
+    .tree-table .toggle-icon:hover {
+        background-color: #e9ecef;
+        border-color: #adb5bd;
+    }
+
+    .tree-table .collapsed .toggle-icon::before {
+        content: '+';
+        font-weight: bold;
+        color: #0d6efd;
+    }
+
+    .tree-table .expanded .toggle-icon::before {
+        content: '−';
+        font-weight: bold;
+        color: #dc3545;
+    }
+
+    /* Стили для строк при наведении */
+    .tree-table tbody tr:hover {
+        background-color: rgba(0,0,0,.075);
+    }
+
+    /* Стили для кнопок действий */
+    .tree-table .btn-sm {
+        padding: 0.25rem 0.5rem;
+    }
+
+    .tree-table .btn-outline-primary:hover {
+        color: #fff;
+    }
+
+    /* Дополнительные стили для улучшения читаемости */
+    .tree-table {
+        border-collapse: separate;
+        border-spacing: 0;
+    }
+
+    .tree-table tbody tr {
+        transition: background-color 0.2s ease;
+    }
+
+    /* Стили для мобильной версии */
+    @media (max-width: 768px) {
+        .tree-level {
+            margin-left: 12px;
+        }
+
+        .tree-level-2 {
+            margin-left: 24px;
+        }
+
+        .tree-level-3 {
+            margin-left: 36px;
+        }
+
+        .tree-table .toggle-icon {
+            width: 20px;
+            height: 20px;
+            margin-right: 4px;
+        }
+    }
+</style>
+{% endblock %}
+{% block content %}
+<div class="container-fluid">
+    <h1 class="h3 mb-4">{{ title }}</h1>
+    <div class="card">
+        <div class="card-body">
+            <div class="table-responsive">
+                <table class="table table-hover tree-table">
+                    <thead>
+                        <tr>
+                            <th style="width: 40%">Наименование</th>
+                            <th>Должность</th>
+                            <th>Телефон</th>
+                            <th>Email</th>
+                            <th>Действия</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {% for org in organizations %}
+                            <!-- Организация -->
+                            <tr class="org-row collapsed" data-id="org-{{ org.id }}">
+                                <td>
+                                    <span class="toggle-icon"></span>
+                                    <strong>{{ org.full_name_ru }}</strong>
+                                </td>
+                                <td></td>
+                                <td></td>
+                                <td></td>
+                                <td></td>
+                            </tr>
+
+                            <!-- Сотрудники организации без подразделения -->
+                            {% for employee in org.employees.all %}
+                            <tr class="hidden" data-parent="org-{{ org.id }}">
+                                <td>
+                                    <div class="tree-level">
+                                        {{ employee.full_name_nominative }}
+                                    </div>
+                                </td>
+                                <td>{{ employee.position.position_name }}</td>
+                                <td>{{ employee.phone_number|default:'' }}</td>
+                                <td>{{ employee.email|default:'' }}</td>
+                                <td>
+                                    <a href="{% url 'directory:employee-update' employee.id %}" 
+                                    class="btn btn-sm btn-outline-primary">
+                                        <i class="fas fa-edit"></i>
+                                    </a>
+                                </td>
+                            </tr>
+                            {% endfor %}
+
+                            <!-- Подразделения -->
+                            {% for subdivision in org.subdivisions.all %}
+                                <tr class="subdivision-row hidden collapsed" 
+                                    data-parent="org-{{ org.id }}" 
+                                    data-id="sub-{{ subdivision.id }}">
+                                    <td>
+                                        <div class="tree-level">
+                                            <span class="toggle-icon"></span>
+                                            <strong>{{ subdivision.name }}</strong>
+                                        </div>
+                                    </td>
+                                    <td></td>
+                                    <td></td>
+                                    <td></td>
+                                    <td></td>
+                                </tr>
+
+                                <!-- Сотрудники подразделения без отдела -->
+                                {% for employee in subdivision.employees.all %}
+                                <tr class="hidden" data-parent="sub-{{ subdivision.id }}">
+                                    <td>
+                                        <div class="tree-level tree-level-2">
+                                            {{ employee.full_name_nominative }}
+                                        </div>
+                                    </td>
+                                    <td>{{ employee.position.position_name }}</td>
+                                    <td>{{ employee.phone_number|default:'' }}</td>
+                                    <td>{{ employee.email|default:'' }}</td>
+                                    <td>
+                                        <a href="{% url 'directory:employee-update' employee.id %}" 
+                                        class="btn btn-sm btn-outline-primary">
+                                            <i class="fas fa-edit"></i>
+                                        </a>
+                                    </td>
+                                </tr>
+                                {% endfor %}
+
+                                <!-- Отделы -->
+                                {% for department in subdivision.departments.all %}
+                                    <tr class="department-row hidden collapsed" 
+                                        data-parent="sub-{{ subdivision.id }}" 
+                                        data-id="dep-{{ department.id }}">
+                                        <td>
+                                            <div class="tree-level tree-level-2">
+                                                <span class="toggle-icon"></span>
+                                                <strong>{{ department.name }}</strong>
+                                            </div>
+                                        </td>
+                                        <td></td>
+                                        <td></td>
+                                        <td></td>
+                                        <td></td>
+                                    </tr>
+
+                                    <!-- Сотрудники отдела -->
+                                    {% for employee in department.employees.all %}
+                                    <tr class="hidden" data-parent="dep-{{ department.id }}">
+                                        <td>
+                                            <div class="tree-level tree-level-3">
+                                                {{ employee.full_name_nominative }}
+                                            </div>
+                                        </td>
+                                        <td>{{ employee.position.position_name }}</td>
+                                        <td>{{ employee.phone_number|default:'' }}</td>
+                                        <td>{{ employee.email|default:'' }}</td>
+                                        <td>
+                                            <a href="{% url 'directory:employee-update' employee.id %}" 
+                                            class="btn btn-sm btn-outline-primary">
+                                                <i class="fas fa-edit"></i>
+                                            </a>
+                                        </td>
+                                    </tr>
+                                    {% endfor %}
+                                {% endfor %} <!-- Закрытие departments loop -->
+                            {% endfor %} <!-- Закрытие subdivisions loop -->
+                        {% endfor %} <!-- Закрытие organizations loop -->
+                    </tbody>
+                </table>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+    const treeTable = document.querySelector('.tree-table');
+    treeTable.addEventListener('click', function(e) {
+        const toggleIcon = e.target.closest('.toggle-icon');
+        if (!toggleIcon) return;
+        const row = toggleIcon.closest('tr');
+        const rowId = row.dataset.id;
+        const isExpanded = row.classList.contains('expanded');
+        
+        // Переключаем состояние текущей строки
+        row.classList.toggle('expanded');
+        row.classList.toggle('collapsed');
+        
+        // Находим все дочерние строки
+        const childRows = treeTable.querySelectorAll(`tr[data-parent="${rowId}"]`);
+        childRows.forEach(childRow => {
+            childRow.classList.toggle('hidden');
+            
+            // Если сворачиваем родителя, сворачиваем и все дочерние элементы
+            if (isExpanded) {
+                childRow.classList.remove('expanded');
+                childRow.classList.add('collapsed');
+                
+                // Скрываем все элементы ниже по иерархии
+                const childId = childRow.dataset.id;
+                if (childId) {
+                    const nestedRows = treeTable.querySelectorAll(`tr[data-parent="${childId}"]`);
+                    nestedRows.forEach(nestedRow => {
+                        nestedRow.classList.add('hidden');
+                    });
+                }
+            }
+        });
+    });
+});
+</script>
+{% endblock %}

@@ -1,0 +1,70 @@
+{% extends 'directory/../../directory/templates/base.html' %}
+{% load static %}
+{% load crispy_forms_tags %}
+
+{% block title %}Вход в систему | OT Online{% endblock %}
+
+{% block content %}
+<div class="container">
+    <div class="row justify-content-center">
+        <div class="col-md-6 col-lg-4">
+            <div class="card shadow-sm mt-5">
+                <div class="card-header bg-primary text-white">
+                    <h4 class="card-title mb-0">Вход в систему</h4>
+                </div>
+                <div class="card-body">
+                    {% if form.errors %}
+                    <div class="alert alert-danger" role="alert">
+                        Пожалуйста, проверьте правильность введенных данных.
+                    </div>
+                    {% endif %}
+
+                    <form method="post" novalidate>
+                        {% csrf_token %}
+                        {{ form|crispy }}
+
+                        <div class="d-grid gap-2">
+                            <button type="submit" class="btn btn-primary">
+                                Войти
+                            </button>
+                        </div>
+                    </form>
+
+                    <div class="mt-3 text-center">
+                        <a href="{% url 'admin:password_reset' %}" class="text-decoration-none">
+                            Забыли пароль?
+                        </a>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block extra_css %}
+<style>
+    .card {
+        border-radius: 1rem;
+    }
+    .card-header {
+        border-top-left-radius: 1rem;
+        border-top-right-radius: 1rem;
+    }
+    .btn-primary {
+        padding: 0.75rem;
+    }
+</style>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+    // Добавляем автофокус на первое поле формы
+    document.addEventListener('DOMContentLoaded', function() {
+        const firstInput = document.querySelector('form input:first-of-type');
+        if (firstInput) {
+            firstInput.focus();
+        }
+    });
+</script>
+{% endblock %}

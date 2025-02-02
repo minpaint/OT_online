@@ -1,0 +1,29 @@
+{% extends "../base.html" %}  {# Измените эту строку #}
+
+{% block title %}Главная{% endblock %}
+
+{% block content %}
+<div class="container mt-4">
+    <h1>Добро пожаловать</h1>
+    <div class="row mt-4">
+        <div class="col-md-6">
+            <div class="card">
+                <div class="card-body">
+                    <h5 class="card-title">Сотрудники</h5>
+                    <p class="card-text">Управление списком сотрудников организации.</p>
+                    <a href="{% url 'directory:employee-list' %}" class="btn btn-primary">Перейти к сотрудникам</a>
+                </div>
+            </div>
+        </div>
+        <div class="col-md-6">
+            <div class="card">
+                <div class="card-body">
+                    <h5 class="card-title">Должности</h5>
+                    <p class="card-text">Управление должностями в организации.</p>
+                    <a href="{% url 'directory:position-list' %}" class="btn btn-primary">Перейти к должностям</a>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}

@@ -1,0 +1,116 @@
+{% extends "base.html" %}
+
+{% block title %}{{ title }}{% endblock %}
+
+{% block content %}
+<h1>{{ title }}</h1>
+
+<form method="get" class="mb-4">
+    <div class="row">
+        <div class="col-md-6">
+            <div class="mb-3">
+                <label for="organization" class="form-label">Организация:</label>
+                <select name="organization" id="organization" class="form-select">
+                    <option value="">Все</option>
+                    {% for org in organizations %}
+                        <option value="{{ org.id }}" 
+                            {% if selected_organization == org.id %}selected{% endif %}>
+                            {{ org.full_name_ru }}
+                        </option>
+                    {% endfor %}
+                </select>
+            </div>
+        </div>
+        <div class="col-md-6">
+            <div class="mb-3">
+                <label for="subdivision" class="form-label">Подразделение:</label>
+                <select name="subdivision" id="subdivision" class="form-select">
+                    <option value="">Все</option>
+                    {% for subdivision in subdivisions %}
+                        <option value="{{ subdivision.id }}" 
+                            {% if selected_subdivision == subdivision.id %}selected{% endif %}>
+                            {{ subdivision.name }}
+                        </option>
+                    {% endfor %}
+                </select>
+            </div>
+        </div>
+    </div>
+    <div class="mb-3">
+        <button type="submit" class="btn btn-primary">Фильтровать</button>
+    </div>
+</form>
+
+<div class="mb-3">
+    <a href="{% url 'directory:position-create' %}" class="btn btn-success">
+        Добавить должность
+    </a>
+</div>
+
+<div class="table-responsive">
+    <table class="table table-striped table-hover">
+        <thead class="table-light">
+            <tr>
+                <th>Название</th>
+                <th>Организация</th>
+                <th>Подразделение</th>
+                <th>Отдел</th>
+                <th>Группа по ЭБ</th>
+                <th>Действия</th>
+            </tr>
+        </thead>
+        <tbody>
+            {% for position in positions %}
+                <tr>
+                    <td>{{ position.position_name }}</td>
+                    <td>{{ position.organization.short_name_by }}</td>
+                    <td>{{ position.subdivision.name|default:"-" }}</td>
+                    <td>{{ position.department.name|default:"-" }}</td>
+                    <td>{{ position.electrical_safety_group|default:"-" }}</td>
+                    <td>
+                        <div class="btn-group" role="group">
+                            <a href="{% url 'directory:position-update' position.pk %}" class="btn btn-warning btn-sm">
+                                Редактировать
+                            </a>
+                            <a href="{% url 'directory:position-delete' position.pk %}" class="btn btn-danger btn-sm">
+                                Удалить
+                            </a>
+                        </div>
+                    </td>
+                </tr>
+            {% empty %}
+                <tr>
+                    <td colspan="6" class="text-center">Должности не найдены</td>
+                </tr>
+            {% endfor %}
+        </tbody>
+    </table>
+</div>
+
+{% include 'directory/pagination.html' %}
+{% endblock %}
+
+{% block scripts %}
+<script>
+$(document).ready(function() {
+    $('#organization').change(function() {
+        const organizationId = $(this).val();
+        if (organizationId) {
+            $.ajax({
+                url: "{% url 'directory:api-subdivisions' %}",
+                data: { organization: organizationId },
+                success: function(data) {
+                    let options = '<option value="">Все</option>';
+                    data.forEach(item => {
+                        options += `<option value="${item.id}">${item.name}</option>`;
+                    });
+                    $('#subdivision').html(options);
+                }
+            });
+        } else {
+            $('#subdivision').html('<option value="">Все</option>');
+        }
+    });
+});
+</script>
+{% endblock %}

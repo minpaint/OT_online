@@ -1,0 +1,42 @@
+/* Стили для страницы входа */
+.login-page {
+    min-height: 100vh;
+    display: flex;
+    align-items: center;
+    background-color: #f8f9fa;
+}
+
+.login-card {
+    border: none;
+    border-radius: 1rem;
+    box-shadow: 0 0.5rem 1rem rgba(0, 0, 0, 0.15);
+}
+
+.login-card .card-header {
+    background-color: #007bff;
+    color: white;
+    border-top-left-radius: 1rem;
+    border-top-right-radius: 1rem;
+    padding: 1.5rem;
+}
+
+.login-card .card-body {
+    padding: 2rem;
+}
+
+.login-btn {
+    padding: 0.75rem;
+    font-size: 1rem;
+    border-radius: 0.5rem;
+}
+
+.forgot-password {
+    color: #6c757d;
+    text-decoration: none;
+    transition: color 0.2s;
+}
+
+.forgot-password:hover {
+    color: #007bff;
+    text-decoration: none;
+}

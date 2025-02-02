@@ -1,0 +1,141 @@
+{% extends 'base.html' %}
+{% load static %}
+
+{% block extra_css %}
+<style>
+    /* Стили для иконок и отступов */
+    .tree-table .toggle-icon {
+        cursor: pointer;
+        width: 20px;
+        display: inline-block;
+        text-align: center;
+        margin-right: 5px;
+        font-family: monospace;
+        font-weight: bold;
+    }
+
+    .tree-table .collapsed .toggle-icon::before {
+        content: '+';
+        color: #0d6efd;
+    }
+
+    .tree-table .expanded .toggle-icon::before {
+        content: '-';
+        color: #dc3545;
+    }
+
+    /* Стили для отступов */
+    .tree-level {
+        margin-left: 20px;
+        display: flex;
+        align-items: center;
+    }
+
+    .tree-level-2 {
+        margin-left: 40px;
+    }
+
+    .tree-level-3 {
+        margin-left: 60px;
+    }
+
+    /* Стили для строк */
+    .tree-table tr.hidden {
+        display: none;
+    }
+
+    .tree-table th {
+        position: sticky;
+        top: 0;
+        background: white;
+        z-index: 1;
+    }
+
+    /* Подсветка при наведении */
+    .tree-table tr:hover {
+        background-color: #f8f9fa;
+    }
+
+    /* Стили для организаций и подразделений */
+    .org-row > td:first-child {
+        font-weight: bold;
+        color: #0d6efd;
+    }
+
+    .subdivision-row > td:first-child {
+        color: #198754;
+    }
+
+    .department-row > td:first-child {
+        color: #6c757d;
+    }
+</style>
+{% endblock %}
+
+{% block content %}
+<!-- Ваш существующий HTML код остается без изменений -->
+{% endblock %}
+
+{% block extra_js %}
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+    const treeTable = document.querySelector('.tree-table');
+
+    // Добавляем иконки там, где их нет
+    document.querySelectorAll('.tree-table tr[data-id]').forEach(row => {
+        const firstCell = row.querySelector('td:first-child');
+        if (!firstCell.querySelector('.toggle-icon')) {
+            const icon = document.createElement('span');
+            icon.className = 'toggle-icon';
+            firstCell.insertBefore(icon, firstCell.firstChild);
+        }
+    });
+
+    // Обработчик кликов
+    treeTable.addEventListener('click', function(e) {
+        const toggleIcon = e.target.closest('.toggle-icon');
+        if (!toggleIcon) return;
+
+        const row = toggleIcon.closest('tr');
+        const rowId = row.dataset.id;
+        const isExpanded = row.classList.contains('expanded');
+
+        // Анимированное переключение состояния
+        row.classList.toggle('expanded');
+        row.classList.toggle('collapsed');
+
+        // Находим все дочерние строки
+        const childRows = treeTable.querySelectorAll(`tr[data-parent="${rowId}"]`);
+        childRows.forEach(childRow => {
+            // Если разворачиваем родителя
+            if (!isExpanded) {
+                childRow.style.display = 'table-row';
+                setTimeout(() => {
+                    childRow.classList.remove('hidden');
+                }, 0);
+            } else {
+                // Если сворачиваем родителя
+                childRow.classList.add('hidden');
+                
+                // Сворачиваем все вложенные элементы
+                const childId = childRow.dataset.id;
+                if (childId) {
+                    childRow.classList.remove('expanded');
+                    childRow.classList.add('collapsed');
+                    
+                    const nestedRows = treeTable.querySelectorAll(`tr[data-parent="${childId}"]`);
+                    nestedRows.forEach(nestedRow => {
+                        nestedRow.classList.add('hidden');
+                    });
+                }
+            }
+        });
+    });
+
+    // Инициализация: показываем только корневые элементы
+    document.querySelectorAll('.tree-table tr[data-parent]').forEach(row => {
+        row.classList.add('hidden');
+    });
+});
+</script>
+{% endblock %}
