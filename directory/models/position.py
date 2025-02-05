@@ -1,14 +1,14 @@
+# directory/models/position.py
 from django.db import models
+from django.core.exceptions import ValidationError
 from smart_selects.db_fields import ChainedForeignKey
-from .organization import Organization
-from .subdivision import StructuralSubdivision
-from .department import Department
-from .document import Document
-from .equipment import Equipment
-
+from directory.models.organization import Organization
+from directory.models.subdivision import StructuralSubdivision
+from directory.models.department import Department
+from directory.models.document import Document
+from directory.models.equipment import Equipment
 
 class Position(models.Model):
-    """Профессии и должности."""
     ELECTRICAL_GROUP_CHOICES = [
         ("I", "I"),
         ("II", "II"),
@@ -20,7 +20,7 @@ class Position(models.Model):
     position_name = models.CharField(max_length=255, verbose_name="Название")
     organization = models.ForeignKey(
         Organization,
-        on_delete=models.CASCADE,
+        on_delete=models.PROTECT,
         related_name="positions",
         verbose_name="Организация"
     )
@@ -31,6 +31,7 @@ class Position(models.Model):
         show_all=False,
         auto_choose=True,
         sort=True,
+        on_delete=models.PROTECT,
         verbose_name="Структурное подразделение",
         null=True,
         blank=True
@@ -42,6 +43,7 @@ class Position(models.Model):
         show_all=False,
         auto_choose=True,
         sort=True,
+        on_delete=models.PROTECT,
         null=True,
         blank=True,
         verbose_name="Отдел"
@@ -82,9 +84,27 @@ class Position(models.Model):
         verbose_name="Оборудование"
     )
 
+    def clean(self):
+        if self.department and not self.subdivision:
+            raise ValidationError({
+                'department': 'Нельзя указать отдел без структурного подразделения'
+            })
+
+    def save(self, *args, **kwargs):
+        self.clean()
+        super().save(*args, **kwargs)
+
     def __str__(self):
-        return self.position_name
+        parts = [self.position_name]
+        if self.department:
+            parts.append(f"({self.department})")
+        elif self.subdivision:
+            parts.append(f"({self.subdivision})")
+        else:
+            parts.append(f"({self.organization})")
+        return " ".join(parts)
 
     class Meta:
         verbose_name = "Профессия/должность"
         verbose_name_plural = "Профессии/должности"
+        ordering = ['position_name']

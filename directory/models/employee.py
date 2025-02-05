@@ -1,12 +1,13 @@
+# directory/models/employee.py
 from django.db import models
+from django.core.exceptions import ValidationError
 from smart_selects.db_fields import ChainedForeignKey
-from .position import Position
-from .organization import Organization
-from .subdivision import StructuralSubdivision
-from .department import Department
+from directory.models.organization import Organization
+from directory.models.subdivision import StructuralSubdivision
+from directory.models.department import Department
+from directory.models.position import Position
 
 class Employee(models.Model):
-    """Справочник: Сотрудники."""
     HEIGHT_CHOICES = [
         ("158-164 см", "158-164 см"),
         ("170-176 см", "170-176 см"),
@@ -25,7 +26,7 @@ class Employee(models.Model):
 
     SHOE_SIZE_CHOICES = [(str(i), str(i)) for i in range(36, 49)]
 
-    # Основные поля
+    # Персональные данные
     full_name_nominative = models.CharField(
         max_length=255,
         verbose_name="ФИО (именительный)"
@@ -34,12 +35,17 @@ class Employee(models.Model):
         max_length=255,
         verbose_name="ФИО (дательный)"
     )
-    date_of_birth = models.DateField(verbose_name="Дата рождения")
+    date_of_birth = models.DateField(
+        verbose_name="Дата рождения"
+    )
+    place_of_residence = models.TextField(
+        verbose_name="Место проживания"
+    )
 
-    # Иерархия с необязательными полями subdivision и department
+    # Организационная структура
     organization = models.ForeignKey(
         Organization,
-        on_delete=models.CASCADE,
+        on_delete=models.PROTECT,
         verbose_name="Организация",
         related_name='employees'
     )
@@ -50,9 +56,8 @@ class Employee(models.Model):
         show_all=False,
         auto_choose=True,
         sort=True,
-        on_delete=models.CASCADE,
+        on_delete=models.PROTECT,
         verbose_name="Структурное подразделение",
-        related_name='employees',
         null=True,
         blank=True
     )
@@ -63,28 +68,24 @@ class Employee(models.Model):
         show_all=False,
         auto_choose=True,
         sort=True,
-        on_delete=models.CASCADE,
-        verbose_name="Отдел",
-        related_name='employees',
+        on_delete=models.PROTECT,
         null=True,
-        blank=True
+        blank=True,
+        verbose_name="Отдел"
     )
+    # Изменяем привязку position к organization вместо department
     position = ChainedForeignKey(
         Position,
-        chained_field="department",
-        chained_model_field="department",
+        chained_field="organization",
+        chained_model_field="organization",
         show_all=False,
         auto_choose=True,
         sort=True,
         on_delete=models.PROTECT,
-        verbose_name="Должность",
-        related_name="employees",
-        null=True,
-        blank=True
+        verbose_name="Должность"
     )
 
-    # Остальные поля
-    place_of_residence = models.TextField(verbose_name="Место проживания")
+    # Спецодежда
     height = models.CharField(
         max_length=15,
         choices=HEIGHT_CHOICES,
@@ -103,14 +104,59 @@ class Employee(models.Model):
         blank=True,
         verbose_name="Размер обуви"
     )
+
+    # Дополнительные параметры
     is_contractor = models.BooleanField(
         default=False,
         verbose_name="Договор подряда"
     )
 
+    def clean(self):
+        if self.department and not self.subdivision:
+            raise ValidationError({
+                'department': 'Нельзя указать отдел без структурного подразделения'
+            })
+
+        if self.position:
+            # Проверяем соответствие позиции уровню иерархии
+            if self.department:
+                if self.position.department and self.position.department != self.department:
+                    raise ValidationError({
+                        'position': 'Выбранная должность не соответствует указанному отделу'
+                    })
+            elif self.subdivision:
+                if self.position.subdivision and self.position.subdivision != self.subdivision:
+                    raise ValidationError({
+                        'position': 'Выбранная должность не соответствует указанному подразделению'
+                    })
+            if self.position.organization != self.organization:
+                raise ValidationError({
+                    'position': 'Выбранная должность не принадлежит указанной организации'
+                })
+
+        # Проверка соответствия подразделения организации
+        if self.subdivision and self.subdivision.organization != self.organization:
+            raise ValidationError({
+                'subdivision': 'Выбранное подразделение не принадлежит указанной организации'
+            })
+
+        # Проверка соответствия отдела подразделению
+        if self.department and self.department.subdivision != self.subdivision:
+            raise ValidationError({
+                'department': 'Выбранный отдел не принадлежит указанному подразделению'
+            })
+
+    def save(self, *args, **kwargs):
+        self.clean()
+        super().save(*args, **kwargs)
+
     def __str__(self):
-        return self.full_name_nominative
+        parts = [self.full_name_nominative]
+        if self.position:
+            parts.append(f"- {self.position}")
+        return " ".join(parts)
 
     class Meta:
         verbose_name = "Сотрудник"
         verbose_name_plural = "Сотрудники"
+        ordering = ['full_name_nominative']

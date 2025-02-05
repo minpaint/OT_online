@@ -1,20 +1,13 @@
+# directory/models/equipment.py
 from django.db import models
 from smart_selects.db_fields import ChainedForeignKey
-from .organization import Organization
-from .subdivision import StructuralSubdivision
-from .department import Department
+from directory.models.organization import Organization
+from directory.models.subdivision import StructuralSubdivision
+from directory.models.department import Department
 
 class Equipment(models.Model):
-    """Справочник: Оборудование"""
-    equipment_name = models.CharField(
-        "Наименование оборудования",
-        max_length=255
-    )
-    inventory_number = models.CharField(
-        "Инвентарный номер",
-        max_length=100,
-        unique=True
-    )
+    equipment_name = models.CharField("Наименование оборудования", max_length=255)
+    inventory_number = models.CharField("Инвентарный номер", max_length=100, unique=True)
     organization = models.ForeignKey(
         Organization,
         on_delete=models.CASCADE,
@@ -29,7 +22,6 @@ class Equipment(models.Model):
         auto_choose=True,
         sort=True,
         on_delete=models.CASCADE,
-        related_name="equipment",
         verbose_name="Структурное подразделение",
         null=True,
         blank=True
@@ -41,11 +33,10 @@ class Equipment(models.Model):
         show_all=False,
         auto_choose=True,
         sort=True,
-        on_delete=models.CASCADE,
-        related_name="equipment",
-        verbose_name="Отдел",
+        on_delete=models.SET_NULL,
         null=True,
-        blank=True
+        blank=True,
+        verbose_name="Отдел"
     )
 
     def __str__(self):

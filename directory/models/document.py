@@ -1,15 +1,12 @@
+# directory/models/document.py
 from django.db import models
 from smart_selects.db_fields import ChainedForeignKey
-from .organization import Organization
-from .subdivision import StructuralSubdivision
-from .department import Department
+from directory.models.organization import Organization
+from directory.models.subdivision import StructuralSubdivision
+from directory.models.department import Department
 
 class Document(models.Model):
-    """Справочник: Документы (реестр документов)"""
-    name = models.CharField(
-        "Наименование документа",
-        max_length=255
-    )
+    name = models.CharField("Наименование документа", max_length=255)
     organization = models.ForeignKey(
         Organization,
         on_delete=models.CASCADE,
@@ -24,7 +21,6 @@ class Document(models.Model):
         auto_choose=True,
         sort=True,
         on_delete=models.CASCADE,
-        related_name="documents",
         verbose_name="Структурное подразделение",
         null=True,
         blank=True
@@ -36,15 +32,14 @@ class Document(models.Model):
         show_all=False,
         auto_choose=True,
         sort=True,
-        on_delete=models.CASCADE,
-        related_name="documents",
-        verbose_name="Отдел",
+        on_delete=models.SET_NULL,
         null=True,
-        blank=True
+        blank=True,
+        verbose_name="Отдел"
     )
 
     def __str__(self):
-        return f"{self.name} ({self.organization.short_name_by})"
+        return self.name
 
     class Meta:
         verbose_name = "Документ"

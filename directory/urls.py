@@ -17,6 +17,7 @@ from .views import (
     PositionUpdateView,
     PositionDeleteView,
 )
+from django.urls import include, path
 
 app_name = 'directory'
 
@@ -39,4 +40,5 @@ urlpatterns = [
     path('positions/create/', PositionCreateView.as_view(), name='position_create'),
     path('positions/<int:pk>/update/', PositionUpdateView.as_view(), name='position_update'),
     path('positions/<int:pk>/delete/', PositionDeleteView.as_view(), name='position_delete'),
+    path('chaining/', include('smart_selects.urls')),
 ]
