@@ -12,8 +12,10 @@ from directory.models import (
     Employee
 )
 
+
 class OrganizationForm(forms.ModelForm):
     """🏢 Форма для организаций"""
+
     class Meta:
         model = Organization
         fields = '__all__'
@@ -24,15 +26,22 @@ class OrganizationForm(forms.ModelForm):
         self.helper.form_method = 'post'
         self.helper.add_input(Submit('submit', '💾 Сохранить'))
 
+
 class StructuralSubdivisionForm(forms.ModelForm):
     """🏭 Форма для структурных подразделений"""
+
     class Meta:
         model = StructuralSubdivision
-        fields = ['name', 'short_name', 'organization']
+        fields = ['name', 'short_name', 'organization', 'parent']
         widgets = {
             'organization': autocomplete.ModelSelect2(
                 url='directory:organization-autocomplete',
                 attrs={'data-placeholder': '🏢 Выберите организацию...'}
+            ),
+            'parent': autocomplete.ModelSelect2(
+                url='directory:subdivision-autocomplete',
+                forward=['organization'],
+                attrs={'data-placeholder': '🏭 Выберите родительское подразделение...'}
             )
         }
 
@@ -42,8 +51,10 @@ class StructuralSubdivisionForm(forms.ModelForm):
         self.helper.form_method = 'post'
         self.helper.add_input(Submit('submit', '💾 Сохранить'))
 
+
 class DepartmentForm(forms.ModelForm):
     """📂 Форма для отделов"""
+
     class Meta:
         model = Department
         fields = ['name', 'short_name', 'organization', 'subdivision']
@@ -65,17 +76,13 @@ class DepartmentForm(forms.ModelForm):
         self.helper.form_method = 'post'
         self.helper.add_input(Submit('submit', '💾 Сохранить'))
 
+
 class PositionForm(forms.ModelForm):
     """👔 Форма для должностей"""
+
     class Meta:
         model = Position
-        fields = [
-            'position_name', 'organization', 'subdivision', 'department',
-            'safety_instructions_numbers', 'electrical_safety_group',
-            'internship_period_days', 'is_responsible_for_safety',
-            'is_electrical_personnel', 'can_be_internship_leader',
-            'documents', 'equipment'
-        ]
+        fields = '__all__'
         widgets = {
             'organization': autocomplete.ModelSelect2(
                 url='directory:organization-autocomplete',
@@ -96,10 +103,12 @@ class PositionForm(forms.ModelForm):
             ),
             'documents': autocomplete.ModelSelect2Multiple(
                 url='directory:document-autocomplete',
+                forward=['organization', 'subdivision', 'department'],
                 attrs={'data-placeholder': '📄 Выберите документы...'}
             ),
             'equipment': autocomplete.ModelSelect2Multiple(
                 url='directory:equipment-autocomplete',
+                forward=['organization', 'subdivision', 'department'],
                 attrs={'data-placeholder': '⚙️ Выберите оборудование...'}
             )
         }
@@ -110,8 +119,10 @@ class PositionForm(forms.ModelForm):
         self.helper.form_method = 'post'
         self.helper.add_input(Submit('submit', '💾 Сохранить'))
 
+
 class EmployeeForm(forms.ModelForm):
     """👤 Форма для сотрудников"""
+
     class Meta:
         model = Employee
         fields = [

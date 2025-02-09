@@ -27,6 +27,24 @@ class Position(models.Model):
         default='none',
         help_text="Укажите роль сотрудника в комиссии"
     )
+    # В классе Position:
+
+    contract_work_name = models.TextField(
+        "🔨 Наименование работы по договору подряда",
+        blank=True,
+        help_text="Укажите наименование работы, выполняемой по договору подряда"
+    )
+
+    contract_safety_instructions = models.CharField(
+        "⚠️ Инструкции по охране труда по договору подряда",
+        max_length=255,
+        blank=True,
+        help_text="Укажите номера инструкций по охране труда для данного вида работ"
+    )
+
+
+
+
     position_name = models.CharField(max_length=255, verbose_name="Название")
     organization = models.ForeignKey(
         'directory.Organization',

@@ -1,6 +1,7 @@
 from django.contrib import admin
 from django.db.models import Q
 from directory.models import Position
+from directory.forms import PositionForm
 
 
 @admin.register(Position)
@@ -8,12 +9,14 @@ class PositionAdmin(admin.ModelAdmin):
     """
     👔 Админ-класс для модели Position
     """
+    form = PositionForm
+
     list_display = [
         'position_name',
         'organization',
         'subdivision',
         'department',
-        'get_commission_role_display',  # Добавляем отображение роли
+        'get_commission_role_display',
         'electrical_safety_group',
         'can_be_internship_leader',
         'get_documents_count'
@@ -23,7 +26,7 @@ class PositionAdmin(admin.ModelAdmin):
         'organization',
         'subdivision',
         'department',
-        'commission_role',  # Добавляем фильтр по роли
+        'commission_role',
         'electrical_safety_group',
         'can_be_internship_leader',
         'is_responsible_for_safety',
@@ -39,7 +42,7 @@ class PositionAdmin(admin.ModelAdmin):
 
     fieldsets = (
         (None, {
-            'fields': ('position_name', 'commission_role')  # Добавляем поле роли
+            'fields': ('position_name', 'commission_role')
         }),
         ('Организационная структура', {
             'fields': ('organization', 'subdivision', 'department')
@@ -55,9 +58,18 @@ class PositionAdmin(admin.ModelAdmin):
             ),
             'description': '🔒 Настройки безопасности и допусков'
         }),
+        ('📋 Договор подряда', {
+            'fields': (
+                'contract_work_name',
+                'contract_safety_instructions'
+            ),
+            'description': '📝 Информация о работах по договору подряда',
+            'classes': ('collapse',)
+        }),
         ('Связанные документы и оборудование', {
             'fields': ('documents', 'equipment'),
-            'description': '📄 Выберите документы и оборудование, относящиеся к данной должности'
+            'description': '📄 Выберите документы и оборудование, относящиеся к данной должности',
+            'classes': ('collapse',)
         }),
     )
 
@@ -131,6 +143,11 @@ class PositionAdmin(admin.ModelAdmin):
 
     class Media:
         css = {
-            'all': ['admin/css/widgets.css']
+            'all': [
+                'admin/css/widgets.css',
+            ]
         }
-        js = ['admin/js/SelectFilter2.js']
+        js = [
+            'admin/js/jquery.init.js',
+            'admin/js/SelectFilter2.js',
+        ]
