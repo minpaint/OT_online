@@ -1,31 +1,14 @@
-# admin/subdivision.py
-from django.contrib import admin
+# 📁 directory/admin/subdivision.py
+from django.contrib import admin  # 🛠️ Импорт админки Django
+from mptt.admin import DraggableMPTTAdmin
 from directory.models.subdivision import StructuralSubdivision
 
-
 @admin.register(StructuralSubdivision)
-class StructuralSubdivisionAdmin(admin.ModelAdmin):
-    list_display = [
-        'name',
-        'short_name',
-        'organization'
-    ]
-    list_filter = ['organization']
-    search_fields = [
-        'name',
-        'short_name'
-    ]
-    autocomplete_fields = ['organization']
-
-    fieldsets = (
-        (None, {
-            'fields': (
-                'name',
-                'short_name',
-                'organization'
-            )
-        }),
-    )
-
-    def get_queryset(self, request):
-        return super().get_queryset(request).select_related('organization')
+class StructuralSubdivisionAdmin(DraggableMPTTAdmin):
+    """
+    🏭 Админ-класс для модели StructuralSubdivision.
+    Отображает подразделения в виде дерева с фильтрацией по организации.
+    """
+    mptt_indent_field = "name"
+    list_display = ('tree_actions', 'indented_title', 'organization')
+    list_display_links = ('indented_title',)

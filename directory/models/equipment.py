@@ -1,38 +1,24 @@
-# directory/models/equipment.py
+# 📁 directory/models/equipment.py
 from django.db import models
-from smart_selects.db_fields import ChainedForeignKey
-from directory.models.organization import Organization
-from directory.models.subdivision import StructuralSubdivision
-from directory.models.department import Department
 
 class Equipment(models.Model):
     equipment_name = models.CharField("Наименование оборудования", max_length=255)
     inventory_number = models.CharField("Инвентарный номер", max_length=100, unique=True)
     organization = models.ForeignKey(
-        Organization,
+        'directory.Organization',
         on_delete=models.CASCADE,
         related_name="equipment",
         verbose_name="Организация"
     )
-    subdivision = ChainedForeignKey(
-        StructuralSubdivision,
-        chained_field="organization",
-        chained_model_field="organization",
-        show_all=False,
-        auto_choose=True,
-        sort=True,
+    subdivision = models.ForeignKey(
+        'directory.StructuralSubdivision',
         on_delete=models.CASCADE,
         verbose_name="Структурное подразделение",
         null=True,
         blank=True
     )
-    department = ChainedForeignKey(
-        Department,
-        chained_field="subdivision",
-        chained_model_field="subdivision",
-        show_all=False,
-        auto_choose=True,
-        sort=True,
+    department = models.ForeignKey(
+        'directory.Department',
         on_delete=models.SET_NULL,
         null=True,
         blank=True,

@@ -1,4 +1,4 @@
-# admin/organization.py
+# 📁 directory/admin/organization.py
 from django.contrib import admin
 from directory.models.organization import Organization
 
@@ -18,17 +18,9 @@ class OrganizationAdmin(admin.ModelAdmin):
     ]
     fieldsets = (
         ('Русский язык', {
-            'fields': (
-                'full_name_ru',
-                'short_name_ru',
-                'requisites_ru'
-            )
+            'fields': ('full_name_ru', 'short_name_ru', 'requisites_ru')
         }),
         ('Белорусский язык', {
-            'fields': (
-                'full_name_by',
-                'short_name_by',
-                'requisites_by'
-            )
+            'fields': ('full_name_by', 'short_name_by', 'requisites_by')
         }),
     )

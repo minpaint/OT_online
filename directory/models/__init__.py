@@ -1,6 +1,4 @@
 # 📁 directory/models/__init__.py
-
-# Импортируем модели в правильном порядке
 from .organization import Organization
 from .subdivision import StructuralSubdivision
 from .department import Department

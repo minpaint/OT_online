@@ -1,3 +1,4 @@
+# 📁 settings.py
 import os
 from pathlib import Path
 from dotenv import load_dotenv
@@ -15,7 +16,6 @@ ALLOWED_HOSTS = os.getenv('DJANGO_ALLOWED_HOSTS', '127.0.0.1,localhost').split('
 
 # 📱 Установленные приложения
 INSTALLED_APPS = [
-    # 🎛️ Встроенные приложения Django
     'django.contrib.admin',
     'django.contrib.auth',
     'django.contrib.contenttypes',
@@ -23,21 +23,18 @@ INSTALLED_APPS = [
     'django.contrib.messages',
     'django.contrib.staticfiles',
 
-    # 🔌 Сторонние приложения
     'corsheaders',
-    'smart_selects',
     'debug_toolbar',
-
-    # 📊 Локальные приложения
+    'django_extensions',
     'directory.apps.DirectoryConfig',
+    'mptt',
+    'dal',
+    'dal_select2',
 ]
 
 # 🛠️ Middleware
 MIDDLEWARE = [
-    # Debug Toolbar должен быть первым
     'debug_toolbar.middleware.DebugToolbarMiddleware',
-
-    # Стандартные middleware Django
     'django.middleware.security.SecurityMiddleware',
     'django.contrib.sessions.middleware.SessionMiddleware',
     'corsheaders.middleware.CorsMiddleware',
@@ -82,18 +79,10 @@ if os.getenv('DATABASE_URL', '').startswith('sqlite'):
 
 # 🔒 Валидаторы паролей
 AUTH_PASSWORD_VALIDATORS = [
-    {
-        'NAME': 'django.contrib.auth.password_validation.UserAttributeSimilarityValidator',
-    },
-    {
-        'NAME': 'django.contrib.auth.password_validation.MinimumLengthValidator',
-    },
-    {
-        'NAME': 'django.contrib.auth.password_validation.CommonPasswordValidator',
-    },
-    {
-        'NAME': 'django.contrib.auth.password_validation.NumericPasswordValidator',
-    },
+    {'NAME': 'django.contrib.auth.password_validation.UserAttributeSimilarityValidator',},
+    {'NAME': 'django.contrib.auth.password_validation.MinimumLengthValidator',},
+    {'NAME': 'django.contrib.auth.password_validation.CommonPasswordValidator',},
+    {'NAME': 'django.contrib.auth.password_validation.NumericPasswordValidator',},
 ]
 
 # 🌍 Интернационализация
@@ -107,6 +96,11 @@ STATIC_URL = os.getenv('STATIC_URL', '/static/')
 STATICFILES_DIRS = [BASE_DIR / 'static']
 STATIC_ROOT = BASE_DIR / 'staticfiles'
 
+STATICFILES_FINDERS = [
+    'django.contrib.staticfiles.finders.FileSystemFinder',
+    'django.contrib.staticfiles.finders.AppDirectoriesFinder',
+]
+
 # 📸 Медиа файлы
 MEDIA_URL = os.getenv('MEDIA_URL', '/media/')
 MEDIA_ROOT = BASE_DIR / 'media'
@@ -118,21 +112,18 @@ DEFAULT_AUTO_FIELD = os.getenv('DEFAULT_AUTO_FIELD', 'django.db.models.BigAutoFi
 CORS_ORIGIN_ALLOW_ALL = True
 CORS_ALLOW_CREDENTIALS = True
 
-# 🔄 Smart Selects настройки
-USE_DJANGO_JQUERY = True
-JQUERY_URL = False
-SMART_SELECTS_JQUERY_URL = True
-SMART_SELECTS_BOOTSTRAP = True
-SMART_SELECTS_SETTINGS = {
-    'AUTO_LOAD_OBJECT_CHOICES': True,
-    'SHOW_EMPTY_CHOICE': True,
-    'EMPTY_CHOICE_LABEL': '--------',
-}
+# (Настройки smart_selects удалены)
 
-# 🔒 Настройки безопасности
-CSRF_COOKIE_SECURE = os.getenv('CSRF_COOKIE_SECURE', 'False') == 'True'
-SESSION_COOKIE_SECURE = os.getenv('SESSION_COOKIE_SECURE', 'False') == 'True'
-SECURE_SSL_REDIRECT = os.getenv('SECURE_SSL_REDIRECT', 'False') == 'True'
+# Настройки сессий
+SESSION_ENGINE = 'django.contrib.sessions.backends.db'
+SESSION_COOKIE_AGE = 86400
+SESSION_COOKIE_NAME = 'sessionid'
+SESSION_COOKIE_SECURE = False
+
+# 🔒 Настройки CSRF
+CSRF_COOKIE_NAME = 'csrftoken'
+CSRF_COOKIE_SECURE = False
+CSRF_TRUSTED_ORIGINS = ['http://localhost:8000', 'http://127.0.0.1:8000']
 
 # 📧 Настройки Email
 EMAIL_BACKEND = os.getenv('EMAIL_BACKEND', 'django.core.mail.backends.console.EmailBackend')
@@ -142,19 +133,13 @@ EMAIL_USE_TLS = os.getenv('EMAIL_USE_TLS', 'True') == 'True'
 EMAIL_HOST_USER = os.getenv('EMAIL_HOST_USER')
 EMAIL_HOST_PASSWORD = os.getenv('EMAIL_HOST_PASSWORD')
 
-# 🐞 Debug Toolbar настройки
 if DEBUG:
-    INTERNAL_IPS = [
-        '127.0.0.1',
-        'localhost',
-    ]
-
+    INTERNAL_IPS = ['127.0.0.1', 'localhost']
     DEBUG_TOOLBAR_CONFIG = {
         'SHOW_TOOLBAR_CALLBACK': lambda request: True,
         'SHOW_TEMPLATE_CONTEXT': True,
         'INTERCEPT_REDIRECTS': False,
     }
-
     DEBUG_TOOLBAR_PANELS = [
         'debug_toolbar.panels.versions.VersionsPanel',
         'debug_toolbar.panels.timer.TimerPanel',
@@ -170,28 +155,23 @@ if DEBUG:
         'debug_toolbar.panels.redirects.RedirectsPanel',
     ]
 
-# 📝 Логирование
 LOGGING = {
     'version': 1,
     'disable_existing_loggers': False,
     'handlers': {
-        'console': {
-            'class': 'logging.StreamHandler',
-        },
-        'file': {
-            'class': 'logging.FileHandler',
-            'filename': BASE_DIR / 'django.log',
-        },
+        'console': {'class': 'logging.StreamHandler',},
+        'file': {'class': 'logging.FileHandler', 'filename': BASE_DIR / 'django.log', 'level': 'DEBUG',},
     },
-    'root': {
-        'handlers': ['console', 'file'],
-        'level': 'INFO',
+    'root': {'handlers': ['console', 'file'], 'level': 'INFO',},
+    'loggers': {
+        'directory': {
+            'handlers': ['file'],
+            'level': 'DEBUG',
+            'propagate': True,
+        },
     },
 }
 
-# 🗄️ Кэширование
 CACHES = {
-    'default': {
-        'BACKEND': 'django.core.cache.backends.locmem.LocMemCache',
-    }
+    'default': {'BACKEND': 'django.core.cache.backends.locmem.LocMemCache',}
 }

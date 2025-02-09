@@ -1,9 +1,8 @@
 # 📁 directory/admin/__init__.py
 
-# Импортируем admin и используем его в комментарии для документации
 from django.contrib import admin  # noqa: F401
 
-# 📊 Импорт админ-классов (они сами зарегистрируются благодаря декораторам @admin.register)
+# Импорт админ-классов (они регистрируются через декораторы @admin.register)
 from .department import DepartmentAdmin
 from .document import DocumentAdmin
 from .employee import EmployeeAdmin

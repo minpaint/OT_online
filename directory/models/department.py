@@ -2,23 +2,20 @@
 from django.db import models
 from django.core.exceptions import ValidationError
 
-
 class Department(models.Model):
     """Отдел – опциональный третий уровень иерархии."""
     name = models.CharField("Наименование", max_length=255)
     short_name = models.CharField("Сокращенное наименование", max_length=255, blank=True)
 
-    # Используем строковые имена для ForeignKey
     organization = models.ForeignKey(
-        'directory.Organization',  # Изменено здесь
+        'directory.Organization',
         on_delete=models.PROTECT,
         related_name="departments",
         verbose_name="Организация"
     )
 
-    # Используем строковые имена для ChainedForeignKey
     subdivision = models.ForeignKey(
-        'directory.StructuralSubdivision',  # Изменено здесь
+        'directory.StructuralSubdivision',
         on_delete=models.PROTECT,
         verbose_name="Структурное подразделение",
         related_name="departments"
@@ -41,3 +38,4 @@ class Department(models.Model):
         verbose_name = "Отдел"
         verbose_name_plural = "Отделы"
         ordering = ['name']
+        unique_together = ['name', 'subdivision']

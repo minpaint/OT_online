@@ -1,4 +1,5 @@
-from django.urls import path
+# 📁 directory/urls.py
+from django.urls import path, include
 from . import views
 from .ajax import (
     get_subdivisions,
@@ -8,6 +9,7 @@ from .ajax import (
     get_equipment
 )
 from .views import (
+    HomeView,
     EmployeeListView,
     EmployeeCreateView,
     EmployeeUpdateView,
@@ -17,28 +19,34 @@ from .views import (
     PositionUpdateView,
     PositionDeleteView,
 )
-from django.urls import include, path
 
 app_name = 'directory'
 
+ajax_patterns = [
+    path('subdivisions/', get_subdivisions, name='ajax_subdivisions'),
+    path('departments/', get_departments, name='ajax_departments'),
+    path('positions/', get_positions, name='ajax_positions'),
+    path('documents/', get_documents, name='ajax_documents'),
+    path('equipment/', get_equipment, name='ajax_equipment'),
+]
+
+employee_patterns = [
+    path('', EmployeeListView.as_view(), name='employee_list'),
+    path('create/', EmployeeCreateView.as_view(), name='employee_create'),
+    path('<int:pk>/update/', EmployeeUpdateView.as_view(), name='employee_update'),
+    path('<int:pk>/delete/', EmployeeDeleteView.as_view(), name='employee_delete'),
+]
+
+position_patterns = [
+    path('', PositionListView.as_view(), name='position_list'),
+    path('create/', PositionCreateView.as_view(), name='position_create'),
+    path('<int:pk>/update/', PositionUpdateView.as_view(), name='position_update'),
+    path('<int:pk>/delete/', PositionDeleteView.as_view(), name='position_delete'),
+]
+
 urlpatterns = [
-    # AJAX URLs
-    path('ajax/subdivisions/', get_subdivisions, name='ajax_subdivisions'),
-    path('ajax/departments/', get_departments, name='ajax_departments'),
-    path('ajax/positions/', get_positions, name='ajax_positions'),
-    path('ajax/documents/', get_documents, name='ajax_documents'),
-    path('ajax/equipment/', get_equipment, name='ajax_equipment'),
-
-    # Employee URLs
-    path('employees/', EmployeeListView.as_view(), name='employee_list'),
-    path('employees/create/', EmployeeCreateView.as_view(), name='employee_create'),
-    path('employees/<int:pk>/update/', EmployeeUpdateView.as_view(), name='employee_update'),
-    path('employees/<int:pk>/delete/', EmployeeDeleteView.as_view(), name='employee_delete'),
-
-    # Position URLs
-    path('positions/', PositionListView.as_view(), name='position_list'),
-    path('positions/create/', PositionCreateView.as_view(), name='position_create'),
-    path('positions/<int:pk>/update/', PositionUpdateView.as_view(), name='position_update'),
-    path('positions/<int:pk>/delete/', PositionDeleteView.as_view(), name='position_delete'),
-    path('chaining/', include('smart_selects.urls')),
+    path('', HomeView.as_view(), name='home'),
+    path('ajax/', include(ajax_patterns)),
+    path('employees/', include(employee_patterns)),
+    path('positions/', include(position_patterns)),
 ]
