@@ -1,79 +1,78 @@
-# 📁 settings.py
 import os
 from pathlib import Path
 from dotenv import load_dotenv
 
-# 📌 Загрузка переменных из .env
+# 📌 Загрузка переменных окружения из файла .env
 load_dotenv()
 
-# 📂 Пути проекта
-BASE_DIR = Path(__file__).resolve().parent.parent
+# 📂 Определяем корневой каталог проекта (D:\YandexDisk\OT_online)
+BASE_DIR = Path(__file__).resolve().parent
 
 # 🔐 Основные настройки безопасности
 SECRET_KEY = os.getenv('DJANGO_SECRET_KEY')
 DEBUG = os.getenv('DJANGO_DEBUG', 'False') == 'True'
 ALLOWED_HOSTS = os.getenv('DJANGO_ALLOWED_HOSTS', '127.0.0.1,localhost').split(',')
 
-# 📱 Установленные приложения
+# 📱 Установленные приложения (apps)
 INSTALLED_APPS = [
-    'django.contrib.admin',
-    'django.contrib.auth',
-    'django.contrib.contenttypes',
-    'django.contrib.sessions',
-    'django.contrib.messages',
-    'django.contrib.staticfiles',
+    'django.contrib.admin',         # Админка Django 👨‍💼
+    'django.contrib.auth',          # Аутентификация 🔑
+    'django.contrib.contenttypes',  # Типы контента 📄
+    'django.contrib.sessions',      # Сессии пользователя 🕑
+    'django.contrib.messages',      # Сообщения 📨
+    'django.contrib.staticfiles',   # Статические файлы 🖼️
 
-    'corsheaders',
-    'debug_toolbar',
-    'django_extensions',
-    'directory.apps.DirectoryConfig',
-    'mptt',
-    'dal',
-    'dal_select2',
+    'corsheaders',                  # CORS настройки 🌐
+    'debug_toolbar',                # Debug Toolbar 🐞
+    'django_extensions',            # Расширения Django ⚙️
+    'directory.apps.DirectoryConfig',  # Наше приложение "directory" 📦
+    'mptt',                         # Для древовидных структур 📊
+    'dal',                          # Django Autocomplete Light для автодополнения 🔍
+    'dal_select2',                  # Виджеты Select2 для DAL 🎯
 ]
 
 # 🛠️ Middleware
 MIDDLEWARE = [
-    'debug_toolbar.middleware.DebugToolbarMiddleware',
-    'django.middleware.security.SecurityMiddleware',
-    'django.contrib.sessions.middleware.SessionMiddleware',
-    'corsheaders.middleware.CorsMiddleware',
-    'django.middleware.common.CommonMiddleware',
-    'django.middleware.csrf.CsrfViewMiddleware',
-    'django.contrib.auth.middleware.AuthenticationMiddleware',
-    'django.contrib.messages.middleware.MessageMiddleware',
-    'django.middleware.clickjacking.XFrameOptionsMiddleware',
+    'debug_toolbar.middleware.DebugToolbarMiddleware',  # Отображение отладочной панели 🐞
+    'django.middleware.security.SecurityMiddleware',      # Защита (security) 🔒
+    'django.contrib.sessions.middleware.SessionMiddleware',  # Работа с сессиями 🕑
+    'corsheaders.middleware.CorsMiddleware',              # CORS обработка 🌐
+    'django.middleware.common.CommonMiddleware',          # Общие настройки 🔧
+    'django.middleware.csrf.CsrfViewMiddleware',          # Защита от CSRF атак 🚫
+    'django.contrib.auth.middleware.AuthenticationMiddleware',  # Аутентификация пользователей 🔑
+    'django.contrib.messages.middleware.MessageMiddleware',  # Передача сообщений 📨
+    'django.middleware.clickjacking.XFrameOptionsMiddleware',  # Защита от clickjacking 🖱️
 ]
 
-# 🌐 Основные URL настройки
+# 🌐 Основной URL-конфигурация
 ROOT_URLCONF = 'urls'
 
 # 📄 Настройки шаблонов
 TEMPLATES = [
     {
         'BACKEND': 'django.template.backends.django.DjangoTemplates',
-        'DIRS': [BASE_DIR / 'templates'],
+        'DIRS': [BASE_DIR / 'templates'],  # Папка с шаблонами в корне проекта 📂
         'APP_DIRS': True,
         'OPTIONS': {
             'context_processors': [
-                'django.template.context_processors.debug',
-                'django.template.context_processors.request',
-                'django.contrib.auth.context_processors.auth',
-                'django.contrib.messages.context_processors.messages',
+                'django.template.context_processors.debug',   # Отладка 🐞
+                'django.template.context_processors.request',   # Объект запроса
+                'django.contrib.auth.context_processors.auth',  # Аутентификация
+                'django.contrib.messages.context_processors.messages',  # Сообщения
             ],
         },
     },
 ]
 
-# 🌍 Настройки WSGI
+# 🌍 WSGI-приложение
 WSGI_APPLICATION = 'wsgi.application'
 
-# 💾 Настройки базы данных
+# 💾 Настройки базы данных (SQLite)
 if os.getenv('DATABASE_URL', '').startswith('sqlite'):
     DATABASES = {
         'default': {
             'ENGINE': 'django.db.backends.sqlite3',
-            'NAME': BASE_DIR / 'db.sqlite3',
+            'NAME': BASE_DIR / 'db.sqlite3',  # Файл базы создаётся в корне проекта
         }
     }
 
@@ -91,11 +90,10 @@ TIME_ZONE = os.getenv('TIME_ZONE', 'Europe/Moscow')
 USE_I18N = True
 USE_TZ = True
 
-# 📁 Статические файлы (CSS, JavaScript, Images)
+# 📁 Статические файлы
 STATIC_URL = os.getenv('STATIC_URL', '/static/')
 STATICFILES_DIRS = [BASE_DIR / 'static']
 STATIC_ROOT = BASE_DIR / 'staticfiles'
-
 STATICFILES_FINDERS = [
     'django.contrib.staticfiles.finders.FileSystemFinder',
     'django.contrib.staticfiles.finders.AppDirectoriesFinder',
@@ -105,14 +103,12 @@ STATICFILES_FINDERS = [
 MEDIA_URL = os.getenv('MEDIA_URL', '/media/')
 MEDIA_ROOT = BASE_DIR / 'media'
 
-# 🔑 Default primary key field type
+# 🔑 Тип первичного ключа по умолчанию
 DEFAULT_AUTO_FIELD = os.getenv('DEFAULT_AUTO_FIELD', 'django.db.models.BigAutoField')
 
 # 🔗 Настройки CORS
 CORS_ORIGIN_ALLOW_ALL = True
 CORS_ALLOW_CREDENTIALS = True
-
-# (Настройки smart_selects удалены)
 
 # Настройки сессий
 SESSION_ENGINE = 'django.contrib.sessions.backends.db'

@@ -1,7 +1,9 @@
-# 📁 directory/models/organization.py
 from django.db import models
 
 class Organization(models.Model):
+    """
+    🏢 Модель для хранения информации об организациях.
+    """
     full_name_ru = models.CharField(max_length=255, verbose_name="Полное наименование (рус)")
     short_name_ru = models.CharField(max_length=100, verbose_name="Краткое наименование (рус)")
     full_name_by = models.CharField(max_length=255, verbose_name="Полное наименование (бел)")

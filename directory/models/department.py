@@ -1,25 +1,34 @@
-# 📁 directory/models/department.py
 from django.db import models
 from django.core.exceptions import ValidationError
 
 class Department(models.Model):
-    """Отдел – опциональный третий уровень иерархии."""
+    """
+    📂 Модель для хранения отделов.
+    """
     name = models.CharField("Наименование", max_length=255)
     short_name = models.CharField("Сокращенное наименование", max_length=255, blank=True)
-
     organization = models.ForeignKey(
         'directory.Organization',
         on_delete=models.PROTECT,
         related_name="departments",
         verbose_name="Организация"
     )
-
     subdivision = models.ForeignKey(
         'directory.StructuralSubdivision',
         on_delete=models.PROTECT,
+        related_name="departments",
         verbose_name="Структурное подразделение",
-        related_name="departments"
+        null=True,
+        blank=True
     )
+
+    class Meta:
+        verbose_name = "Отдел"
+        verbose_name_plural = "Отделы"
+        ordering = ['name']
+        unique_together = [
+            ['name', 'organization', 'subdivision']
+        ]
 
     def clean(self):
         if self.subdivision and self.subdivision.organization != self.organization:
@@ -32,10 +41,6 @@ class Department(models.Model):
         super().save(*args, **kwargs)
 
     def __str__(self):
-        return f"{self.name} ({self.subdivision})"
-
-    class Meta:
-        verbose_name = "Отдел"
-        verbose_name_plural = "Отделы"
-        ordering = ['name']
-        unique_together = ['name', 'subdivision']
+        if self.subdivision:
+            return f"{self.name} ({self.subdivision.name})"
+        return f"{self.name} ({self.organization.short_name_ru})"

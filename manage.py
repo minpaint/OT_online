@@ -1,23 +1,23 @@
 #!/usr/bin/env python
-"""Django's command-line utility for administrative tasks."""
+"""
+🚀 Скрипт для запуска административных задач Django.
+"""
 import os
 import sys
 from pathlib import Path
 
 def main():
-    """Run administrative tasks."""
-    # Добавляем текущую директорию в PYTHONPATH
-    current_path = Path(__file__).resolve().parent
-    sys.path.append(str(current_path))
-
+    # Определяем корневой каталог проекта (D:\YandexDisk\OT_online)
+    BASE_DIR = Path(__file__).resolve().parent
+    # Добавляем BASE_DIR в PYTHONPATH
+    sys.path.append(str(BASE_DIR))
+    # Устанавливаем переменную окружения для настроек Django
     os.environ.setdefault('DJANGO_SETTINGS_MODULE', 'settings')
     try:
         from django.core.management import execute_from_command_line
     except ImportError as exc:
         raise ImportError(
-            "Couldn't import Django. Are you sure it's installed and "
-            "available on your PYTHONPATH environment variable? Did you "
-            "forget to activate a virtual environment?"
+            "Не удалось импортировать Django. Убедитесь, что Django установлен и доступен в PYTHONPATH."
         ) from exc
     execute_from_command_line(sys.argv)
 

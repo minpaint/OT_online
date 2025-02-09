@@ -1,7 +1,11 @@
-# 📁 directory/models/equipment.py
 from django.db import models
 
+
 class Equipment(models.Model):
+    """
+    ⚙️ Модель для хранения оборудования.
+    Оборудование привязано к организации, подразделению и отделу.
+    """
     equipment_name = models.CharField("Наименование оборудования", max_length=255)
     inventory_number = models.CharField("Инвентарный номер", max_length=100, unique=True)
     organization = models.ForeignKey(

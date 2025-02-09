@@ -1,5 +1,3 @@
-# 📁 directory/admin/__init__.py
-
 from django.contrib import admin  # noqa: F401
 
 # Импорт админ-классов (они регистрируются через декораторы @admin.register)
@@ -10,3 +8,13 @@ from .equipment import EquipmentAdmin
 from .organization import OrganizationAdmin
 from .position import PositionAdmin
 from .subdivision import StructuralSubdivisionAdmin
+
+__all__ = [
+    'DepartmentAdmin',
+    'DocumentAdmin',
+    'EmployeeAdmin',
+    'EquipmentAdmin',
+    'OrganizationAdmin',
+    'PositionAdmin',
+    'StructuralSubdivisionAdmin',
+]

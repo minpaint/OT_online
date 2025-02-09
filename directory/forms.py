@@ -1,7 +1,7 @@
-# 📁 directory/forms.py
 from django import forms
 from crispy_forms.helper import FormHelper
-from crispy_forms.layout import Layout, Submit, Row, Column
+from crispy_forms.layout import Submit
+from dal import autocomplete
 from directory.models import (
     Organization,
     StructuralSubdivision,
@@ -13,6 +13,7 @@ from directory.models import (
 )
 
 class OrganizationForm(forms.ModelForm):
+    """🏢 Форма для организаций"""
     class Meta:
         model = Organization
         fields = '__all__'
@@ -21,123 +22,140 @@ class OrganizationForm(forms.ModelForm):
         super().__init__(*args, **kwargs)
         self.helper = FormHelper()
         self.helper.form_method = 'post'
-        self.helper.add_input(Submit('submit', 'Сохранить'))
+        self.helper.add_input(Submit('submit', '💾 Сохранить'))
 
 class StructuralSubdivisionForm(forms.ModelForm):
+    """🏭 Форма для структурных подразделений"""
     class Meta:
         model = StructuralSubdivision
-        fields = '__all__'
-
-    def __init__(self, *args, **kwargs):
-        super().__init__(*args, **kwargs)
-        self.helper = FormHelper()
-        self.helper.form_method = 'post'
-        self.helper.add_input(Submit('submit', 'Сохранить'))
-
-        if self.instance.pk and self.instance.organization:
-            self.fields['parent'].queryset = (
-                StructuralSubdivision.objects
-                .filter(organization=self.instance.organization)
-                .exclude(pk=self.instance.pk)
-            )
-
-class DepartmentForm(forms.ModelForm):
-    class Meta:
-        model = Department
-        fields = '__all__'
-
-    def __init__(self, *args, **kwargs):
-        super().__init__(*args, **kwargs)
-        self.helper = FormHelper()
-        self.helper.form_method = 'post'
-        self.helper.add_input(Submit('submit', 'Сохранить'))
-
-        if self.instance.pk and self.instance.organization:
-            self.fields['subdivision'].queryset = (
-                StructuralSubdivision.objects
-                .filter(organization=self.instance.organization)
-            )
-
-class PositionForm(forms.ModelForm):
-    class Meta:
-        model = Position
-        fields = '__all__'
-
-    def __init__(self, *args, **kwargs):
-        super().__init__(*args, **kwargs)
-        self.helper = FormHelper()
-        self.helper.form_method = 'post'
-        self.helper.add_input(Submit('submit', 'Сохранить'))
-
-        if self.instance.pk and self.instance.organization:
-            self.fields['subdivision'].queryset = (
-                StructuralSubdivision.objects
-                .filter(organization=self.instance.organization)
-            )
-            self.fields['department'].queryset = (
-                Department.objects
-                .filter(organization=self.instance.organization)
-            )
-            if self.instance.subdivision:
-                self.fields['documents'].queryset = (
-                    Document.objects
-                    .filter(
-                        organization=self.instance.organization,
-                        subdivision=self.instance.subdivision
-                    )
-                )
-                if self.instance.department:
-                    self.fields['documents'].queryset = (
-                        self.fields['documents'].queryset
-                        .filter(department=self.instance.department)
-                    )
-                if self.instance.subdivision:
-                    self.fields['equipment'].queryset = (
-                        Equipment.objects
-                        .filter(
-                            organization=self.instance.organization,
-                            subdivision=self.instance.subdivision
-                        )
-                    )
-                    if self.instance.department:
-                        self.fields['equipment'].queryset = (
-                            self.fields['equipment'].queryset
-                            .filter(department=self.instance.department)
-                        )
-
-    def clean(self):
-        cleaned_data = super().clean()
-        organization = cleaned_data.get('organization')
-        subdivision = cleaned_data.get('subdivision')
-        department = cleaned_data.get('department')
-
-        if subdivision and subdivision.organization != organization:
-            raise forms.ValidationError('Выбранное подразделение не принадлежит выбранной организации')
-
-        if department:
-            if department.organization != organization:
-                raise forms.ValidationError('Выбранный отдел не принадлежит выбранной организации')
-            if department.subdivision != subdivision:
-                raise forms.ValidationError('Выбранный отдел не принадлежит выбранному подразделению')
-
-        return cleaned_data
-
-class EmployeeForm(forms.ModelForm):
-    class Meta:
-        model = Employee
-        fields = '__all__'
+        fields = ['name', 'short_name', 'organization']
         widgets = {
-            'date_of_birth': forms.DateInput(attrs={'type': 'date'}),
+            'organization': autocomplete.ModelSelect2(
+                url='directory:organization-autocomplete',
+                attrs={'data-placeholder': '🏢 Выберите организацию...'}
+            )
         }
 
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
         self.helper = FormHelper()
         self.helper.form_method = 'post'
-        self.helper.add_input(Submit('submit', 'Сохранить'))
+        self.helper.add_input(Submit('submit', '💾 Сохранить'))
 
-        if self.instance.pk and self.instance.position:
-            self.fields['subdivision'].queryset = (
-                StructuralSubdivision.objects
-                .filter(organization=self.instance.position.organization)
+class DepartmentForm(forms.ModelForm):
+    """📂 Форма для отделов"""
+    class Meta:
+        model = Department
+        fields = ['name', 'short_name', 'organization', 'subdivision']
+        widgets = {
+            'organization': autocomplete.ModelSelect2(
+                url='directory:organization-autocomplete',
+                attrs={'data-placeholder': '🏢 Выберите организацию...'}
+            ),
+            'subdivision': autocomplete.ModelSelect2(
+                url='directory:subdivision-autocomplete',
+                forward=['organization'],
+                attrs={'data-placeholder': '🏭 Выберите подразделение...'}
             )
+        }
+
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, **kwargs)
+        self.helper = FormHelper()
+        self.helper.form_method = 'post'
+        self.helper.add_input(Submit('submit', '💾 Сохранить'))
+
+class PositionForm(forms.ModelForm):
+    """👔 Форма для должностей"""
+    class Meta:
+        model = Position
+        fields = [
+            'position_name', 'organization', 'subdivision', 'department',
+            'safety_instructions_numbers', 'electrical_safety_group',
+            'internship_period_days', 'is_responsible_for_safety',
+            'is_electrical_personnel', 'can_be_internship_leader',
+            'documents', 'equipment'
+        ]
+        widgets = {
+            'organization': autocomplete.ModelSelect2(
+                url='directory:organization-autocomplete',
+                attrs={'data-placeholder': '🏢 Выберите организацию...'}
+            ),
+            'subdivision': autocomplete.ModelSelect2(
+                url='directory:subdivision-autocomplete',
+                forward=['organization'],
+                attrs={'data-placeholder': '🏭 Выберите подразделение...'}
+            ),
+            'department': autocomplete.ModelSelect2(
+                url='directory:department-autocomplete',
+                forward=['subdivision'],
+                attrs={
+                    'data-placeholder': '📂 Выберите отдел...',
+                    'data-minimum-input-length': 0
+                }
+            ),
+            'documents': autocomplete.ModelSelect2Multiple(
+                url='directory:document-autocomplete',
+                attrs={'data-placeholder': '📄 Выберите документы...'}
+            ),
+            'equipment': autocomplete.ModelSelect2Multiple(
+                url='directory:equipment-autocomplete',
+                attrs={'data-placeholder': '⚙️ Выберите оборудование...'}
+            )
+        }
+
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, **kwargs)
+        self.helper = FormHelper()
+        self.helper.form_method = 'post'
+        self.helper.add_input(Submit('submit', '💾 Сохранить'))
+
+class EmployeeForm(forms.ModelForm):
+    """👤 Форма для сотрудников"""
+    class Meta:
+        model = Employee
+        fields = [
+            'full_name_nominative', 'full_name_dative',
+            'date_of_birth', 'place_of_residence',
+            'organization', 'subdivision', 'department', 'position',
+            'height', 'clothing_size', 'shoe_size',
+            'is_contractor'
+        ]
+        widgets = {
+            'organization': autocomplete.ModelSelect2(
+                url='directory:organization-autocomplete',
+                attrs={'data-placeholder': '🏢 Выберите организацию...'}
+            ),
+            'subdivision': autocomplete.ModelSelect2(
+                url='directory:subdivision-autocomplete',
+                forward=['organization'],
+                attrs={'data-placeholder': '🏭 Выберите подразделение...'}
+            ),
+            'department': autocomplete.ModelSelect2(
+                url='directory:department-autocomplete',
+                forward=['subdivision'],
+                attrs={
+                    'data-placeholder': '📂 Выберите отдел...',
+                    'data-minimum-input-length': 0
+                }
+            ),
+            'position': autocomplete.ModelSelect2(
+                url='directory:position-autocomplete',
+                forward=['organization', 'subdivision', 'department'],
+                attrs={'data-placeholder': '👔 Выберите должность...'}
+            ),
+            'date_of_birth': forms.DateInput(
+                attrs={'type': 'date'},
+                format='%Y-%m-%d'
+            )
+        }
+
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, **kwargs)
+        self.helper = FormHelper()
+        self.helper.form_method = 'post'
+        self.helper.add_input(Submit('submit', '💾 Сохранить'))
+
+        # Настройка обязательных полей
+        self.fields['subdivision'].required = False
+        self.fields['department'].required = False

@@ -1,12 +1,9 @@
 import os
-import sys
 from pathlib import Path
 from django.core.wsgi import get_wsgi_application
 
-# Добавляем текущую директорию в PYTHONPATH
-current_path = Path(__file__).resolve().parent
-sys.path.append(str(current_path))
-
+# Определяем корневой каталог проекта (например, D:\YandexDisk\OT_online)
+BASE_DIR = Path(__file__).resolve().parent
 os.environ.setdefault('DJANGO_SETTINGS_MODULE', 'settings')
 
 application = get_wsgi_application()

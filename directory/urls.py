@@ -1,14 +1,5 @@
-# 📁 directory/urls.py
 from django.urls import path, include
-from . import views
-from .ajax import (
-    get_subdivisions,
-    get_departments,
-    get_positions,
-    get_documents,
-    get_equipment
-)
-from .views import (
+from directory.views import (
     HomeView,
     EmployeeListView,
     EmployeeCreateView,
@@ -19,17 +10,52 @@ from .views import (
     PositionUpdateView,
     PositionDeleteView,
 )
+from directory.autocomplete_views import (
+    OrganizationAutocomplete,
+    SubdivisionAutocomplete,
+    DepartmentAutocomplete,
+    PositionAutocomplete,
+    DocumentAutocomplete,
+    EquipmentAutocomplete,
+)
 
 app_name = 'directory'
 
-ajax_patterns = [
-    path('subdivisions/', get_subdivisions, name='ajax_subdivisions'),
-    path('departments/', get_departments, name='ajax_departments'),
-    path('positions/', get_positions, name='ajax_positions'),
-    path('documents/', get_documents, name='ajax_documents'),
-    path('equipment/', get_equipment, name='ajax_equipment'),
+# 🔍 Маршруты для автодополнения (DAL)
+autocomplete_patterns = [
+    path(
+        'organization/',
+        OrganizationAutocomplete.as_view(),
+        name='organization-autocomplete'
+    ),
+    path(
+        'subdivision/',
+        SubdivisionAutocomplete.as_view(),
+        name='subdivision-autocomplete'
+    ),
+    path(
+        'department/',
+        DepartmentAutocomplete.as_view(),
+        name='department-autocomplete'
+    ),
+    path(
+        'position/',
+        PositionAutocomplete.as_view(),
+        name='position-autocomplete'
+    ),
+    path(
+        'document/',
+        DocumentAutocomplete.as_view(),
+        name='document-autocomplete'
+    ),
+    path(
+        'equipment/',
+        EquipmentAutocomplete.as_view(),
+        name='equipment-autocomplete'
+    ),
 ]
 
+# 👥 Маршруты для сотрудников
 employee_patterns = [
     path('', EmployeeListView.as_view(), name='employee_list'),
     path('create/', EmployeeCreateView.as_view(), name='employee_create'),
@@ -37,6 +63,7 @@ employee_patterns = [
     path('<int:pk>/delete/', EmployeeDeleteView.as_view(), name='employee_delete'),
 ]
 
+# 👔 Маршруты для должностей
 position_patterns = [
     path('', PositionListView.as_view(), name='position_list'),
     path('create/', PositionCreateView.as_view(), name='position_create'),
@@ -44,9 +71,10 @@ position_patterns = [
     path('<int:pk>/delete/', PositionDeleteView.as_view(), name='position_delete'),
 ]
 
+# Основные URL маршруты
 urlpatterns = [
     path('', HomeView.as_view(), name='home'),
-    path('ajax/', include(ajax_patterns)),
+    path('autocomplete/', include(autocomplete_patterns)),
     path('employees/', include(employee_patterns)),
     path('positions/', include(position_patterns)),
 ]

@@ -1,14 +1,12 @@
-<!-- 📁 templates/admin/base_site.html -->
-
 {% extends "admin/base.html" %}
 {% load static %}
 
-{# 🎨 Настройка заголовка страницы #}
+{# 🎨 Блок для заголовка страницы. Используется переменная title, которая подставляется динамически. #}
 {% block title %}
     {{ title }} | 🏢 Система управления ОТ
 {% endblock %}
 
-{# 🎯 Блок брендинга (шапка админки) #}
+{# 🎯 Блок брендинга – шапка админки с логотипом и ссылкой на главную страницу админки. #}
 {% block branding %}
     <h1 id="site-name">
         <a href="{% url 'admin:index' %}">
@@ -17,83 +15,50 @@
     </h1>
 {% endblock %}
 
-{# 📚 Дополнительные стили #}
+{# 📚 Блок дополнительных стилей. Здесь задаются основные цвета и стили шапки админки. #}
 {% block extrastyle %}
     {{ block.super }}
     <style>
         /* 🎨 Основные цвета и стили */
         :root {
             --primary-color: #2c3e50;
-            --secondary-color: #34495e;
             --accent-color: #3498db;
         }
-
         /* 👔 Стили шапки */
         #header {
             background: var(--primary-color);
             color: white;
         }
-
-        /* 🔗 Стили ссылок */
+        /* 🔗 Стили ссылок в шапке */
         #header a:link, #header a:visited {
             color: white;
         }
-
-        /* 🖱️ Эффекты при наведении */
+        /* 🖱️ Эффект при наведении */
         #header a:hover {
             color: var(--accent-color);
         }
     </style>
 {% endblock %}
 
-{# 📦 Дополнительные скрипты в head #}
+{# 📦 Блок дополнительных скриптов в head. Здесь оставляем только базовое подключение, 
+   так как стандартный шаблон admin/base.html уже подключает jQuery и основные скрипты. #}
 {% block extrahead %}
     {{ block.super }}
-
-    {# 🔄 jQuery и основные скрипты Django #}
-    <script type="text/javascript" src="{% static 'admin/js/jquery.init.js' %}"></script>
-    <script type="text/javascript" src="{% static 'admin/js/core.js' %}"></script>
-
-    {# 📋 Скрипты для работы с формами #}
-    <script type="text/javascript" src="{% static 'admin/js/SelectBox.js' %}"></script>
-    <script type="text/javascript" src="{% static 'admin/js/SelectFilter2.js' %}"></script>
-
-    {# 🔗 Скрипты Smart Selects #}
-    <script type="text/javascript" src="{% static 'smart-selects/admin/js/chainedfk.js' %}"></script>
-    <script type="text/javascript" src="{% static 'smart-selects/admin/js/chainedm2m.js' %}"></script>
-
-    {# ⚡ Дополнительные настройки JavaScript #}
-    <script type="text/javascript">
-        // 🔄 Инициализация при загрузке документа
-        $(document).ready(function() {
-            // 🎯 Настройка Smart Selects
-            if (typeof window.chainedSelectFields === 'undefined') {
-                window.chainedSelectFields = [];
-            }
-
-            // 🔍 Отслеживание изменений в связанных полях
-            $('.chained-select-field').on('change', function() {
-                var fieldId = $(this).attr('id');
-                if (window.chainedSelectFields.indexOf(fieldId) === -1) {
-                    window.chainedSelectFields.push(fieldId);
-                }
-            });
-        });
-    </script>
+    {# Дополнительные скрипты smart‑selects удалены, так как они больше не используются. #}
 {% endblock %}
 
-{# 📱 Дополнительный контент для мобильной версии #}
+{# 📱 Блок для адаптивного дизайна – добавление meta-тега viewport. #}
 {% block responsive %}
     {{ block.super }}
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
 {% endblock %}
 
-{# 🔍 Блок для поиска #}
+{# 🔍 Блок для поиска – наследуется от стандартного шаблона. #}
 {% block search %}
     {{ block.super }}
 {% endblock %}
 
-{# 📋 Блок для хлебных крошек #}
+{# 📋 Блок для хлебных крошек (breadcrumbs) – показывает навигационную цепочку. #}
 {% block breadcrumbs %}
     {% if not is_popup %}
         <div class="breadcrumbs">
@@ -103,7 +68,7 @@
     {% endif %}
 {% endblock %}
 
-{# ⚠️ Блок для сообщений #}
+{# ⚠️ Блок для отображения сообщений (ошибки, успех, предупреждения, информация) с эмодзи. #}
 {% block messages %}
     {% if messages %}
         <ul class="messagelist">

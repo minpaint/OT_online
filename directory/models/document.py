@@ -1,7 +1,11 @@
-# 📁 directory/models/document.py
 from django.db import models
 
+
 class Document(models.Model):
+    """
+    📄 Модель для хранения документов.
+    Документы привязаны к организации, подразделению и отделу.
+    """
     name = models.CharField("Наименование документа", max_length=255)
     organization = models.ForeignKey(
         'directory.Organization',

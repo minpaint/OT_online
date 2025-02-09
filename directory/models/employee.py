@@ -1,8 +1,10 @@
-# 📁 directory/models/employee.py
 from django.db import models
 from django.core.exceptions import ValidationError
 
 class Employee(models.Model):
+    """
+    👤 Модель для хранения информации о сотрудниках.
+    """
     HEIGHT_CHOICES = [
         ("158-164 см", "158-164 см"),
         ("170-176 см", "170-176 см"),
@@ -51,35 +53,55 @@ class Employee(models.Model):
     )
 
     height = models.CharField(max_length=15, choices=HEIGHT_CHOICES, blank=True, verbose_name="Рост")
-    clothing_size = models.CharField(max_length=5, choices=CLOTHING_SIZE_CHOICES, blank=True, verbose_name="Размер одежды")
-    shoe_size = models.CharField(max_length=2, choices=SHOE_SIZE_CHOICES, blank=True, verbose_name="Размер обуви")
+    clothing_size = models.CharField(max_length=5, choices=CLOTHING_SIZE_CHOICES, blank=True,
+                                     verbose_name="Размер одежды")
+    shoe_size = models.CharField(max_length=2, choices=SHOE_SIZE_CHOICES, blank=True,
+                                 verbose_name="Размер обуви")
     is_contractor = models.BooleanField(default=False, verbose_name="Договор подряда")
 
     def clean(self):
-        if self.department and not self.subdivision:
-            raise ValidationError({'department': 'Нельзя указать отдел без структурного подразделения'})
-        if self.position:
-            if self.department:
-                if self.position.department and self.position.department != self.department:
-                    raise ValidationError({'position': 'Выбранная должность не соответствует указанному отделу'})
-            elif self.subdivision:
-                if self.position.subdivision and self.position.subdivision != self.subdivision:
-                    raise ValidationError({'position': 'Выбранная должность не соответствует указанному подразделению'})
-            if self.position.organization != self.organization:
-                raise ValidationError({'position': 'Выбранная должность не принадлежит указанной организации'})
-        if self.subdivision and self.subdivision.organization != self.organization:
-            raise ValidationError({'subdivision': 'Выбранное подразделение не принадлежит указанной организации'})
-        if self.department and self.department.subdivision != self.subdivision:
-            raise ValidationError({'department': 'Выбранный отдел не принадлежит указанному подразделению'})
+        # Проверка соответствия должности организационной структуре
+        if self.position.organization != self.organization:
+            raise ValidationError({
+                'position': 'Должность должна принадлежать выбранной организации'
+            })
+
+        # Проверка подразделения
+        if self.subdivision:
+            if self.subdivision.organization != self.organization:
+                raise ValidationError({
+                    'subdivision': 'Подразделение должно принадлежать выбранной организации'
+                })
+            if self.position.subdivision and self.position.subdivision != self.subdivision:
+                raise ValidationError({
+                    'position': 'Должность должна соответствовать выбранному подразделению'
+                })
+
+        # Проверка отдела
+        if self.department:
+            if not self.subdivision:
+                raise ValidationError({
+                    'department': 'Нельзя указать отдел без структурного подразделения'
+                })
+            if self.department.organization != self.organization:
+                raise ValidationError({
+                    'department': 'Отдел должен принадлежать выбранной организации'
+                })
+            if self.department.subdivision != self.subdivision:
+                raise ValidationError({
+                    'department': 'Отдел должен принадлежать выбранному подразделению'
+                })
+            if self.position.department and self.position.department != self.department:
+                raise ValidationError({
+                    'position': 'Должность должна соответствовать выбранному отделу'
+                })
 
     def save(self, *args, **kwargs):
         self.clean()
         super().save(*args, **kwargs)
 
     def __str__(self):
-        parts = [self.full_name_nominative]
-        if self.position:
-            parts.append(f"- {self.position}")
+        parts = [self.full_name_nominative, "-", str(self.position)]
         return " ".join(parts)
 
     class Meta:

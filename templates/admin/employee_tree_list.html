@@ -1,0 +1,53 @@
+{% extends "admin/base_site.html" %}
+{% load i18n %}
+
+{% block object-tools %}
+  <!-- Кнопка для добавления нового сотрудника -->
+  <div class="object-tools">
+    <ul class="object-tools">
+      <li>
+        <a href="{% url 'admin:directory_employee_add' %}" class="addlink">➕ Добавить сотрудника</a>
+      </li>
+    </ul>
+  </div>
+{% endblock %}
+
+{% block content %}
+  <h1>👥 Дерево сотрудников</h1>
+  <ul>
+    {% for organization, org_group in employee_tree.items %}
+      <li>
+        <strong>🏢 {{ organization.full_name_ru }}</strong>
+        <ul>
+          {% for subdivision, sub_group in org_group.items %}
+            <li>
+              {% if subdivision == "Без подразделения" %}
+                <em>Без подразделения</em>
+              {% else %}
+                🏭 {{ subdivision.name }}
+              {% endif %}
+              <ul>
+                {% for department, employees in sub_group.items %}
+                  <li>
+                    {% if department == "Без отдела" %}
+                      <em>Без отдела</em>
+                    {% else %}
+                      📂 {{ department.name }}
+                    {% endif %}
+                    <ul>
+                      {% for employee in employees %}
+                        <li>
+                          👤 {{ employee.full_name_nominative }} – {{ employee.position.position_name }}
+                        </li>
+                      {% endfor %}
+                    </ul>
+                  </li>
+                {% endfor %}
+              </ul>
+            </li>
+          {% endfor %}
+        </ul>
+      </li>
+    {% endfor %}
+  </ul>
+{% endblock %}
