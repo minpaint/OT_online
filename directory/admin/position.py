@@ -1,47 +1,136 @@
 from django.contrib import admin
-from directory.models.position import Position
-from directory.forms import PositionForm
+from django.db.models import Q
+from directory.models import Position
+
 
 @admin.register(Position)
 class PositionAdmin(admin.ModelAdmin):
     """
-    👔 Админ-класс для модели Position.
+    👔 Админ-класс для модели Position
     """
-    form = PositionForm
     list_display = [
         'position_name',
         'organization',
         'subdivision',
         'department',
+        'get_commission_role_display',  # Добавляем отображение роли
         'electrical_safety_group',
-        'can_be_internship_leader'
+        'can_be_internship_leader',
+        'get_documents_count'
     ]
+
     list_filter = [
         'organization',
         'subdivision',
         'department',
+        'commission_role',  # Добавляем фильтр по роли
         'electrical_safety_group',
-        'can_be_internship_leader'
+        'can_be_internship_leader',
+        'is_responsible_for_safety',
+        'is_electrical_personnel'
     ]
-    search_fields = ['position_name', 'safety_instructions_numbers']
+
+    search_fields = [
+        'position_name',
+        'safety_instructions_numbers'
+    ]
+
     filter_horizontal = ['documents', 'equipment']
+
     fieldsets = (
-        (None, {'fields': ('position_name',)}),
-        ('Организационная структура', {'fields': ('organization', 'subdivision', 'department')}),
-        ('Безопасность', {'fields': (
-            'safety_instructions_numbers',
-            'electrical_safety_group',
-            'internship_period_days',
-            'is_responsible_for_safety',
-            'is_electrical_personnel',
-            'can_be_internship_leader'
-        )}),
-        ('Связанные документы и оборудование', {'fields': ('documents', 'equipment'), 'classes': ('collapse',)}),
+        (None, {
+            'fields': ('position_name', 'commission_role')  # Добавляем поле роли
+        }),
+        ('Организационная структура', {
+            'fields': ('organization', 'subdivision', 'department')
+        }),
+        ('Безопасность', {
+            'fields': (
+                'safety_instructions_numbers',
+                'electrical_safety_group',
+                'internship_period_days',
+                'is_responsible_for_safety',
+                'is_electrical_personnel',
+                'can_be_internship_leader'
+            ),
+            'description': '🔒 Настройки безопасности и допусков'
+        }),
+        ('Связанные документы и оборудование', {
+            'fields': ('documents', 'equipment'),
+            'description': '📄 Выберите документы и оборудование, относящиеся к данной должности'
+        }),
     )
 
-    def get_queryset(self, request):
-        return super().get_queryset(request).select_related(
-            'organization',
-            'subdivision',
-            'department'
-        ).prefetch_related('documents', 'equipment')
+    def get_commission_role_display(self, obj):
+        """Отображение роли в комиссии с иконкой"""
+        role_icons = {
+            'chairman': '👑',
+            'member': '👤',
+            'secretary': '📝',
+            'none': '❌'
+        }
+        return f"{role_icons.get(obj.commission_role, '')} {obj.get_commission_role_display()}"
+
+    get_commission_role_display.short_description = "Роль в комиссии"
+    get_commission_role_display.admin_order_field = 'commission_role'
+
+    def get_documents_count(self, obj):
+        """Отображение количества прикрепленных документов"""
+        count = obj.documents.count()
+        return f"📄 {count} док." if count > 0 else "Нет документов"
+
+    get_documents_count.short_description = "Документы"
+
+    def get_form(self, request, obj=None, **kwargs):
+        form = super().get_form(request, obj, **kwargs)
+        if obj:  # если редактируем существующий объект
+            # Фильтруем документы по организации
+            form.base_fields['documents'].queryset = (
+                form.base_fields['documents'].queryset.filter(
+                    Q(organization=obj.organization) &
+                    (
+                            Q(subdivision__isnull=True) |
+                            Q(subdivision=obj.subdivision) |
+                            (
+                                    Q(department__isnull=True) |
+                                    Q(department=obj.department)
+                            )
+                    )
+                ).order_by('name')  # Сортируем по имени
+            )
+
+            # Аналогично фильтруем оборудование
+            form.base_fields['equipment'].queryset = (
+                form.base_fields['equipment'].queryset.filter(
+                    Q(organization=obj.organization) &
+                    (
+                            Q(subdivision__isnull=True) |
+                            Q(subdivision=obj.subdivision) |
+                            (
+                                    Q(department__isnull=True) |
+                                    Q(department=obj.department)
+                            )
+                    )
+                ).order_by('equipment_name')  # Сортируем по имени
+            )
+        return form
+
+    def formfield_for_manytomany(self, db_field, request, **kwargs):
+        """Настройка полей many-to-many"""
+        if db_field.name == "documents":
+            kwargs["widget"] = admin.widgets.FilteredSelectMultiple(
+                "документы",
+                is_stacked=False
+            )
+        if db_field.name == "equipment":
+            kwargs["widget"] = admin.widgets.FilteredSelectMultiple(
+                "оборудование",
+                is_stacked=False
+            )
+        return super().formfield_for_manytomany(db_field, request, **kwargs)
+
+    class Media:
+        css = {
+            'all': ['admin/css/widgets.css']
+        }
+        js = ['admin/js/SelectFilter2.js']

@@ -13,7 +13,20 @@ class Position(models.Model):
         ("IV", "IV"),
         ("V", "V"),
     ]
+    COMMISSION_ROLE_CHOICES = [
+        ('chairman', '👑 Председатель комиссии'),
+        ('member', '👤 Член комиссии'),
+        ('secretary', '📝 Секретарь комиссии'),
+        ('none', '❌ Не участвует в комиссии'),
+    ]
 
+    commission_role = models.CharField(
+        "Роль в комиссии",
+        max_length=10,
+        choices=COMMISSION_ROLE_CHOICES,
+        default='none',
+        help_text="Укажите роль сотрудника в комиссии"
+    )
     position_name = models.CharField(max_length=255, verbose_name="Название")
     organization = models.ForeignKey(
         'directory.Organization',
