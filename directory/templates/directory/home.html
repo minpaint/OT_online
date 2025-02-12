@@ -1,29 +1,100 @@
-{% extends "../base.html" %}  {# Измените эту строку #}
+{% extends 'base.html' %}
+{% load crispy_forms_tags %}
+{% load static %}
 
-{% block title %}Главная{% endblock %}
+{% block extra_css %}
+<link href="{% static 'css/select2.min.css' %}" rel="stylesheet" />
+{% endblock %}
 
 {% block content %}
 <div class="container mt-4">
-    <h1>Добро пожаловать</h1>
-    <div class="row mt-4">
-        <div class="col-md-6">
+    <div class="row">
+        <div class="col-md-8">
             <div class="card">
+                <div class="card-header">
+                    <h3>📝 Прием на работу</h3>
+                </div>
                 <div class="card-body">
-                    <h5 class="card-title">Сотрудники</h5>
-                    <p class="card-text">Управление списком сотрудников организации.</p>
-                    <a href="{% url 'directory:employee-list' %}" class="btn btn-primary">Перейти к сотрудникам</a>
+                    <form method="post" id="hiring-form">
+                        {% csrf_token %}
+                        {{ form|crispy }}
+                        <div class="row mt-3">
+                            <div class="col-6">
+                                <button type="submit" name="preview" value="true" class="btn btn-info w-100">
+                                    👁 Предпросмотр
+                                </button>
+                            </div>
+                            <div class="col-6">
+                                <button type="submit" class="btn btn-success w-100">
+                                    💾 Принять на работу
+                                </button>
+                            </div>
+                        </div>
+                    </form>
                 </div>
             </div>
         </div>
-        <div class="col-md-6">
+        <div class="col-md-4">
             <div class="card">
+                <div class="card-header">
+                    <h4>📊 Последние принятые</h4>
+                </div>
                 <div class="card-body">
-                    <h5 class="card-title">Должности</h5>
-                    <p class="card-text">Управление должностями в организации.</p>
-                    <a href="{% url 'directory:position-list' %}" class="btn btn-primary">Перейти к должностям</a>
+                    {% if recent_employees %}
+                        <ul class="list-group">
+                        {% for employee in recent_employees %}
+                            <li class="list-group-item">
+                                <strong>{{ employee.full_name_nominative }}</strong><br>
+                                <small>{{ employee.position }} ({{ employee.organization.short_name_ru }})</small>
+                            </li>
+                        {% endfor %}
+                        </ul>
+                    {% else %}
+                        <p class="text-muted">Нет недавно принятых сотрудников</p>
+                    {% endif %}
                 </div>
             </div>
         </div>
     </div>
 </div>
+
+<!-- Модальное окно для предпросмотра -->
+<div class="modal fade" id="previewModal" tabindex="-1" role="dialog">
+    <div class="modal-dialog modal-lg">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title">👁 Предпросмотр данных</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+            </div>
+            <div class="modal-body" id="preview-content">
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script src="{% static 'js/select2.min.js' %}"></script>
+<script>
+$(document).ready(function() {
+    // Инициализация Select2
+    $('.select2').select2();
+
+    // Обработка предпросмотра через AJAX
+    $('#hiring-form button[name="preview"]').click(function(e) {
+        e.preventDefault();
+        var form = $('#hiring-form');
+        
+        $.ajax({
+            url: form.attr('action'),
+            method: 'POST',
+            data: form.serialize() + '&preview=true',
+            success: function(response) {
+                $('#preview-content').html(response);
+                $('#previewModal').modal('show');
+            }
+        });
+    });
+});
+</script>
 {% endblock %}

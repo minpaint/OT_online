@@ -6,9 +6,11 @@ from .document import Document
 from .equipment import Equipment
 from .position import Position
 from .employee import Employee
+from .profile import Profile
 
 __all__ = [
     'Organization',
+    'Profile',
     'StructuralSubdivision',
     'Department',
     'Document',

@@ -1,5 +1,11 @@
+# 📁 directory/views/__init__.py
 from django.views.generic import TemplateView
 from django.contrib.auth.mixins import LoginRequiredMixin
+from django.shortcuts import render, redirect
+from django.contrib import messages
+
+from directory.forms import EmployeeHiringForm
+from .auth import UserRegistrationView
 
 # Импортируем представления для сотрудников
 from .employees import (
@@ -17,20 +23,41 @@ from .positions import (
     PositionUpdateView,
     PositionDeleteView,
     get_positions,
-    get_departments  # Добавляем импорт get_departments
+    get_departments
 )
 
-class HomeView(LoginRequiredMixin, TemplateView):
+class HomePageView(LoginRequiredMixin, TemplateView):
+    """🏠 Главная страница"""
     template_name = 'directory/home.html'
 
     def get_context_data(self, **kwargs):
         context = super().get_context_data(**kwargs)
-        context['title'] = 'Главная'
+        context['title'] = '🏠 Главная'
+        context['form'] = EmployeeHiringForm(user=self.request.user)
         return context
+
+    def post(self, request, *args, **kwargs):
+        form = EmployeeHiringForm(request.POST, user=request.user)
+        if form.is_valid():
+            if form.cleaned_data.get('preview'):
+                return render(request, 'directory/preview.html', {
+                    'form': form,
+                    'data': form.cleaned_data
+                })
+            employee = form.save()
+            messages.success(
+                request,
+                f"✅ Сотрудник {employee.full_name_nominative} успешно принят на работу"
+            )
+            return redirect('directory:employees:employee_list')  # Изменено на employee_list
+        return render(request, self.template_name, {
+            'form': form,
+            'title': '🏠 Главная'
+        })
 
 # Экспортируем все представления
 __all__ = [
-    'HomeView',
+    'HomePageView',
     'EmployeeListView',
     'EmployeeCreateView',
     'EmployeeUpdateView',
@@ -41,5 +68,6 @@ __all__ = [
     'PositionDeleteView',
     'get_subdivisions',
     'get_positions',
-    'get_departments'  # Добавляем в список экспорта
+    'get_departments',
+    'UserRegistrationView', # ✅ Экспорт UserRegistrationView
 ]

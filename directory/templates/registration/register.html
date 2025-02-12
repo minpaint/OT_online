@@ -1,0 +1,49 @@
+{% extends 'base.html' %}
+{% load crispy_forms_tags %}
+
+{% block title %}✨ Регистрация пользователя{% endblock %}
+
+{% block content %}
+<!-- 📝 Основной контейнер -->
+<div class="container mt-5">
+    <div class="row justify-content-center">
+        <div class="col-md-8">
+            <!-- 🎯 Карточка формы регистрации -->
+            <div class="card shadow">
+                <!-- 📌 Заголовок карточки -->
+                <div class="card-header bg-primary text-white">
+                    <h4 class="mb-0">
+                        <i class="fas fa-user-plus me-2"></i>Регистрация нового пользователя
+                    </h4>
+                </div>
+                
+                <!-- 📝 Тело карточки -->
+                <div class="card-body">
+                    <!-- ✨ Форма регистрации -->
+                    <form method="post" novalidate>
+                        {% csrf_token %}
+                        
+                        <!-- 📋 Поля формы -->
+                        {{ form|crispy }}
+                        
+                        <!-- 🔘 Кнопка отправки -->
+                        <button type="submit" class="btn btn-primary w-100 mt-3">
+                            <i class="fas fa-user-plus me-2"></i>Зарегистрироваться
+                        </button>
+                    </form>
+                    
+                    <!-- 🔗 Ссылка на вход -->
+                    <div class="mt-3 text-center">
+                        <p class="mb-0">
+                            Уже есть аккаунт? 
+                            <a href="{% url 'directory:auth:login' %}" class="text-primary">
+                                Войти
+                            </a>
+                        </p>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}

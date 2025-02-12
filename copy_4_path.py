@@ -43,14 +43,14 @@ def get_selected_files():
 
 
 def collect_file_contents(files):
-    """Собирает содержимое всех файлов в один текст."""
+    """Собирает содержимое всех файлов в один текст, добавляя пути."""
     result = []
     for file_path in files:
         try:
             print(f"Читаем файл: {file_path}")
             with open(file_path, 'r', encoding='utf-8') as f:
                 content = f.read()
-                result.append(f"--- {file_path.name} ---\n{content}\n")
+                result.append(f"--- {file_path.absolute()} ---\n{content}\n") # Добавляем абсолютный путь
         except Exception as e:
             print(f"Ошибка при чтении файла {file_path}: {str(e)}")
             messagebox.showwarning("Предупреждение",

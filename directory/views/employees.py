@@ -27,7 +27,7 @@ class EmployeeListView(LoginRequiredMixin, ListView):
         if search:
             queryset = queryset.filter(full_name_nominative__icontains=search)
 
-        return queryset.select_related('position', 'subdivision')
+        return queryset.select_related('position', 'subdivision', 'organization')
 
     def get_context_data(self, **kwargs):
         context = super().get_context_data(**kwargs)
@@ -41,7 +41,7 @@ class EmployeeCreateView(LoginRequiredMixin, CreateView):
     model = Employee
     form_class = EmployeeForm
     template_name = 'directory/employees/form.html'
-    success_url = reverse_lazy('directory:employee-list')
+    success_url = reverse_lazy('directory:employee_list')
 
     def get_context_data(self, **kwargs):
         context = super().get_context_data(**kwargs)
@@ -53,7 +53,7 @@ class EmployeeUpdateView(LoginRequiredMixin, UpdateView):
     model = Employee
     form_class = EmployeeForm
     template_name = 'directory/employees/form.html'
-    success_url = reverse_lazy('employee-list')
+    success_url = reverse_lazy('directory:employee_list')
 
     def get_context_data(self, **kwargs):
         context = super().get_context_data(**kwargs)
@@ -64,7 +64,7 @@ class EmployeeUpdateView(LoginRequiredMixin, UpdateView):
 class EmployeeDeleteView(LoginRequiredMixin, DeleteView):
     model = Employee
     template_name = 'directory/employees/confirm_delete.html'
-    success_url = reverse_lazy('employee-list')
+    success_url = reverse_lazy('directory:employee_list')
 
     def get_context_data(self, **kwargs):
         context = super().get_context_data(**kwargs)
@@ -86,5 +86,5 @@ def get_positions(request):
     subdivision_id = request.GET.get('subdivision')
     positions = Position.objects.filter(
         subdivision_id=subdivision_id
-    ).values('id', 'name')
+    ).values('id', 'position_name')  # Изменено с name на position_name
     return JsonResponse(list(positions), safe=False)

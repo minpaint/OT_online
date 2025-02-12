@@ -2,12 +2,13 @@ from django.contrib import admin
 from django.urls import path, include
 from django.conf import settings
 from django.conf.urls.static import static
-from django.views.generic import RedirectView
 from directory.error_handlers import error_400, error_403, error_404, error_500
+# Импортируем представление главной страницы
+from directory.views.home import HomePageView  # убедитесь, что путь правильный!
 
 urlpatterns = [
-    # 🔄 Редирект с корня на админку
-    path('', RedirectView.as_view(url='/admin/', permanent=True)),
+    # Изменено: вместо редиректа на /admin/ с корня, теперь главная страница обрабатывается HomePageView
+    path('', HomePageView.as_view(), name='home'),
 
     # 👨‍💼 Админка Django
     path('admin/', admin.site.urls),
