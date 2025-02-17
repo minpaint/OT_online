@@ -3,7 +3,6 @@ from django.db.models import Q
 from directory.models import Position
 from directory.forms import PositionForm
 
-
 @admin.register(Position)
 class PositionAdmin(admin.ModelAdmin):
     """
@@ -82,7 +81,6 @@ class PositionAdmin(admin.ModelAdmin):
             'none': '❌'
         }
         return f"{role_icons.get(obj.commission_role, '')} {obj.get_commission_role_display()}"
-
     get_commission_role_display.short_description = "Роль в комиссии"
     get_commission_role_display.admin_order_field = 'commission_role'
 
@@ -90,45 +88,55 @@ class PositionAdmin(admin.ModelAdmin):
         """Отображение количества прикрепленных документов"""
         count = obj.documents.count()
         return f"📄 {count} док." if count > 0 else "Нет документов"
-
     get_documents_count.short_description = "Документы"
 
     def get_form(self, request, obj=None, **kwargs):
-        form = super().get_form(request, obj, **kwargs)
-        if obj:  # если редактируем существующий объект
-            # Фильтруем документы по организации
-            form.base_fields['documents'].queryset = (
-                form.base_fields['documents'].queryset.filter(
-                    Q(organization=obj.organization) &
-                    (
-                            Q(subdivision__isnull=True) |
-                            Q(subdivision=obj.subdivision) |
-                            (
-                                    Q(department__isnull=True) |
-                                    Q(department=obj.department)
-                            )
-                    )
-                ).order_by('name')  # Сортируем по имени
-            )
+        """
+        🔑 Переопределяем get_form, чтобы:
+        1) Передать request.user в форму (для OrganizationRestrictionFormMixin).
+        2) Сохранить логику фильтрации документов и оборудования при редактировании объекта.
+        """
+        original_form = super().get_form(request, obj, **kwargs)
 
-            # Аналогично фильтруем оборудование
-            form.base_fields['equipment'].queryset = (
-                form.base_fields['equipment'].queryset.filter(
-                    Q(organization=obj.organization) &
-                    (
-                            Q(subdivision__isnull=True) |
-                            Q(subdivision=obj.subdivision) |
+        class PositionFormWithUser(original_form):
+            def __init__(self2, *args, **inner_kwargs):
+                # Передаём пользователя в форму (для миксина)
+                inner_kwargs['user'] = request.user
+                super().__init__(*args, **inner_kwargs)
+
+                # Если редактируем существующий объект
+                if obj:
+                    self2.fields['documents'].queryset = (
+                        self2.fields['documents'].queryset.filter(
+                            Q(organization=obj.organization) &
                             (
+                                Q(subdivision__isnull=True) |
+                                Q(subdivision=obj.subdivision) |
+                                (
                                     Q(department__isnull=True) |
                                     Q(department=obj.department)
+                                )
                             )
+                        ).order_by('name')
                     )
-                ).order_by('equipment_name')  # Сортируем по имени
-            )
-        return form
+                    self2.fields['equipment'].queryset = (
+                        self2.fields['equipment'].queryset.filter(
+                            Q(organization=obj.organization) &
+                            (
+                                Q(subdivision__isnull=True) |
+                                Q(subdivision=obj.subdivision) |
+                                (
+                                    Q(department__isnull=True) |
+                                    Q(department=obj.department)
+                                )
+                            )
+                        ).order_by('equipment_name')
+                    )
+
+        return PositionFormWithUser
 
     def formfield_for_manytomany(self, db_field, request, **kwargs):
-        """Настройка полей many-to-many"""
+        """Настройка полей many-to-many с FilteredSelectMultiple."""
         if db_field.name == "documents":
             kwargs["widget"] = admin.widgets.FilteredSelectMultiple(
                 "документы",

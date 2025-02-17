@@ -1,15 +1,20 @@
+# directory/forms/equipment.py
+"""
+⚙️ Форма для оборудования с ограничением по организациям
+
+Использует автодополнение для выбора организации, подразделения и отдела,
+и фильтрует данные согласно разрешённым организациям из профиля пользователя. 🚀
+"""
+
 from django import forms
 from crispy_forms.helper import FormHelper
 from crispy_forms.layout import Submit
 from dal import autocomplete
 from directory.models import Equipment
+from .mixins import OrganizationRestrictionFormMixin  # Импорт миксина 🚀
 
-class EquipmentForm(forms.ModelForm):
-    """
-    ⚙️ Форма для модели Оборудование.
-    Включает автодополнение полей с ограничением по организациям.
-    """
 
+class EquipmentForm(OrganizationRestrictionFormMixin, forms.ModelForm):
     class Meta:
         model = Equipment
         fields = '__all__'
@@ -39,7 +44,7 @@ class EquipmentForm(forms.ModelForm):
         self.helper.form_method = 'post'
         self.helper.add_input(Submit('submit', '💾 Сохранить'))
 
-        # 🏢 Ограничиваем организации для пользователя
+        # Ограничиваем выбор организаций по профилю пользователя 🔒
         if self.user and hasattr(self.user, 'profile'):
             user_orgs = self.user.profile.organizations.all()
             self.fields['organization'].queryset = user_orgs

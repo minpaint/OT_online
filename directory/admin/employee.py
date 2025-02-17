@@ -1,13 +1,11 @@
 from django.contrib import admin
-from django.shortcuts import render
-from directory.models.employee import Employee
-from directory.forms import EmployeeForm
-
+from directory.models import Employee
+from directory.forms.employee import EmployeeForm
 
 @admin.register(Employee)
 class EmployeeAdmin(admin.ModelAdmin):
     """
-    👤 Админ-класс для модели Employee (Сотрудник).
+    👤 Админ-класс для модели Employee.
     """
     form = EmployeeForm
     list_display = [
@@ -23,79 +21,23 @@ class EmployeeAdmin(admin.ModelAdmin):
         'subdivision',
         'department',
         'position',
-        'is_contractor',
-        'clothing_size',
-        'shoe_size',
+        'is_contractor'
     ]
     search_fields = [
         'full_name_nominative',
         'full_name_dative',
         'position__position_name'
     ]
-    fieldsets = (
-        (None, {
-            'fields': (
-                'full_name_nominative',
-                'full_name_dative',
-                'date_of_birth',
-                'place_of_residence',
-            )
-        }),
-        ('Организационная структура', {
-            'fields': (
-                'organization',
-                'subdivision',
-                'department',
-                'position',
-            )
-        }),
-        ('Дополнительная информация', {
-            'fields': (
-                'height',
-                'clothing_size',
-                'shoe_size',
-                'is_contractor',
-            ),
-            'classes': ('collapse',)
-        }),
-    )
 
-    def get_queryset(self, request):
-        return super().get_queryset(request).select_related(
-            'organization',
-            'subdivision',
-            'department',
-            'position'
-        )
-
-    def changelist_view(self, request, extra_context=None):
+    def get_form(self, request, obj=None, **kwargs):
         """
-        🔄 Переопределение представления списка для группировки сотрудников в дерево.
+        🔑 Переопределяем get_form, чтобы передать request.user в форму (для миксина).
         """
-        response = super().changelist_view(request, extra_context)
+        Form = super().get_form(request, obj, **kwargs)
 
-        try:
-            qs = response.context_data['cl'].queryset
-        except (AttributeError, KeyError):
-            return response
+        class FormWithUser(Form):
+            def __init__(self2, *args, **inner_kwargs):
+                inner_kwargs['user'] = request.user
+                super().__init__(*args, **inner_kwargs)
 
-        # Группировка сотрудников по структуре
-        tree = {}
-        for emp in qs:
-            org = emp.organization
-            if org not in tree:
-                tree[org] = {}
-            org_group = tree[org]
-
-            sub = emp.subdivision if emp.subdivision else "Без подразделения"
-            if sub not in org_group:
-                org_group[sub] = {}
-            sub_group = org_group[sub]
-
-            dept = emp.department if emp.department else "Без отдела"
-            if dept not in sub_group:
-                sub_group[dept] = []
-            sub_group[dept].append(emp)
-
-        response.context_data['employee_tree'] = tree
-        return response
+        return FormWithUser

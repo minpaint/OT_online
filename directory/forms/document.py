@@ -1,15 +1,20 @@
+# directory/forms/document.py
+"""
+📄 Форма для документов с ограничением по организациям
+
+Реализует автодополнение для организации, подразделения и отдела, а также
+ограничивает выбор данных согласно разрешённым организациям из профиля пользователя. 🚀
+"""
+
 from django import forms
 from crispy_forms.helper import FormHelper
 from crispy_forms.layout import Submit
 from dal import autocomplete
 from directory.models import Document
+from .mixins import OrganizationRestrictionFormMixin  # Импорт миксина 🚀
 
-class DocumentForm(forms.ModelForm):
-    """
-    📄 Форма для модели документов.
-    Реализует автодополнение организации и связанных полей.
-    """
 
+class DocumentForm(OrganizationRestrictionFormMixin, forms.ModelForm):
     class Meta:
         model = Document
         fields = '__all__'
@@ -39,7 +44,7 @@ class DocumentForm(forms.ModelForm):
         self.helper.form_method = 'post'
         self.helper.add_input(Submit('submit', '💾 Сохранить'))
 
-        # 🏢 Ограничиваем организации для пользователя
+        # Если у пользователя одна организация – устанавливаем её по умолчанию 🔑
         if self.user and hasattr(self.user, 'profile'):
             user_orgs = self.user.profile.organizations.all()
             self.fields['organization'].queryset = user_orgs

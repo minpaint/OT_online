@@ -8,6 +8,8 @@ from .equipment import EquipmentAdmin
 from .organization import OrganizationAdmin
 from .position import PositionAdmin
 from .subdivision import StructuralSubdivisionAdmin
+from .user import CustomUserAdmin
+
 
 __all__ = [
     'DepartmentAdmin',
@@ -17,5 +19,5 @@ __all__ = [
     'OrganizationAdmin',
     'PositionAdmin',
     'StructuralSubdivisionAdmin',
-
+    'CustomUserAdmin',
 ]

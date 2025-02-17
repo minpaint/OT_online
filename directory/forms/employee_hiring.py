@@ -1,15 +1,20 @@
+# directory/forms/employee_hiring.py
+"""
+👥 Форма для найма сотрудника с ограничением по организациям
+
+Позволяет выбрать организацию, подразделение, отдел и должность,
+при этом данные фильтруются по разрешённым организациям из профиля пользователя. 🚀
+"""
+
 from django import forms
 from crispy_forms.helper import FormHelper
 from crispy_forms.layout import Submit
 from dal import autocomplete
 from directory.models import Employee
+from .mixins import OrganizationRestrictionFormMixin  # Импорт миксина 🚀
 
-class EmployeeHiringForm(forms.ModelForm):
-    """
-    👥 Форма для найма сотрудника.
-    Включает выбор организации, подразделения и должности с автодополнением.
-    """
 
+class EmployeeHiringForm(OrganizationRestrictionFormMixin, forms.ModelForm):
     class Meta:
         model = Employee
         fields = [
@@ -52,7 +57,7 @@ class EmployeeHiringForm(forms.ModelForm):
         self.helper.form_method = 'post'
         self.helper.add_input(Submit('submit', '💾 Сохранить'))
 
-        # 🏢 Ограничиваем выбор организаций по профилю пользователя
+        # Ограничиваем выбор организаций по профилю пользователя 🔒
         if self.user and hasattr(self.user, 'profile'):
             user_orgs = self.user.profile.organizations.all()
             self.fields['organization'].queryset = user_orgs
