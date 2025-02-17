@@ -1,0 +1,53 @@
+<div class="container-fluid">
+    <dl class="row preview-data">
+        <div class="col-md-6">
+            <h5 class="mb-3">👤 Личные данные</h5>
+            <dt>ФИО (именительный)</dt>
+            <dd>{{ data.full_name_nominative }}</dd>
+
+            <dt>ФИО (дательный)</dt>
+            <dd>{{ data.full_name_dative }}</dd>
+
+            <dt>Дата рождения</dt>
+            <dd>{{ data.date_of_birth|date:"d.m.Y" }}</dd>
+
+            <dt>Место проживания</dt>
+            <dd>{{ data.place_of_residence }}</dd>
+        </div>
+
+        <div class="col-md-6">
+            <h5 class="mb-3">🏢 Организационная структура</h5>
+            <dt>Организация</dt>
+            <dd>{{ data.organization }}</dd>
+
+            <dt>Подразделение</dt>
+            <dd>{{ data.subdivision|default:"—" }}</dd>
+
+            <dt>Отдел</dt>
+            <dd>{{ data.department|default:"—" }}</dd>
+
+            <dt>Должность</dt>
+            <dd>{{ data.position }}</dd>
+        </div>
+
+        <div class="col-12 mt-4">
+            <h5 class="mb-3">📋 Дополнительная информация</h5>
+            <div class="row">
+                <div class="col-md-4">
+                    <dt>Рост</dt>
+                    <dd>{{ data.height|default:"—" }}</dd>
+                </div>
+                <div class="col-md-4">
+                    <dt>Размер одежды</dt>
+                    <dd>{{ data.clothing_size|default:"—" }}</dd>
+                </div>
+                <div class="col-md-4">
+                    <dt>Размер обуви</dt>
+                    <dd>{{ data.shoe_size|default:"—" }}</dd>
+                </div>
+            </div>
+            <dt>Договор подряда</dt>
+            <dd>{% if data.is_contractor %}Да{% else %}Нет{% endif %}</dd>
+        </div>
+    </dl>
+</div>
