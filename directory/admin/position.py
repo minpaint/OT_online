@@ -85,73 +85,63 @@ class PositionAdmin(admin.ModelAdmin):
     get_commission_role_display.admin_order_field = 'commission_role'
 
     def get_documents_count(self, obj):
-        """Отображение количества прикреплённых документов"""
+        """Отображение количества прикрепленных документов"""
         count = obj.documents.count()
         return f"📄 {count} док." if count > 0 else "Нет документов"
     get_documents_count.short_description = "Документы"
 
     def get_form(self, request, obj=None, **kwargs):
         """
-        🔑 Переопределяем get_form, чтобы:
-        1) Передать request.user в форму (для OrganizationRestrictionFormMixin).
-        2) Фильтровать ManyToMany-поля (документы, оборудование)
-           при редактировании и при создании объекта.
+        1) Передаём request.user в форму (для миксина).
+        2) Фильтруем документы/оборудование при редактировании (см. уже существующую логику).
         """
         original_form = super().get_form(request, obj, **kwargs)
 
         class PositionFormWithUser(original_form):
             def __init__(self2, *args, **inner_kwargs):
-                # Передаём пользователя в форму (для миксина)
                 inner_kwargs['user'] = request.user
                 super().__init__(*args, **inner_kwargs)
 
-                # Базовый queryset для документов и оборудования
-                base_docs_qs = self2.fields['documents'].queryset
-                base_equip_qs = self2.fields['equipment'].queryset
-
-                # 🏢 Фильтруем по профилю пользователя (если не суперпользователь)
-                if not request.user.is_superuser and hasattr(request.user, 'profile'):
-                    allowed_orgs = request.user.profile.organizations.all()
-                    base_docs_qs = base_docs_qs.filter(organization__in=allowed_orgs)
-                    base_equip_qs = base_equip_qs.filter(organization__in=allowed_orgs)
-
+                # Если редактируем объект
                 if obj:
-                    # Если редактируем существующий объект,
-                    # дополнительно учитываем организацию/подразделение/отдел самой должности
-                    base_docs_qs = base_docs_qs.filter(
+                    # (Сохраняем вашу логику фильтрации документов/оборудования)
+                    base_docs_qs = self2.fields['documents'].queryset.filter(
                         Q(organization=obj.organization) &
                         (
                             Q(subdivision__isnull=True) |
                             Q(subdivision=obj.subdivision) |
-                            (Q(department__isnull=True) | Q(department=obj.department))
+                            (
+                                Q(department__isnull=True) |
+                                Q(department=obj.department)
+                            )
                         )
                     ).order_by('name')
 
-                    base_equip_qs = base_equip_qs.filter(
+                    base_equip_qs = self2.fields['equipment'].queryset.filter(
                         Q(organization=obj.organization) &
                         (
                             Q(subdivision__isnull=True) |
                             Q(subdivision=obj.subdivision) |
-                            (Q(department__isnull=True) | Q(department=obj.department))
+                            (
+                                Q(department__isnull=True) |
+                                Q(department=obj.department)
+                            )
                         )
                     ).order_by('equipment_name')
-                else:
-                    # Если создаём новый объект (obj=None),
-                    # мы пока не знаем, какую организацию выберут.
-                    # Но всё равно отфильтруем хотя бы по allowed_orgs.
-                    base_docs_qs = base_docs_qs.order_by('name')
-                    base_equip_qs = base_equip_qs.order_by('equipment_name')
 
-                # Устанавливаем итоговый queryset
-                self2.fields['documents'].queryset = base_docs_qs
-                self2.fields['equipment'].queryset = base_equip_qs
+                    # Дополнительно учитываем профиль (если нужно)
+                    if not request.user.is_superuser and hasattr(request.user, 'profile'):
+                        allowed_orgs = request.user.profile.organizations.all()
+                        base_docs_qs = base_docs_qs.filter(organization__in=allowed_orgs)
+                        base_equip_qs = base_equip_qs.filter(organization__in=allowed_orgs)
+
+                    self2.fields['documents'].queryset = base_docs_qs
+                    self2.fields['equipment'].queryset = base_equip_qs
 
         return PositionFormWithUser
 
     def formfield_for_manytomany(self, db_field, request, **kwargs):
-        """
-        Настройка полей many-to-many с FilteredSelectMultiple.
-        """
+        """Настройка полей many-to-many с FilteredSelectMultiple."""
         if db_field.name == "documents":
             kwargs["widget"] = admin.widgets.FilteredSelectMultiple(
                 "документы",
@@ -163,6 +153,16 @@ class PositionAdmin(admin.ModelAdmin):
                 is_stacked=False
             )
         return super().formfield_for_manytomany(db_field, request, **kwargs)
+
+    def get_queryset(self, request):
+        """
+        🔒 Ограничиваем должности по организациям пользователя.
+        """
+        qs = super().get_queryset(request)
+        if not request.user.is_superuser and hasattr(request.user, 'profile'):
+            allowed_orgs = request.user.profile.organizations.all()
+            qs = qs.filter(organization__in=allowed_orgs)
+        return qs
 
     class Media:
         css = {

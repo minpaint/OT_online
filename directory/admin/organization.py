@@ -13,7 +13,14 @@ class OrganizationAdmin(admin.ModelAdmin):
 
     def get_form(self, request, obj=None, **kwargs):
         """
-        🔑 Если нужно фильтровать Organizations по профилю, сделайте аналогично другим моделям.
-        Но обычно админы видят все организации.
+        Обычно Organization видят все админы, но если хотите, можно фильтровать.
         """
-        return super().get_form(request, obj, **kwargs)
+        Form = super().get_form(request, obj, **kwargs)
+        return Form
+
+    def get_queryset(self, request):
+        qs = super().get_queryset(request)
+        if not request.user.is_superuser and hasattr(request.user, 'profile'):
+            allowed_orgs = request.user.profile.organizations.all()
+            qs = qs.filter(pk__in=allowed_orgs)
+        return qs
