@@ -2,6 +2,7 @@ from django.urls import path, include, reverse_lazy
 from django.contrib.auth import views as auth_views
 from directory.views import (
     HomePageView,          # 🏠 Главная страница
+    EmployeeListView,      # 👥 Список сотрудников
     EmployeeCreateView,    # 👤 Создание сотрудника
     EmployeeUpdateView,    # ✏️ Редактирование сотрудника
     EmployeeDeleteView,    # 🗑️ Удаление сотрудника
@@ -34,6 +35,7 @@ autocomplete_patterns = [
 
 # 👥 URL-маршруты для сотрудников
 employee_patterns = [
+    path('', EmployeeListView.as_view(), name='employee_list'),
     path('create/', EmployeeCreateView.as_view(), name='employee_create'),
     path('<int:pk>/update/', EmployeeUpdateView.as_view(), name='employee_update'),
     path('<int:pk>/delete/', EmployeeDeleteView.as_view(), name='employee_delete'),
@@ -108,4 +110,4 @@ urlpatterns = [
     path('positions/', include((position_patterns, 'positions'))),
     path('documents/', include((document_patterns, 'documents'))),  # Если появятся документы
     path('equipment/', include((equipment_patterns, 'equipment'))),  # Если появится оборудование
-]
+    ]

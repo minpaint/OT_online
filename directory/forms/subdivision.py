@@ -1,8 +1,7 @@
-# directory/forms/subdivision.py
 """
 🏭 Форма для структурных подразделений с ограничением по организациям
 
-Использует автодополнение для выбора организации и родительского подразделения.
+Использует автодополнение для выбора организации.
 Данные фильтруются по разрешённым организациям из профиля пользователя. 🚀
 """
 
@@ -11,23 +10,18 @@ from crispy_forms.helper import FormHelper
 from crispy_forms.layout import Submit
 from dal import autocomplete
 from directory.models import StructuralSubdivision
-from .mixins import OrganizationRestrictionFormMixin  # Импорт миксина 🚀
+from .mixins import OrganizationRestrictionFormMixin
 
 
 class StructuralSubdivisionForm(OrganizationRestrictionFormMixin, forms.ModelForm):
     class Meta:
         model = StructuralSubdivision
-        fields = ['name', 'short_name', 'organization', 'parent']
+        fields = ['name', 'short_name', 'organization']
         widgets = {
             'organization': autocomplete.ModelSelect2(
                 url='directory:organization-autocomplete',
                 attrs={'data-placeholder': '🏢 Выберите организацию...'}
             ),
-            'parent': autocomplete.ModelSelect2(
-                url='directory:subdivision-autocomplete',
-                forward=['organization'],
-                attrs={'data-placeholder': '🏭 Выберите родительское подразделение...'}
-            )
         }
 
     def __init__(self, *args, **kwargs):

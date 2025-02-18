@@ -5,32 +5,23 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>{% block title %}OT Online{% endblock %}</title>
 
-    <!-- CSS -->
+    <!-- Bootstrap CSS через CDN 📡 -->
     <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css"
           rel="stylesheet"
           integrity="sha384-9ndCyUaIbzAi2FUVXJi0CjmCapSmO7SnpJef0486qhLnuZ2cdeRhO02iuK6FUUVM"
           crossorigin="anonymous">
     {% load static %}
+    <!-- Основной стиль приложения 🎨 -->
     <link href="{% static 'directory/css/style.css' %}" rel="stylesheet">
-    <!-- Select2 CSS -->
+    <!-- Select2 CSS через CDN для автодополнения 🔍 -->
     <link href="https://cdn.jsdelivr.net/npm/select2@4.1.0-rc.0/dist/css/select2.min.css" rel="stylesheet">
     {% block extra_css %}{% endblock %}
-
-    <!-- jQuery -->
-    <script src="https://code.jquery.com/jquery-3.7.0.min.js"
-            integrity="sha256-2tR8y/E0+2rc0P+A85BGMyw4j8qMGaBRM39snjI+e8="
-            crossorigin="anonymous"></script>
-    <!-- Select2 JS -->
-    <script src="https://cdn.jsdelivr.net/npm/select2@4.1.0-rc.0/dist/js/select2.min.js"></script>
 </head>
 <body>
-    <!-- Навигационная панель -->
+    <!-- Навигационная панель 🚀 -->
     <nav class="navbar navbar-expand-lg navbar-light bg-light">
         <div class="container">
-            {# Изменено: Ссылка на главную страницу теперь задана явно вместо динамического URL #}
-            <a class="navbar-brand" href="http://localhost:8000/">
-                🏢 OT Online
-            </a>
+            <a class="navbar-brand" href="/">🏢 OT Online</a>
             <button class="navbar-toggler" type="button"
                     data-bs-toggle="collapse"
                     data-bs-target="#navbarNav"
@@ -43,14 +34,10 @@
                 <ul class="navbar-nav me-auto">
                     {% if user.is_authenticated %}
                     <li class="nav-item">
-
-                            👥 Сотрудники
-                        </a>
+                        <a class="nav-link" href="{% url 'directory:employees:employee_list' %}">👥 Сотрудники</a>
                     </li>
                     <li class="nav-item">
-                        <a class="nav-link" href="{% url 'directory:positions:position_list' %}">
-                            👔 Должности
-                        </a>
+                        <a class="nav-link" href="{% url 'directory:positions:position_list' %}">👔 Должности</a>
                     </li>
                     {% endif %}
                 </ul>
@@ -58,9 +45,7 @@
                     {% if user.is_authenticated %}
                         {% if user.is_staff %}
                         <li class="nav-item">
-                            <a class="nav-link" href="{% url 'admin:index' %}">
-                                ⚙️ Администрирование
-                            </a>
+                            <a class="nav-link" href="{% url 'admin:index' %}">⚙️ Администрирование</a>
                         </li>
                         {% endif %}
                         <li class="nav-item dropdown">
@@ -71,22 +56,16 @@
                             </a>
                             <ul class="dropdown-menu dropdown-menu-end" aria-labelledby="userDropdown">
                                 <li>
-                                    <a class="dropdown-item" href="{% url 'directory:auth:logout' %}">
-                                        🚪 Выйти
-                                    </a>
+                                    <a class="dropdown-item" href="{% url 'directory:auth:logout' %}">🚪 Выйти</a>
                                 </li>
                             </ul>
                         </li>
                     {% else %}
                         <li class="nav-item">
-                            <a class="nav-link" href="{% url 'directory:auth:login' %}">
-                                🔑 Войти
-                            </a>
+                            <a class="nav-link" href="{% url 'directory:auth:login' %}">🔑 Войти</a>
                         </li>
                         <li class="nav-item">
-                            <a class="nav-link" href="{% url 'directory:auth:register' %}">
-                                ✨ Регистрация
-                            </a>
+                            <a class="nav-link" href="{% url 'directory:auth:register' %}">✨ Регистрация</a>
                         </li>
                     {% endif %}
                 </ul>
@@ -94,7 +73,7 @@
         </div>
     </nav>
 
-    <!-- Вывод сообщений -->
+    <!-- Основной контент страницы 💻 -->
     <div class="container mt-4">
         {% if messages %}
             {% for message in messages %}
@@ -104,31 +83,27 @@
                 </div>
             {% endfor %}
         {% endif %}
-
-        <!-- Основной контент -->
         {% block content %}{% endblock %}
     </div>
 
-    <!-- Bootstrap JS -->
-    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"
-            integrity="sha384-geWF76RCr3yd04m/n9+13Ui43oWR7/-Oy8Wm8r1z3ZzMxO+fmufCo90/g01Tqyt"
-            crossorigin="anonymous"></script>
-
-    <!-- Наши скрипты -->
+    <!-- Подключаем JavaScript через CDN 📡 -->
+    <script src="https://code.jquery.com/jquery-3.7.0.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/select2@4.1.0-rc.0/dist/js/select2.min.js"></script>
+    <!-- Основной скрипт для вспомогательных функций (main.js) -->
     <script src="{% static 'directory/js/main.js' %}"></script>
-    <script src="{% static 'directory/js/dynamic_forms.js' %}"></script>
 
     {% block extra_js %}{% endblock %}
     {% block scripts %}{% endblock %}
 
-    <!-- Инициализация Select2 -->
     <script>
         $(document).ready(function() {
-            $('.select2').select2({
+            // Инициализация Select2 для всех элементов с классами .select2 и .select2-basic 🔧
+            $('.select2, .select2-basic').select2({
                 theme: 'bootstrap4',
                 width: '100%'
             });
-            // Автоматическое закрытие алертов
+            // Автоматическое скрытие сообщений об успехе через 4 секунды ⏱️
             window.setTimeout(function() {
                 $(".alert").fadeTo(500, 0).slideUp(500, function(){
                     $(this).remove();
