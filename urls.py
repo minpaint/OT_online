@@ -1,14 +1,14 @@
 from django.contrib import admin
-from django.urls import path, include
+from django.urls import path, include, reverse_lazy
 from django.conf import settings
 from django.conf.urls.static import static
 from directory.error_handlers import error_400, error_403, error_404, error_500
-# Импортируем представление главной страницы
-from directory.views.home import HomePageView  # убедитесь, что путь правильный!
+# Импорт главного представления – формы приема на работу
+from directory.views import EmployeeHiringView # теперь EmployeeHiringView экспортируется в __all__ в views/__init__.py
 
 urlpatterns = [
-    # Изменено: вместо редиректа на /admin/ с корня, теперь главная страница обрабатывается HomePageView
-    path('', HomePageView.as_view(), name='home'),
+    # Главная страница – форма приема на работу
+    path('', EmployeeHiringView.as_view(), name='home'),
 
     # 👨‍💼 Админка Django
     path('admin/', admin.site.urls),
@@ -24,7 +24,6 @@ if settings.DEBUG:
 
     if 'debug_toolbar' in settings.INSTALLED_APPS:
         import debug_toolbar
-
         urlpatterns.append(path('__debug__/', include(debug_toolbar.urls)))
 
 # Кастомизация админки

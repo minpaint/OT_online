@@ -21,27 +21,27 @@ ALLOWED_HOSTS = os.getenv('DJANGO_ALLOWED_HOSTS', '127.0.0.1,localhost').split('
 # 📱 Базовые приложения
 DJANGO_APPS = [
     'django.contrib.admin',      # Админка Django 👨‍💼
-    'django.contrib.auth',       # Аутентификация 🔑
+    'django.contrib.auth',         # Аутентификация 🔑
     'django.contrib.contenttypes', # Типы контента 📄
-    'django.contrib.sessions',   # Сессии пользователя 🕑
-    'django.contrib.messages',   # Сообщения 📨
-    'django.contrib.staticfiles', # Статические файлы 🖼️
+    'django.contrib.sessions',     # Сессии пользователя 🕑
+    'django.contrib.messages',     # Сообщения 📨
+    'django.contrib.staticfiles',  # Статические файлы 🖼️
 ]
 
 # 🔌 Сторонние приложения
 THIRD_PARTY_APPS = [
     'corsheaders',              # CORS настройки 🌐
     'django_extensions',        # Расширения Django ⚙️
-    'mptt',                    # Для древовидных структур 📊
-    'dal',                     # Django Autocomplete Light 🔍
-    'dal_select2',            # Виджеты Select2 для DAL 🎯
-    'crispy_forms',           # Красивые формы ✨
-    'crispy_bootstrap4',      # Bootstrap 4 для crispy-forms 🎨
+    'mptt',                     # Для древовидных структур 📊
+    'dal',                      # Django Autocomplete Light 🔍
+    'dal_select2',              # Виджеты Select2 для DAL 🎯
+    'crispy_forms',             # Красивые формы ✨
+    'crispy_bootstrap4',        # Bootstrap 4 для crispy-forms 🎨
 ]
 
 # 🏠 Локальные приложения
 LOCAL_APPS = [
-    'directory.apps.DirectoryConfig', # Наше приложение "directory" 📦
+    'directory.apps.DirectoryConfig',  # Наше приложение "directory" 📦
 ]
 
 # Добавляем debug_toolbar только если не в режиме тестирования
@@ -54,13 +54,13 @@ INSTALLED_APPS = DJANGO_APPS + THIRD_PARTY_APPS + LOCAL_APPS
 # 🛠️ Базовый middleware
 MIDDLEWARE = [
     'django.middleware.security.SecurityMiddleware',     # Защита 🔒
-    'django.contrib.sessions.middleware.SessionMiddleware', # Сессии 🕑
-    'corsheaders.middleware.CorsMiddleware',            # CORS 🌐
-    'django.middleware.common.CommonMiddleware',         # Общие настройки 🔧
-    'django.middleware.csrf.CsrfViewMiddleware',        # CSRF защита 🚫
-    'django.contrib.auth.middleware.AuthenticationMiddleware', # Аутентификация 🔑
-    'django.contrib.messages.middleware.MessageMiddleware', # Сообщения 📨
-    'django.middleware.clickjacking.XFrameOptionsMiddleware', # Защита от clickjacking 🖱️
+    'django.contrib.sessions.middleware.SessionMiddleware',# Сессии 🕑
+    'corsheaders.middleware.CorsMiddleware',               # CORS 🌐
+    'django.middleware.common.CommonMiddleware',           # Общие настройки 🔧
+    'django.middleware.csrf.CsrfViewMiddleware',           # CSRF защита 🚫
+    'django.contrib.auth.middleware.AuthenticationMiddleware',  # Аутентификация 🔑
+    'django.contrib.messages.middleware.MessageMiddleware',     # Сообщения 📨
+    'django.middleware.clickjacking.XFrameOptionsMiddleware',   # Защита от clickjacking 🖱️
 ]
 
 # Добавляем debug_toolbar middleware только если не в режиме тестирования
@@ -74,8 +74,10 @@ ROOT_URLCONF = 'urls'
 TEMPLATES = [
     {
         'BACKEND': 'django.template.backends.django.DjangoTemplates',
+        # Рекомендуется хранить глобальные шаблоны в BASE_DIR / 'templates'
         'DIRS': [
             BASE_DIR / 'templates',
+            # Если в каталоге directory/templates есть уникальные шаблоны, оставьте, иначе можно удалить
             BASE_DIR / 'directory' / 'templates',
         ],
         'APP_DIRS': True,
@@ -94,7 +96,7 @@ TEMPLATES = [
 # 🌍 WSGI-приложение
 WSGI_APPLICATION = 'wsgi.application'
 
-# 💾 База данных
+# 💾 База данных (по умолчанию SQLite)
 if os.getenv('DATABASE_URL', '').startswith('sqlite'):
     DATABASES = {
         'default': {
@@ -125,7 +127,6 @@ STATIC_URL = os.getenv('STATIC_URL', '/static/')
 STATICFILES_DIRS = [
     BASE_DIR / 'static',
     BASE_DIR / 'directory' / 'static',
-
 ]
 STATIC_ROOT = BASE_DIR / 'staticfiles'
 STATICFILES_FINDERS = [
@@ -164,7 +165,7 @@ CSRF_COOKIE_NAME = 'csrftoken'
 CSRF_COOKIE_SECURE = False
 CSRF_TRUSTED_ORIGINS = ['http://localhost:8000', 'http://127.0.0.1:8000']
 
-# 🎨 Настройки форм
+# 🎨 Настройки форм (crispy-forms)
 CRISPY_TEMPLATE_PACK = 'bootstrap4'
 CRISPY_ALLOWED_TEMPLATE_PACKS = 'bootstrap4'
 CRISPY_FAIL_SILENTLY = not DEBUG
@@ -179,7 +180,7 @@ MESSAGE_TAGS = {
     messages.ERROR: 'alert-danger',
 }
 
-# 🌐 Настройки для Select2
+# 🌐 Настройки для Select2 (если вы решите использовать локальные файлы, но сейчас через CDN)
 SELECT2_JS = 'vendor/select2/dist/js/select2.min.js'
 SELECT2_CSS = 'vendor/select2/dist/css/select2.min.css'
 SELECT2_I18N_PATH = 'vendor/select2/dist/js/i18n'

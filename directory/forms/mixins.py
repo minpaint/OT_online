@@ -13,11 +13,10 @@ class OrganizationRestrictionFormMixin:
     🔒 Миксин для ограничения выборок по организациям, доступным пользователю.
 
     Применение:
-    - Поле "organization" будет ограничено организациями из профиля пользователя. 🏢
-    - Поля "subdivision", "department", "position", "document" и "equipment" будут
-      фильтроваться по organization, если такие поля есть в модели. 🔍
+      - Поле "organization" будет ограничено организациями из профиля пользователя. 🏢
+      - Поля "subdivision", "department", "position", "documents" и "equipment" будут
+        фильтроваться по organization, если такие поля есть в модели. 🔍
     """
-
     def __init__(self, *args, **kwargs):
         self.user = kwargs.pop('user', None)
         super().__init__(*args, **kwargs)
@@ -28,7 +27,8 @@ class OrganizationRestrictionFormMixin:
                 self.fields['organization'].queryset = allowed_orgs
                 self.fields['organization'].help_text = "🏢 Выберите организацию из разрешённых"
 
-            for field_name in ['subdivision', 'department', 'position', 'document', 'equipment']:
+            # Обратите внимание: здесь заменено 'document' на 'documents'
+            for field_name in ['subdivision', 'department', 'position', 'documents', 'equipment']:
                 if field_name in self.fields:
                     qs = self.fields[field_name].queryset
                     self.fields[field_name].queryset = qs.filter(organization__in=allowed_orgs)
