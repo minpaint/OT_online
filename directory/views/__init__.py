@@ -1,3 +1,4 @@
+# 📁 directory/views/__init__.py
 from django.views.generic import TemplateView
 from django.contrib.auth.mixins import LoginRequiredMixin
 from django.shortcuts import render, redirect
@@ -6,7 +7,7 @@ from django.contrib import messages
 from directory.forms import EmployeeHiringForm
 from .auth import UserRegistrationView
 
-# Импорт представлений для сотрудников
+# Импортируем представления для сотрудников
 from .employees import (
     EmployeeListView,
     EmployeeCreateView,
@@ -15,7 +16,7 @@ from .employees import (
     get_subdivisions
 )
 
-# Импорт представлений для должностей
+# Импортируем представления для должностей
 from .positions import (
     PositionListView,
     PositionCreateView,
@@ -25,8 +26,8 @@ from .positions import (
     get_departments
 )
 
-class EmployeeHiringView(LoginRequiredMixin, TemplateView):
-    """🏠 Главная страница – форма приема на работу"""
+class HomePageView(LoginRequiredMixin, TemplateView):
+    """🏠 Главная страница"""
     template_name = 'directory/home.html'
 
     def get_context_data(self, **kwargs):
@@ -48,14 +49,15 @@ class EmployeeHiringView(LoginRequiredMixin, TemplateView):
                 request,
                 f"✅ Сотрудник {employee.full_name_nominative} успешно принят на работу"
             )
-            return redirect('directory:employees:employee_list')
+            return redirect('directory:employees:employee_list')  # Изменено на employee_list
         return render(request, self.template_name, {
             'form': form,
             'title': '🏠 Главная'
         })
 
+# Экспортируем все представления
 __all__ = [
-    'EmployeeHiringView',  # теперь экспортируем EmployeeHiringView
+    'HomePageView',
     'EmployeeListView',
     'EmployeeCreateView',
     'EmployeeUpdateView',
@@ -67,5 +69,5 @@ __all__ = [
     'get_subdivisions',
     'get_positions',
     'get_departments',
-    'UserRegistrationView',
+    'UserRegistrationView', # ✅ Экспорт UserRegistrationView
 ]

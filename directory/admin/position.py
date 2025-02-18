@@ -3,7 +3,6 @@ from django.db.models import Q
 from directory.models import Position
 from directory.forms import PositionForm
 
-
 @admin.register(Position)
 class PositionAdmin(admin.ModelAdmin):
     """
@@ -82,7 +81,6 @@ class PositionAdmin(admin.ModelAdmin):
             'none': '❌'
         }
         return f"{role_icons.get(obj.commission_role, '')} {obj.get_commission_role_display()}"
-
     get_commission_role_display.short_description = "Роль в комиссии"
     get_commission_role_display.admin_order_field = 'commission_role'
 
@@ -90,46 +88,60 @@ class PositionAdmin(admin.ModelAdmin):
         """Отображение количества прикрепленных документов"""
         count = obj.documents.count()
         return f"📄 {count} док." if count > 0 else "Нет документов"
-
     get_documents_count.short_description = "Документы"
 
     def get_form(self, request, obj=None, **kwargs):
         """
-        🔑 Переопределяем get_form, чтобы:
-         1) Передать request.user в форму (для миксина).
-         2) Фильтровать поля many-to-many (documents и equipment) по разрешённым организациям
-            из профиля пользователя. При редактировании дополнительно фильтруем по организации объекта.
+        1) Передаём request.user в форму (для миксина).
+        2) Фильтруем документы/оборудование при редактировании (см. уже существующую логику).
         """
-        OriginalForm = super().get_form(request, obj, **kwargs)
+        original_form = super().get_form(request, obj, **kwargs)
 
-        class PositionFormWithUser(OriginalForm):
+        class PositionFormWithUser(original_form):
             def __init__(self2, *args, **inner_kwargs):
                 inner_kwargs['user'] = request.user
                 super().__init__(*args, **inner_kwargs)
 
-                if hasattr(request.user, 'profile'):
-                    allowed_orgs = request.user.profile.organizations.all()
+                # Если редактируем объект
+                if obj:
+                    # (Сохраняем вашу логику фильтрации документов/оборудования)
+                    base_docs_qs = self2.fields['documents'].queryset.filter(
+                        Q(organization=obj.organization) &
+                        (
+                            Q(subdivision__isnull=True) |
+                            Q(subdivision=obj.subdivision) |
+                            (
+                                Q(department__isnull=True) |
+                                Q(department=obj.department)
+                            )
+                        )
+                    ).order_by('name')
 
-                    # Базовые queryset для документов и оборудования
-                    docs_qs = self2.fields['documents'].queryset
-                    equip_qs = self2.fields['equipment'].queryset
+                    base_equip_qs = self2.fields['equipment'].queryset.filter(
+                        Q(organization=obj.organization) &
+                        (
+                            Q(subdivision__isnull=True) |
+                            Q(subdivision=obj.subdivision) |
+                            (
+                                Q(department__isnull=True) |
+                                Q(department=obj.department)
+                            )
+                        )
+                    ).order_by('equipment_name')
 
-                    # Если редактируем существующий объект
-                    if obj:
-                        docs_qs = docs_qs.filter(organization=obj.organization)
-                        equip_qs = equip_qs.filter(organization=obj.organization)
+                    # Дополнительно учитываем профиль (если нужно)
+                    if not request.user.is_superuser and hasattr(request.user, 'profile'):
+                        allowed_orgs = request.user.profile.organizations.all()
+                        base_docs_qs = base_docs_qs.filter(organization__in=allowed_orgs)
+                        base_equip_qs = base_equip_qs.filter(organization__in=allowed_orgs)
 
-                    # В любом случае фильтруем по разрешенным организациям
-                    docs_qs = docs_qs.filter(organization__in=allowed_orgs).order_by('name')
-                    equip_qs = equip_qs.filter(organization__in=allowed_orgs).order_by('equipment_name')
-
-                    self2.fields['documents'].queryset = docs_qs
-                    self2.fields['equipment'].queryset = equip_qs
+                    self2.fields['documents'].queryset = base_docs_qs
+                    self2.fields['equipment'].queryset = base_equip_qs
 
         return PositionFormWithUser
 
     def formfield_for_manytomany(self, db_field, request, **kwargs):
-        """Настройка виджетов many-to-many с FilteredSelectMultiple."""
+        """Настройка полей many-to-many с FilteredSelectMultiple."""
         if db_field.name == "documents":
             kwargs["widget"] = admin.widgets.FilteredSelectMultiple(
                 "документы",
@@ -144,7 +156,7 @@ class PositionAdmin(admin.ModelAdmin):
 
     def get_queryset(self, request):
         """
-        🔒 Ограничиваем должности по организациям, доступным пользователю.
+        🔒 Ограничиваем должности по организациям пользователя.
         """
         qs = super().get_queryset(request)
         if not request.user.is_superuser and hasattr(request.user, 'profile'):
@@ -162,6 +174,3 @@ class PositionAdmin(admin.ModelAdmin):
             'admin/js/jquery.init.js',
             'admin/js/SelectFilter2.js',
         ]
-
-
-admin.site.site_title = "🎛️ Панель управления"
