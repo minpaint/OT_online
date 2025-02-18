@@ -236,3 +236,43 @@ main {
 .hover-shadow:hover {
     box-shadow: 0 0.5rem 1rem rgba(0, 0, 0, 0.15);
 }
+/* 🎨 Стили Select2 для темы bootstrap4 + Bootstrap 5 */
+.select2-container--bootstrap4 .select2-selection--single {
+    height: calc(1.5em + .75rem + 2px) !important;
+    padding: .375rem .75rem !important;
+    border: 1px solid #ced4da !important;
+    border-radius: .25rem !important;
+    background-color: #fff !important;
+    display: flex !important;
+    align-items: center !important;
+    font-size: 1rem !important; /* Можно настроить под размер шрифта */
+}
+
+.select2-container--bootstrap4 .select2-selection--single .select2-selection__rendered {
+    line-height: 1.5 !important;
+    color: #495057 !important;
+    margin-left: 0 !important;
+}
+
+.select2-container--bootstrap4 .select2-selection--single .select2-selection__arrow {
+    height: 100% !important;
+    right: .75rem !important;
+    display: flex !important;
+    align-items: center !important;
+}
+
+.select2-container--bootstrap4.select2-container--focus .select2-selection--single {
+    border-color: #80bdff !important;
+    box-shadow: 0 0 0 .2rem rgba(0,123,255,.25) !important;
+}
+
+.select2-container--bootstrap4 .select2-dropdown {
+    border: 1px solid #ced4da !important;
+    border-radius: .25rem !important;
+    box-shadow: 0 .25rem .5rem rgba(0,0,0,.1) !important;
+}
+
+.select2-container--bootstrap4 .select2-results__option--highlighted {
+    background-color: #e9ecef !important;
+    color: #212529 !important;
+}

@@ -3,7 +3,7 @@
 {% load static %}
 
 {% block extra_css %}
-<!-- Дополнительный CSS (при желании можно оставить только CDN в base.html) -->
+<!-- Подключаем Select2 -->
 <link href="https://cdn.jsdelivr.net/npm/select2@4.1.0-rc.0/dist/css/select2.min.css" rel="stylesheet">
 {% endblock %}
 
@@ -16,15 +16,10 @@
                     <h3>📝 Прием на работу</h3>
                 </div>
                 <div class="card-body">
-                    <!-- ⚠️ Обратите внимание: добавили {{ form.media }} перед {{ form|crispy }} -->
                     <form method="post" id="hiring-form">
                         {% csrf_token %}
-                        <!-- Подключаем скрипты и стили, необходимые для автокомплита dal_select2 -->
                         {{ form.media }}
-                        
-                        <!-- Сам вывод формы с помощью crispy-forms -->
                         {{ form|crispy }}
-                        
                         <div class="row mt-3">
                             <div class="col-6">
                                 <button type="submit" name="preview" value="true" class="btn btn-info w-100">
@@ -41,7 +36,7 @@
                 </div>
             </div>
         </div>
-        
+
         <!-- Блок "Последние принятые" -->
         <div class="col-md-4">
             <div class="card">
@@ -67,43 +62,13 @@
     </div>
 </div>
 
-<!-- Модальное окно для предпросмотра -->
-<div class="modal fade" id="previewModal" tabindex="-1" role="dialog">
-    <div class="modal-dialog modal-lg">
-        <div class="modal-content">
-            <div class="modal-header">
-                <h5 class="modal-title">👁 Предпросмотр данных</h5>
-                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
-            </div>
-            <div class="modal-body" id="preview-content">
-            </div>
-        </div>
-    </div>
-</div>
-{% endblock %}
+{% endblock %} <!-- ✅ Закрываем блок content -->
 
 {% block extra_js %}
-<!-- Дополнительные скрипты, если нужно -->
 <script src="https://cdn.jsdelivr.net/npm/select2@4.1.0-rc.0/dist/js/select2.min.js"></script>
 <script>
 $(document).ready(function() {
-    // Инициализация Select2 для всех select2-классов (если нужно дублировать, обычно достаточно base.html)
-    $('.select2, .select2-basic').select2();
-
-    // AJAX-предпросмотр
-    $('#hiring-form button[name="preview"]').click(function(e) {
-        e.preventDefault();
-        var form = $('#hiring-form');
-        $.ajax({
-            url: form.attr('action'),
-            method: 'POST',
-            data: form.serialize() + '&preview=true',
-            success: function(response) {
-                $('#preview-content').html(response);
-                $('#previewModal').modal('show');
-            }
-        });
-    });
+    $('.select2').select2({ theme: 'bootstrap4' });
 });
 </script>
-{% endblock %}
+{% endblock %} <!-- ✅ Закрываем блок extra_js -->

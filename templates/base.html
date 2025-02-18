@@ -90,26 +90,9 @@
     <script src="https://code.jquery.com/jquery-3.7.0.min.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/select2@4.1.0-rc.0/dist/js/select2.min.js"></script>
-    <!-- Основной скрипт для вспомогательных функций (main.js) -->
+    <!-- Основной скрипт -->
     <script src="{% static 'directory/js/main.js' %}"></script>
 
     {% block extra_js %}{% endblock %}
-    {% block scripts %}{% endblock %}
-
-    <script>
-        $(document).ready(function() {
-            // Инициализация Select2 для всех элементов с классами .select2 и .select2-basic 🔧
-            $('.select2, .select2-basic').select2({
-                theme: 'bootstrap4',
-                width: '100%'
-            });
-            // Автоматическое скрытие сообщений об успехе через 4 секунды ⏱️
-            window.setTimeout(function() {
-                $(".alert").fadeTo(500, 0).slideUp(500, function(){
-                    $(this).remove();
-                });
-            }, 4000);
-        });
-    </script>
 </body>
 </html>
