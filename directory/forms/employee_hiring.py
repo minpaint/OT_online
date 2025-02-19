@@ -1,37 +1,49 @@
+# directory/forms/employee_hiring.py
 from django import forms
 from crispy_forms.helper import FormHelper
 from crispy_forms.layout import Submit
 from dal import autocomplete
-from directory.models import Employee
-from .mixins import OrganizationRestrictionFormMixin  # Импорт миксина 🚀
 
+# Миксин, который ограничивает список организаций по профилю пользователя
+from directory.forms.mixins import OrganizationRestrictionFormMixin
+
+# Прямой импорт модели Employee (если нет круга).
+# Если будет ошибка ImportError из-за циклического импорта, см. комментарии ниже.
+from directory.models.employee import Employee
 
 class EmployeeHiringForm(OrganizationRestrictionFormMixin, forms.ModelForm):
     """
     👥 Форма для найма сотрудника, использующая django-autocomplete-light (DAL).
+    Содержит все поля модели Employee, включая место проживания, рост и т.д.
     """
 
     class Meta:
         model = Employee
         fields = [
-            'full_name_nominative',    # ФИО (именительный)
-            'full_name_dative',        # ФИО (дательный)
-            'organization',            # 🏢 Организация
-            'subdivision',             # 🏭 Подразделение
-            'department',              # 📂 Отдел
-            'position',                # 👔 Должность
-            'date_of_birth',           # 📅 Дата рождения
-            'is_contractor'            # Договор подряда?
+            'full_name_nominative',   # ФИО (именительный) 📝
+            'full_name_dative',       # ФИО (дательный) ✍️
+            'date_of_birth',          # Дата рождения 📅
+            'place_of_residence',     # Место проживания 🏠
+            'organization',           # Организация 🏢
+            'subdivision',            # Подразделение 🏭
+            'department',             # Отдел 📂
+            'position',               # Должность 👔
+            'height',                 # Рост 📏
+            'clothing_size',          # Размер одежды 👕
+            'shoe_size',              # Размер обуви 👞
+            'is_contractor'           # Договор подряда? 📄
         ]
         widgets = {
+            # Виджет для организации с автодополнением Select2
             'organization': autocomplete.ModelSelect2(
                 url='directory:organization-autocomplete',
                 attrs={
                     'data-placeholder': '🏢 Выберите организацию...',
-                    'class': 'select2 form-control',         # Класс для инициализации
-                    'data-theme': 'bootstrap4'  # Указываем тему через data-атрибут
+                    'class': 'select2 form-control',
+                    'data-theme': 'bootstrap4'
                 }
             ),
+            # Виджет для подразделения (зависит от организации)
             'subdivision': autocomplete.ModelSelect2(
                 url='directory:subdivision-autocomplete',
                 forward=['organization'],
@@ -41,6 +53,7 @@ class EmployeeHiringForm(OrganizationRestrictionFormMixin, forms.ModelForm):
                     'data-theme': 'bootstrap4'
                 }
             ),
+            # Виджет для отдела (зависит от подразделения)
             'department': autocomplete.ModelSelect2(
                 url='directory:department-autocomplete',
                 forward=['subdivision'],
@@ -50,6 +63,7 @@ class EmployeeHiringForm(OrganizationRestrictionFormMixin, forms.ModelForm):
                     'data-theme': 'bootstrap4'
                 }
             ),
+            # Виджет для должности (зависит от организации, подразделения, отдела)
             'position': autocomplete.ModelSelect2(
                 url='directory:position-autocomplete',
                 forward=['organization', 'subdivision', 'department'],
@@ -59,26 +73,47 @@ class EmployeeHiringForm(OrganizationRestrictionFormMixin, forms.ModelForm):
                     'data-theme': 'bootstrap4'
                 }
             ),
+            # Виджет для даты рождения
             'date_of_birth': forms.DateInput(
                 attrs={'type': 'date', 'class': 'form-control'},
                 format='%Y-%m-%d'
-            )
+            ),
+            # Виджет для места проживания (многострочное поле)
+            'place_of_residence': forms.Textarea(
+                attrs={
+                    'class': 'form-control',
+                    'rows': 3,
+                    'placeholder': '🏠 Введите место проживания...'
+                }
+            ),
+            # Рост
+            'height': forms.Select(
+                attrs={'class': 'form-control'}
+            ),
+            # Размер одежды
+            'clothing_size': forms.Select(
+                attrs={'class': 'form-control'}
+            ),
+            # Размер обуви
+            'shoe_size': forms.Select(
+                attrs={'class': 'form-control'}
+            ),
         }
 
     def __init__(self, *args, **kwargs):
-        # 🔑 Извлекаем пользователя, если передан
+        # 🔑 Извлекаем пользователя, если он передан
         self.user = kwargs.pop('user', None)
         super().__init__(*args, **kwargs)
 
-        # 🎨 Настройка crispy-forms
+        # 🎨 Настройка crispy-forms для красивой верстки
         self.helper = FormHelper()
         self.helper.form_method = 'post'
         self.helper.add_input(Submit('submit', '💾 Принять'))
 
-        # 🔒 Ограничиваем выбор организаций по профилю пользователя
+        # 🔒 Ограничиваем выбор организаций по профилю пользователя (OrganizationRestrictionFormMixin)
+        # + Если у пользователя ровно одна организация, выбираем её по умолчанию
         if self.user and hasattr(self.user, 'profile'):
             user_orgs = self.user.profile.organizations.all()
             self.fields['organization'].queryset = user_orgs
-            # Если у пользователя ровно одна организация – выбираем её по умолчанию
             if user_orgs.count() == 1:
                 self.initial['organization'] = user_orgs.first().id
