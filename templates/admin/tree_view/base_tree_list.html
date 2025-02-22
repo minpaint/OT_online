@@ -1,0 +1,49 @@
+{% extends "admin/change_list.html" %}
+{% load i18n static admin_urls admin_list %}
+
+{% block extrastyle %}
+{{ block.super }}
+<link rel="stylesheet" type="text/css" href="{% static 'admin/css/tree_view.css' %}">
+{% endblock %}
+
+{% block result_list %}
+<div class="module filtered" id="changelist">
+    <div class="changelist-form-container">
+        <div class="results">
+            <div class="tree-controls">
+                <button type="button" class="tree-btn expand-all">{% trans "Развернуть все" %}</button>
+                <button type="button" class="tree-btn collapse-all">{% trans "Свернуть все" %}</button>
+                <input type="text" class="tree-search" placeholder="{% trans 'Поиск...' %}">
+            </div>
+
+            {% if tree %}
+            <table id="result_list">
+                <thead>
+                    <tr>
+                        <th scope="col" class="sortable column-name">
+                            <div class="text">{% trans "Наименование" %}</div>
+                            <div class="clear"></div>
+                        </th>
+                        <th scope="col" class="sortable column-roles">
+                            <div class="text">{% trans "Роли" %}</div>
+                            <div class="clear"></div>
+                        </th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% block tree_body %}{% endblock %}
+                </tbody>
+            </table>
+            {% else %}
+                <p>{% trans "Нет данных для отображения." %}</p>
+            {% endif %}
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block extrahead %}
+{{ block.super }}
+<script src="{% static 'admin/js/tree_search.js' %}"></script>
+<script src="{% static 'admin/js/tree_view.js' %}"></script>
+{% endblock %}

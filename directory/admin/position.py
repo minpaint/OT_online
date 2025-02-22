@@ -1,142 +1,124 @@
-# directory/admin/position.py
+"""
+👔 Админ-класс для модели Position с древовидным отображением.
+Используем кастомный шаблон для вывода change list в виде таблицы.
+Логика ограничения по организациям (если не суперпользователь) сохраняется.
+"""
 
 from django.contrib import admin
-from django.db.models import Q
 from directory.models import Position
-from directory.forms import PositionForm
+from directory.forms.position import PositionForm
+from directory.admin.mixins.tree_view import TreeViewMixin
 
 
 @admin.register(Position)
-class PositionAdmin(admin.ModelAdmin):
-    """
-    👔 Админ-класс для модели Position.
-    """
+class PositionAdmin(TreeViewMixin, admin.ModelAdmin):  # Изменен порядок наследования
     form = PositionForm
 
-    # Теперь выводим только нужные поля:
-    list_display = [
-        'position_name',   # Название должности
-        'organization',    # Организация
-        'subdivision',     # Подразделение
-        'department',      # Отдел
-    ]
+    # Указываем путь к шаблону для древовидного отображения
+    change_list_template = "admin/directory/position/change_list_tree.html"  # Исправлен путь к шаблону
 
-    # Уберём из фильтра ненужные поля; оставим только базовые:
-    list_filter = [
-        'organization',
-        'subdivision',
-        'department',
-    ]
+    # Фильтры для боковой панели
+    list_filter = ['organization', 'subdivision', 'department']
 
-    # Поиск оставим по названию и номерам инструкций (при желании можно убрать)
+    # Очищаем стандартное отображение столбцов
+    list_display = []
+
     search_fields = [
         'position_name',
         'safety_instructions_numbers'
     ]
 
-    # Связанные документы и оборудование по-прежнему редактируем через filter_horizontal
+    # Редактирование many-to-many
     filter_horizontal = ['documents', 'equipment']
 
-    # Сохраняем текущую структуру fieldsets, чтобы поля оставались доступны в форме
-    fieldsets = (
-        (None, {
-            'fields': ('position_name', 'commission_role')
-        }),
-        ('Организационная структура', {
-            'fields': ('organization', 'subdivision', 'department')
-        }),
-        ('Безопасность', {
-            'fields': (
-                'safety_instructions_numbers',
-                'electrical_safety_group',
-                'internship_period_days',
-                'is_responsible_for_safety',
-                'is_electrical_personnel',
-                'can_be_internship_leader'
-            ),
-            'description': '🔒 Настройки безопасности и допусков'
-        }),
-        ('📋 Договор подряда', {
-            'fields': (
-                'contract_work_name',
-                'contract_safety_instructions'
-            ),
-            'description': '📝 Информация о работах по договору подряда',
-            'classes': ('collapse',)
-        }),
-        ('Связанные документы и оборудование', {
-            'fields': ('documents', 'equipment'),
-            'description': '📄 Выберите документы и оборудование, относящиеся к данной должности',
-            'classes': ('collapse',)
-        }),
-    )
-
-    def get_form(self, request, obj=None, **kwargs):
-        """
-        🔑 Переопределяем get_form, чтобы:
-         1) Передать request.user в форму (для миксина).
-         2) При редактировании фильтровать M2M-поля (documents и equipment) по организации объекта
-            и по организациям, доступным пользователю.
-        """
-        OriginalForm = super().get_form(request, obj, **kwargs)
-
-        class PositionFormWithUser(OriginalForm):
-            def __init__(self2, *args, **inner_kwargs):
-                inner_kwargs['user'] = request.user
-                super().__init__(*args, **inner_kwargs)
-
-                if hasattr(request.user, 'profile'):
-                    allowed_orgs = request.user.profile.organizations.all()
-
-                    # Базовые queryset для документов и оборудования
-                    docs_qs = self2.fields['documents'].queryset
-                    equip_qs = self2.fields['equipment'].queryset
-
-                    # Если редактируем существующий объект, фильтруем по организации объекта
-                    if obj:
-                        docs_qs = docs_qs.filter(organization=obj.organization)
-                        equip_qs = equip_qs.filter(organization=obj.organization)
-
-                    # Фильтруем по разрешённым организациям пользователя
-                    docs_qs = docs_qs.filter(organization__in=allowed_orgs).order_by('name')
-                    equip_qs = equip_qs.filter(organization__in=allowed_orgs).order_by('equipment_name')
-
-                    self2.fields['documents'].queryset = docs_qs
-                    self2.fields['equipment'].queryset = equip_qs
-
-        return PositionFormWithUser
-
-    def formfield_for_manytomany(self, db_field, request, **kwargs):
-        """Настройка виджетов many-to-many с FilteredSelectMultiple."""
-        if db_field.name == "documents":
-            kwargs["widget"] = admin.widgets.FilteredSelectMultiple(
-                "документы",
-                is_stacked=False
-            )
-        if db_field.name == "equipment":
-            kwargs["widget"] = admin.widgets.FilteredSelectMultiple(
-                "оборудование",
-                is_stacked=False
-            )
-        return super().formfield_for_manytomany(db_field, request, **kwargs)
+    # Настройки дерева
+    tree_settings = {
+        'icons': {
+            'organization': '🏢',
+            'subdivision': '🏭',
+            'department': '📂',
+            'position': '👔',
+            'employee': '👤',
+            'no_subdivision': '🏗️',
+            'no_department': '📁'
+        },
+        'fields': {
+            'name_field': 'position_name',
+            'organization_field': 'organization',
+            'subdivision_field': 'subdivision',
+            'department_field': 'department'
+        },
+        'display_rules': {
+            'hide_empty_branches': False,
+            'hide_no_subdivision_no_department': False
+        }
+    }
 
     def get_queryset(self, request):
         """
-        🔒 Ограничиваем должности по организациям, доступным пользователю (если не суперпользователь).
+        🔒 Ограничиваем должности по организациям, доступным пользователю.
         """
-        qs = super().get_queryset(request)
+        qs = super().get_queryset(request).select_related(
+            'organization',
+            'subdivision',
+            'department'
+        )
         if not request.user.is_superuser and hasattr(request.user, 'profile'):
             allowed_orgs = request.user.profile.organizations.all()
             qs = qs.filter(organization__in=allowed_orgs)
         return qs
 
-    class Media:
-        css = {
-            'all': [
-                'admin/css/widgets.css',
-            ]
+    def get_additional_node_data(self, obj):
+        """
+        ➕ Дополнительные данные для узла: роли и атрибуты должности.
+        """
+        return {
+            'is_responsible_for_safety': obj.is_responsible_for_safety,
+            'can_be_internship_leader': obj.can_be_internship_leader,
+            'commission_role': obj.commission_role,
+            'is_electrical_personnel': obj.is_electrical_personnel,
         }
-        js = [
-            'admin/js/jquery.init.js',
-            'admin/js/SelectFilter2.js',
-        ]
+
+    def has_module_permission(self, request):
+        """
+        👮‍♂️ Проверка прав на доступ к модулю
+        """
+        if request.user.is_superuser:
+            return True
+        if hasattr(request.user, 'profile'):
+            return request.user.profile.organizations.exists()
+        return False
+
+    def has_view_permission(self, request, obj=None):
+        """
+        👀 Проверка прав на просмотр
+        """
+        if request.user.is_superuser:
+            return True
+        if not obj:
+            return True
+        if hasattr(request.user, 'profile'):
+            return obj.organization in request.user.profile.organizations.all()
+        return False
+
+    def has_change_permission(self, request, obj=None):
+        """
+        ✏️ Проверка прав на редактирование
+        """
+        return self.has_view_permission(request, obj)
+
+    def has_delete_permission(self, request, obj=None):
+        """
+        🗑️ Проверка прав на удаление
+        """
+        return self.has_view_permission(request, obj)
+
+    def has_add_permission(self, request):
+        """
+        ➕ Проверка прав на добавление
+        """
+        if request.user.is_superuser:
+            return True
+        if hasattr(request.user, 'profile'):
+            return request.user.profile.organizations.exists()
+        return False

@@ -1,0 +1,182 @@
+{% extends "admin/change_list.html" %}
+{% load i18n static admin_urls admin_list %}
+
+{% block extrastyle %}
+{{ block.super }}
+<link rel="stylesheet" type="text/css" href="{% static 'admin/css/tree_view.css' %}">
+{% endblock %}
+
+{% block result_list %}
+<div class="module filtered" id="changelist">
+    <div class="changelist-form-container">
+        <div class="results">
+            <div class="tree-controls">
+                <button type="button" class="tree-btn expand-all">{% trans "Развернуть все" %}</button>
+                <button type="button" class="tree-btn collapse-all">{% trans "Свернуть все" %}</button>
+                <input type="text" class="tree-search" placeholder="{% trans 'Поиск...' %}">
+            </div>
+
+            {% if tree %}
+            <table id="result_list">
+                <thead>
+                    <tr>
+                        <th scope="col" class="sortable column-name">
+                            <div class="text">{% trans "Наименование" %}</div>
+                            <div class="clear"></div>
+                        </th>
+                        <th scope="col" class="sortable column-roles">
+                            <div class="text">{% trans "Роли" %}</div>
+                            <div class="clear"></div>
+                        </th>
+                    </tr>
+                </thead>
+                <tbody>
+                {% for org, org_data in tree.items %}
+                    <tr class="row1" data-level="0" data-node-id="{{ org.pk }}">
+                        <td class="field-name">
+                            <button type="button" class="toggle-btn" data-state="expanded">[-]</button>
+                            <span class="tree-icon">{{ tree_settings.icons.organization }}</span>
+                            <strong>{{ org.short_name_ru }}</strong>
+                        </td>
+                        <td class="field-roles"></td>
+                    </tr>
+
+                    {% for item in org_data.items %}
+                        <tr class="row2" data-level="1" data-parent-id="{{ org.pk }}">
+                            <td class="field-name">
+                                <span class="tree-icon">{{ tree_settings.icons.position }}</span>
+                                {% if item.pk %}
+                                    <a href="{% url 'admin:directory_position_change' item.pk %}">
+                                        {{ item.position_name }}
+                                    </a>
+                                {% else %}
+                                    {{ item.position_name }}
+                                {% endif %}
+                            </td>
+                            <td class="field-roles">
+                                {% if item.is_responsible_for_safety %}
+                                    <span title="Ответственный за ОТ" class="role-icon">🛡️</span>
+                                {% endif %}
+                                {% if item.can_be_internship_leader %}
+                                    <span title="Руководитель стажировки" class="role-icon">🧠</span>
+                                {% endif %}
+                                {% if item.commission_role == 'chairman' %}
+                                    <span title="Председатель комиссии" class="role-icon">👑</span>
+                                {% elif item.commission_role == 'member' %}
+                                    <span title="Член комиссии" class="role-icon">👤</span>
+                                {% elif item.commission_role == 'secretary' %}
+                                    <span title="Секретарь комиссии" class="role-icon">📝</span>
+                                {% endif %}
+                            </td>
+                        </tr>
+                    {% endfor %}
+
+                    {% for sub, sub_data in org_data.subdivisions.items %}
+                        {% if sub != 'no_subdivision' or sub_data.departments %}
+                            <tr class="row1" data-level="1" data-parent-id="{{ org.pk }}" data-node-id="{{ sub.pk|default:'no_subdivision' }}">
+                                <td class="field-name">
+                                    <button type="button" class="toggle-btn" data-state="expanded">[-]</button>
+                                    <span class="tree-icon">
+                                        {% if sub == 'no_subdivision' %}
+                                            {{ tree_settings.icons.no_subdivision }}
+                                        {% else %}
+                                            {{ tree_settings.icons.subdivision }}
+                                        {% endif %}
+                                    </span>
+                                    {% if sub == 'no_subdivision' %}
+                                        {% trans "Без подразделения" %}
+                                    {% else %}
+                                        {{ sub.name }}
+                                    {% endif %}
+                                </td>
+                                <td class="field-roles"></td>
+                            </tr>
+
+                            {% for item in sub_data.items %}
+                                <tr class="row2" data-level="2" data-parent-id="{{ sub.pk|default:'no_subdivision' }}">
+                                    <td class="field-name">
+                                        <span class="tree-icon">{{ tree_settings.icons.position }}</span>
+                                        {% if item.pk %}
+                                            <a href="{% url 'admin:directory_position_change' item.pk %}">
+                                                {{ item.position_name }}
+                                            </a>
+                                        {% else %}
+                                            {{ item.position_name }}
+                                        {% endif %}
+                                    </td>
+                                    <td class="field-roles">
+                                        {% if item.is_responsible_for_safety %}
+                                            <span title="Ответственный за ОТ" class="role-icon">🛡️</span>
+                                        {% endif %}
+                                        {% if item.can_be_internship_leader %}
+                                            <span title="Руководитель стажировки" class="role-icon">🧠</span>
+                                        {% endif %}
+                                        {% if item.commission_role == 'chairman' %}
+                                            <span title="Председатель комиссии" class="role-icon">👑</span>
+                                        {% elif item.commission_role == 'member' %}
+                                            <span title="Член комиссии" class="role-icon">👤</span>
+                                        {% elif item.commission_role == 'secretary' %}
+                                            <span title="Секретарь комиссии" class="role-icon">📝</span>
+                                        {% endif %}
+                                    </td>
+                                </tr>
+                            {% endfor %}
+
+                            {% for dept, dept_items in sub_data.departments.items %}
+                                <tr class="row1" data-level="2" data-parent-id="{{ sub.pk|default:'no_subdivision' }}" data-node-id="{{ dept.pk }}">
+                                    <td class="field-name">
+                                        <button type="button" class="toggle-btn" data-state="expanded">[-]</button>
+                                        <span class="tree-icon">{{ tree_settings.icons.department }}</span>
+                                        {{ dept.name }}
+                                    </td>
+                                    <td class="field-roles"></td>
+                                </tr>
+
+                                {% for item in dept_items %}
+                                    <tr class="row2" data-level="3" data-parent-id="{{ dept.pk }}">
+                                        <td class="field-name">
+                                            <span class="tree-icon">{{ tree_settings.icons.position }}</span>
+                                            {% if item.pk %}
+                                                <a href="{% url 'admin:directory_position_change' item.pk %}">
+                                                    {{ item.position_name }}
+                                                </a>
+                                            {% else %}
+                                                {{ item.position_name }}
+                                            {% endif %}
+                                        </td>
+                                        <td class="field-roles">
+                                            {% if item.is_responsible_for_safety %}
+                                                <span title="Ответственный за ОТ" class="role-icon">🛡️</span>
+                                            {% endif %}
+                                            {% if item.can_be_internship_leader %}
+                                                <span title="Руководитель стажировки" class="role-icon">🧠</span>
+                                            {% endif %}
+                                            {% if item.commission_role == 'chairman' %}
+                                                <span title="Председатель комиссии" class="role-icon">👑</span>
+                                            {% elif item.commission_role == 'member' %}
+                                                <span title="Член комиссии" class="role-icon">👤</span>
+                                            {% elif item.commission_role == 'secretary' %}
+                                                <span title="Секретарь комиссии" class="role-icon">📝</span>
+                                            {% endif %}
+                                        </td>
+                                    </tr>
+                                {% endfor %}
+                            {% endfor %}
+                        {% endif %}
+                    {% endfor %}
+                {% endfor %}
+                </tbody>
+            </table>
+            {% else %}
+                <p>{% trans "Нет данных для отображения." %}</p>
+            {% endif %}
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block extrahead %}
+{{ block.super }}
+<script src="{% static 'admin/js/tree_search.js' %}"></script>
+<script src="{% static 'admin/js/tree_view.js' %}"></script>
+{% endblock %}

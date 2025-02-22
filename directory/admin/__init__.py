@@ -7,9 +7,9 @@ from .employee import EmployeeAdmin
 from .equipment import EquipmentAdmin
 from .organization import OrganizationAdmin
 from .position import PositionAdmin
+# Вместо файла subdivision_nested импортируем оригинальный файл subdivision.py с MPTTModelAdmin
 from .subdivision import StructuralSubdivisionAdmin
 from .user import CustomUserAdmin
-
 
 __all__ = [
     'DepartmentAdmin',

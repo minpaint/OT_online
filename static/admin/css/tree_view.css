@@ -1,0 +1,132 @@
+/* Основные стили дерева */
+.tree-controls {
+    margin: 8px 0;
+    padding: 8px;
+    background: #f8f8f8;
+    border-radius: 4px;
+    display: flex;
+    gap: 1em;
+    align-items: center;
+}
+
+/* Кнопки управления */
+.tree-btn {
+    background: #417690;
+    color: #fff;
+    border: 1px solid #2b4b6b;
+    border-radius: 4px;
+    padding: 5px 10px;
+    cursor: pointer;
+}
+
+.tree-btn:hover {
+    background: #2b4b6b;
+}
+
+/* Поиск */
+.tree-search {
+    padding: 8px;
+    border: 1px solid #ccc;
+    border-radius: 4px;
+    width: 200px;
+    font-size: 14px;
+}
+
+.tree-search:focus {
+    outline: none;
+    border-color: #417690;
+    box-shadow: 0 0 0 2px rgba(65, 118, 144, 0.2);
+}
+
+/* Таблица */
+#result_list {
+    width: 100%;
+    border-spacing: 0;
+    border-collapse: collapse;
+}
+
+#result_list th {
+    background: #417690;
+    color: #fff;
+    padding: 8px;
+}
+
+#result_list td {
+    padding: 8px;
+    border-bottom: 1px solid #eee;
+}
+
+/* Строки */
+.row1 {
+    background: #fff;
+}
+
+.row2 {
+    background: #f8f8f8;
+}
+
+/* Кнопка сворачивания */
+.toggle-btn {
+    margin-right: 5px;
+    cursor: pointer;
+    background: none;
+    border: none;
+    font-weight: bold;
+    color: #666;
+    min-width: 20px;
+}
+
+.toggle-btn:hover {
+    color: #417690;
+}
+
+/* Отступы для уровней */
+[data-level="0"] .field-name { padding-left: 8px !important; }
+[data-level="1"] .field-name { padding-left: 2em !important; }
+[data-level="2"] .field-name { padding-left: 4em !important; }
+[data-level="3"] .field-name { padding-left: 6em !important; }
+
+/* Скрытые строки */
+.tree-row-hidden {
+    display: none;
+}
+
+/* Поиск */
+.search-highlight {
+    background-color: #fff3cd;
+    padding: 2px;
+    border-radius: 2px;
+    font-weight: bold;
+}
+
+/* Иконки */
+.tree-icon {
+    margin-right: 8px;
+    font-size: 1.2em;
+}
+
+.role-icon {
+    margin-right: 8px;
+    font-size: 1.2em;
+}
+
+/* Ссылки */
+#result_list a {
+    color: #417690;
+    text-decoration: none;
+}
+
+#result_list a:hover {
+    color: #2b4b6b;
+}
+
+/* Результаты поиска */
+#search-results-info {
+    display: inline-block;
+    margin-left: 10px;
+    padding: 5px 10px;
+    background-color: #e9ecef;
+    border-radius: 4px;
+    font-size: 12px;
+    color: #495057;
+}
