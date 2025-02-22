@@ -1,4 +1,3 @@
-# directory/forms/position.py
 """
 👔 Форма для должностей с ограничением по организациям
 
@@ -12,7 +11,7 @@ from crispy_forms.helper import FormHelper
 from crispy_forms.layout import Submit
 from dal import autocomplete
 from directory.models import Position
-from .mixins import OrganizationRestrictionFormMixin  # Импорт миксина 🚀
+from .mixins import OrganizationRestrictionFormMixin
 
 
 class PositionForm(OrganizationRestrictionFormMixin, forms.ModelForm):
@@ -46,7 +45,9 @@ class PositionForm(OrganizationRestrictionFormMixin, forms.ModelForm):
                 url='directory:equipment-autocomplete',
                 forward=['organization', 'subdivision', 'department'],
                 attrs={'data-placeholder': '⚙️ Выберите оборудование...'}
-            )
+            ),
+            'contract_work_name': forms.Textarea(attrs={'rows': 3}),
+            'safety_instructions_numbers': forms.Textarea(attrs={'rows': 2}),
         }
 
     def __init__(self, *args, **kwargs):

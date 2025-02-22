@@ -1,132 +1,86 @@
+/* 🌳 Стили для древовидного отображения */
+
 /* Основные стили дерева */
 .tree-controls {
-    margin: 8px 0;
-    padding: 8px;
+    margin-bottom: 15px;
+    padding: 10px;
     background: #f8f8f8;
     border-radius: 4px;
-    display: flex;
-    gap: 1em;
-    align-items: center;
 }
 
-/* Кнопки управления */
 .tree-btn {
-    background: #417690;
-    color: #fff;
-    border: 1px solid #2b4b6b;
-    border-radius: 4px;
     padding: 5px 10px;
+    margin-right: 10px;
+    background: #417690;
+    color: white;
+    border: none;
+    border-radius: 4px;
     cursor: pointer;
 }
 
 .tree-btn:hover {
-    background: #2b4b6b;
+    background: #2b5172;
 }
 
-/* Поиск */
 .tree-search {
-    padding: 8px;
-    border: 1px solid #ccc;
+    padding: 5px 10px;
+    border: 1px solid #ddd;
     border-radius: 4px;
     width: 200px;
-    font-size: 14px;
 }
 
-.tree-search:focus {
-    outline: none;
-    border-color: #417690;
-    box-shadow: 0 0 0 2px rgba(65, 118, 144, 0.2);
+/* Стили для строк дерева */
+tr[data-level] td.field-name {
+    position: relative;
 }
 
-/* Таблица */
-#result_list {
-    width: 100%;
-    border-spacing: 0;
-    border-collapse: collapse;
-}
+tr[data-level="0"] td.field-name { padding-left: 15px; }
+tr[data-level="1"] td.field-name { padding-left: 35px; }
+tr[data-level="2"] td.field-name { padding-left: 55px; }
+tr[data-level="3"] td.field-name { padding-left: 75px; }
 
-#result_list th {
-    background: #417690;
-    color: #fff;
-    padding: 8px;
-}
-
-#result_list td {
-    padding: 8px;
-    border-bottom: 1px solid #eee;
-}
-
-/* Строки */
-.row1 {
-    background: #fff;
-}
-
-.row2 {
-    background: #f8f8f8;
-}
-
-/* Кнопка сворачивания */
+/* Кнопки сворачивания/разворачивания */
 .toggle-btn {
-    margin-right: 5px;
+    position: absolute;
+    left: 5px;
+    top: 50%;
+    transform: translateY(-50%);
+    width: 20px;
+    height: 20px;
+    line-height: 18px;
+    text-align: center;
+    border: 1px solid #ddd;
+    background: white;
+    border-radius: 3px;
     cursor: pointer;
-    background: none;
-    border: none;
-    font-weight: bold;
-    color: #666;
-    min-width: 20px;
-}
-
-.toggle-btn:hover {
-    color: #417690;
-}
-
-/* Отступы для уровней */
-[data-level="0"] .field-name { padding-left: 8px !important; }
-[data-level="1"] .field-name { padding-left: 2em !important; }
-[data-level="2"] .field-name { padding-left: 4em !important; }
-[data-level="3"] .field-name { padding-left: 6em !important; }
-
-/* Скрытые строки */
-.tree-row-hidden {
-    display: none;
-}
-
-/* Поиск */
-.search-highlight {
-    background-color: #fff3cd;
-    padding: 2px;
-    border-radius: 2px;
-    font-weight: bold;
 }
 
 /* Иконки */
 .tree-icon {
-    margin-right: 8px;
-    font-size: 1.2em;
+    margin-right: 5px;
+    font-size: 16px;
 }
 
 .role-icon {
-    margin-right: 8px;
-    font-size: 1.2em;
+    margin-right: 5px;
+    font-size: 14px;
 }
 
-/* Ссылки */
-#result_list a {
-    color: #417690;
-    text-decoration: none;
+/* Анимация для сворачивания/разворачивания */
+tr.collapsed {
+    display: none;
 }
 
-#result_list a:hover {
-    color: #2b4b6b;
+/* Стили при наведении */
+tr:hover td {
+    background-color: #f5f5f5;
 }
 
-/* Результаты поиска */
-#search-results-info {
-    display: inline-block;
-    margin-left: 10px;
-    padding: 5px 10px;
-    background-color: #e9ecef;
-    border-radius: 4px;
-    font-size: 12px;
-    color: #495057;
+/* Стили для поиска */
+tr.hidden-by-search {
+    display: none;
+}
+
+tr.highlight-search td {
+    background-color: #fff3cd;
 }
