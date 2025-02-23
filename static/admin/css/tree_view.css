@@ -1,8 +1,35 @@
 /* 🌳 Основные стили дерева */
-.tree-row[data-level="0"] > td:first-child { padding-left: 10px; }
-.tree-row[data-level="1"] > td:first-child { padding-left: 30px; }
-.tree-row[data-level="2"] > td:first-child { padding-left: 50px; }
-.tree-row[data-level="3"] > td:first-child { padding-left: 70px; }
+#result_list {
+    width: 100%;
+    margin: 0;
+    border-collapse: collapse;
+}
+
+/* Стандартные размеры для чекбоксов Django admin */
+.column-checkbox {
+    width: 33px !important;  /* Стандартный размер из админки */
+    padding: 8px !important; /* Стандартный padding */
+    text-align: center;
+}
+
+.action-select, #select-all {
+    margin: 0;
+    vertical-align: middle;
+}
+
+/* Отступы для уровней дерева */
+.tree-row[data-level="0"] .field-name {
+    padding-left: 5px;
+}
+.tree-row[data-level="1"] .field-name {
+    padding-left: 20px;  /* +15px относительно уровня 0 */
+}
+.tree-row[data-level="2"] .field-name {
+    padding-left: 35px;  /* +15px относительно уровня 1 */
+}
+.tree-row[data-level="3"] .field-name {
+    padding-left: 50px;  /* +15px относительно уровня 2 */
+}
 
 /* 🔘 Кнопка разворачивания */
 .toggle-btn {
@@ -100,4 +127,33 @@ tr:hover td {
 
 .tree-action-btn:hover {
     opacity: 1;
+}
+
+/* Настройка остальных колонок */
+.column-name {
+    width: 40%;
+}
+
+.column-roles {
+    width: 40%;
+}
+
+.column-actions {
+    width: auto;
+    text-align: right;
+    padding-right: 15px !important;
+}
+
+/* Стили для ячеек */
+#result_list td {
+    padding: 8px;
+    vertical-align: middle;
+    border-bottom: 1px solid #eee;
+}
+
+/* Счетчик выбранных элементов */
+.action-counter {
+    margin-left: 10px;
+    color: #666;
+    font-size: 13px;
 }
