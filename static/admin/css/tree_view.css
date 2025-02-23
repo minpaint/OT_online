@@ -174,3 +174,17 @@ tr:hover td {
     color: #666;
     font-size: 13px;
 }
+
+/* Столбец "Действия" - правое выравнивание и фиксированный отступ справа */
+.column-actions {
+    width: auto !important;         /* Или можно поставить фикс. ширину, например 100px */
+    text-align: right !important;   /* Выравниваем текст и иконки по правому краю */
+    padding-right: 15px !important; /* Отступ справа, чтобы не прилипало к границе */
+}
+
+/* То же самое для заголовка <th> столбца "Действия",
+   чтобы текст "Действия" стоял над иконками */
+#result_list th.column-actions {
+    text-align: left !important;
+    padding-right: 15px !important;
+}
