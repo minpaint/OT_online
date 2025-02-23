@@ -9,6 +9,7 @@ class TreeCore {
         this.expandAllBtn = document.querySelector('.expand-all');
         this.collapseAllBtn = document.querySelector('.collapse-all');
         this.searchInput = document.querySelector('.tree-search');
+        this.selectAllCheckbox = document.getElementById('select-all'); // Добавляем чекбокс
 
         // 🔌 Подключаемые модули
         this.plugins = new Map();
@@ -28,6 +29,9 @@ class TreeCore {
 
         // Восстанавливаем состояние
         this._restoreState();
+
+        // Инициализируем чекбоксы
+        this._initCheckboxes();
     }
 
     /**
@@ -46,6 +50,7 @@ class TreeCore {
         if (this.expandAllBtn) {
             this.expandAllBtn.addEventListener('click', () => this.expandAll());
         }
+
         if (this.collapseAllBtn) {
             this.collapseAllBtn.addEventListener('click', () => this.collapseAll());
         }
@@ -118,7 +123,6 @@ class TreeCore {
      * ⬆️ Свернуть все узлы
      */
     collapseAll() {
-        // Собираем все корневые узлы (с data-level="0")
         const rootRows = this.tree.querySelectorAll('tr[data-level="0"]');
         rootRows.forEach(row => {
             const nodeId = row.dataset.nodeId;
@@ -168,6 +172,58 @@ class TreeCore {
             return;
         }
         this.plugins.set(name, new plugin(this));
+    }
+
+    /**
+     * 📋 Инициализация чекбоксов
+     */
+    _initCheckboxes() {
+        if (!this.selectAllCheckbox) return;
+
+        // Обработчик для главного чекбокса
+        this.selectAllCheckbox.addEventListener('change', () => {
+            const checkboxes = this.tree.querySelectorAll('input[name="_selected_action"]');
+            checkboxes.forEach(checkbox => {
+                checkbox.checked = this.selectAllCheckbox.checked;
+            });
+            this._updateSelectedCounter();
+        });
+
+        // Обработчик для отдельных чекбоксов
+        this.tree.addEventListener('change', (e) => {
+            if (e.target.classList.contains('action-select')) {
+                this._updateSelectAllState();
+            }
+        });
+    }
+
+    /**
+     * 🔄 Обновление состояния общего чекбокса
+     */
+    _updateSelectAllState() {
+        if (!this.selectAllCheckbox) return;
+
+        const checkboxes = this.tree.querySelectorAll('input[name="_selected_action"]');
+        const checkedBoxes = this.tree.querySelectorAll('input[name="_selected_action"]:checked');
+
+        this.selectAllCheckbox.checked = checkboxes.length === checkedBoxes.length;
+        this.selectAllCheckbox.indeterminate = checkedBoxes.length > 0 &&
+                                             checkboxes.length !== checkedBoxes.length;
+
+        this._updateSelectedCounter();
+    }
+
+    /**
+     * 📊 Обновление счетчика выбранных элементов
+     */
+    _updateSelectedCounter() {
+        const counter = document.querySelector('.action-counter');
+        if (counter) {
+            const total = this.tree.querySelectorAll('input[name="_selected_action"]').length;
+            const selected = this.tree.querySelectorAll('input[name="_selected_action"]:checked').length;
+            counter.textContent = `${selected} из ${total} выбрано`;
+            counter.style.display = selected > 0 ? 'inline' : 'none';
+        }
     }
 }
 
