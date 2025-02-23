@@ -1,86 +1,103 @@
-/* 🌳 Стили для древовидного отображения */
+/* 🌳 Основные стили дерева */
+.tree-row[data-level="0"] > td:first-child { padding-left: 10px; }
+.tree-row[data-level="1"] > td:first-child { padding-left: 30px; }
+.tree-row[data-level="2"] > td:first-child { padding-left: 50px; }
+.tree-row[data-level="3"] > td:first-child { padding-left: 70px; }
 
-/* Основные стили дерева */
-.tree-controls {
-    margin-bottom: 15px;
-    padding: 10px;
-    background: #f8f8f8;
-    border-radius: 4px;
-}
-
-.tree-btn {
-    padding: 5px 10px;
-    margin-right: 10px;
-    background: #417690;
-    color: white;
-    border: none;
-    border-radius: 4px;
-    cursor: pointer;
-}
-
-.tree-btn:hover {
-    background: #2b5172;
-}
-
-.tree-search {
-    padding: 5px 10px;
-    border: 1px solid #ddd;
-    border-radius: 4px;
-    width: 200px;
-}
-
-/* Стили для строк дерева */
-tr[data-level] td.field-name {
-    position: relative;
-}
-
-tr[data-level="0"] td.field-name { padding-left: 15px; }
-tr[data-level="1"] td.field-name { padding-left: 35px; }
-tr[data-level="2"] td.field-name { padding-left: 55px; }
-tr[data-level="3"] td.field-name { padding-left: 75px; }
-
-/* Кнопки сворачивания/разворачивания */
+/* 🔘 Кнопка разворачивания */
 .toggle-btn {
-    position: absolute;
-    left: 5px;
-    top: 50%;
-    transform: translateY(-50%);
-    width: 20px;
-    height: 20px;
-    line-height: 18px;
-    text-align: center;
+    display: inline-block;
+    margin-right: 5px;
+    padding: 2px 6px;
     border: 1px solid #ddd;
     background: white;
     border-radius: 3px;
     cursor: pointer;
+    font-size: 14px;
+    transition: all 0.2s ease;
 }
 
-/* Иконки */
+.toggle-btn:hover {
+    background: #f5f5f5;
+    border-color: #ccc;
+}
+
+/* 🎯 Контролы дерева */
+.tree-controls {
+    padding: 8px;
+    background: #f8f8f8;
+    border-bottom: 1px solid #eee;
+    display: flex;
+    align-items: center;
+    gap: 10px;
+}
+
+.tree-btn {
+    padding: 6px 12px;
+    background: white;
+    border: 1px solid #ddd;
+    border-radius: 4px;
+    cursor: pointer;
+    font-size: 13px;
+    transition: all 0.2s ease;
+}
+
+.tree-btn:hover {
+    background: #f5f5f5;
+    border-color: #ccc;
+}
+
+/* 🔍 Поиск */
+.tree-search-container {
+    flex: 1;
+    max-width: 300px;
+}
+
+.tree-search {
+    width: 100%;
+    padding: 6px 12px;
+    border: 1px solid #ddd;
+    border-radius: 4px;
+    font-size: 13px;
+}
+
+.tree-search:focus {
+    outline: none;
+    border-color: #999;
+    box-shadow: 0 0 3px rgba(0,0,0,0.1);
+}
+
+/* Скрытые элементы */
+.tree-row-hidden {
+    display: none !important;
+}
+
+/* 🎨 Результаты поиска */
+.hidden-by-search {
+    display: none !important;
+}
+
+.highlight-search td {
+    background-color: #fff3cd !important;
+}
+
+/* 🎯 Иконки */
 .tree-icon {
     margin-right: 5px;
-    font-size: 16px;
+    opacity: 0.7;
 }
 
-.role-icon {
-    margin-right: 5px;
-    font-size: 14px;
-}
-
-/* Анимация для сворачивания/разворачивания */
-tr.collapsed {
-    display: none;
-}
-
-/* Стили при наведении */
+/* ⭐ Hover-эффекты */
 tr:hover td {
     background-color: #f5f5f5;
 }
 
-/* Стили для поиска */
-tr.hidden-by-search {
-    display: none;
+.tree-action-btn {
+    margin-right: 5px;
+    opacity: 0.7;
+    transition: opacity 0.2s ease;
 }
 
-tr.highlight-search td {
-    background-color: #fff3cd;
+.tree-action-btn:hover {
+    opacity: 1;
 }

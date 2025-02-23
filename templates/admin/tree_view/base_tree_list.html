@@ -1,5 +1,5 @@
 {% extends "admin/change_list.html" %}
-{% load i18n static admin_urls admin_list %}
+{% load i18n static %}
 
 {% block extrastyle %}
 {{ block.super }}
@@ -8,42 +8,82 @@
 
 {% block result_list %}
 <div class="module filtered" id="changelist">
-    <div class="changelist-form-container">
-        <div class="results">
-            <div class="tree-controls">
-                <button type="button" class="tree-btn expand-all">{% trans "Развернуть все" %}</button>
-                <button type="button" class="tree-btn collapse-all">{% trans "Свернуть все" %}</button>
-                <input type="text" class="tree-search" placeholder="{% trans 'Поиск...' %}">
-            </div>
+    {# 🎯 Панель управления деревом #}
+    <div class="tree-controls">
+        {% if tree_settings.permissions.can_expand %}
+        <button type="button" class="tree-btn expand-all" title="{% trans 'Развернуть все узлы' %}">
+            <span class="tree-btn-icon">↓</span> {% trans "Развернуть все" %}
+        </button>
+        <button type="button" class="tree-btn collapse-all" title="{% trans 'Свернуть все узлы' %}">
+            <span class="tree-btn-icon">↑</span> {% trans "Свернуть все" %}
+        </button>
+        {% endif %}
 
-            {% if tree %}
-            <table id="result_list">
-                <thead>
-                    <tr>
-                        <th scope="col" class="sortable column-name">
-                            <div class="text">{% trans "Наименование" %}</div>
-                            <div class="clear"></div>
-                        </th>
-                        <th scope="col" class="sortable column-roles">
-                            <div class="text">{% trans "Роли" %}</div>
-                            <div class="clear"></div>
-                        </th>
-                    </tr>
-                </thead>
-                <tbody>
-                    {% block tree_body %}{% endblock %}
-                </tbody>
-            </table>
-            {% else %}
-                <p>{% trans "Нет данных для отображения." %}</p>
-            {% endif %}
+        {% if tree_settings.permissions.can_search %}
+        <div class="tree-search-container">
+            <input type="text"
+                   class="tree-search"
+                   placeholder="{% trans '🔍 Поиск...' %}"
+                   data-search-fields="{{ tree_settings.search_fields|default:'name' }}"
+            >
         </div>
+        {% endif %}
+    </div>
+
+    {# 📋 Таблица с деревом #}
+    <div class="results">
+        <table id="result_list">
+            <thead>
+                <tr>
+                    {# Основное поле с названием #}
+                    <th scope="col" class="column-primary">
+                        <div class="text">{% trans "Наименование" %}</div>
+                    </th>
+
+                    {# Дополнительные колонки из настроек #}
+                    {% for column in tree_settings.columns|default:[] %}
+                    <th scope="col" class="column-{{ column.name }}">
+                        <div class="text">{{ column.title }}</div>
+                    </th>
+                    {% endfor %}
+
+                    {# Колонка с действиями #}
+                    <th scope="col" class="column-actions">
+                        <div class="text">{% trans "Действия" %}</div>
+                    </th>
+                </tr>
+            </thead>
+            <tbody>
+                {# 🌳 Рекурсивное построение дерева #}
+                {% include "admin/tree_components/tree_node.html" with nodes=tree.root level=0 %}
+            </tbody>
+        </table>
     </div>
 </div>
 {% endblock %}
 
 {% block extrahead %}
 {{ block.super }}
-<script src="{% static 'admin/js/tree_search.js' %}"></script>
-<script src="{% static 'admin/js/tree_view.js' %}"></script>
+{# 📦 Подключение JavaScript #}
+<script src="{% static 'admin/js/tree_core.js' %}"></script>
+<script src="{% static 'admin/js/tree_plugins/search.js' %}"></script>
+
+{# ⚙️ Инициализация дерева #}
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+    // Передаем настройки из бэкенда
+    window.treeSettings = {{ tree_settings|safe }};
+
+    // Инициализируем дерево
+    const tree = new TreeCore({
+        selector: '#result_list',
+        settings: window.treeSettings
+    });
+
+    // Регистрируем плагины
+    {% if tree_settings.permissions.can_search %}
+    tree.registerPlugin('search', TreeSearchPlugin);
+    {% endif %}
+});
+</script>
 {% endblock %}

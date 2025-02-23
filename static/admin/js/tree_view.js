@@ -1,149 +1,177 @@
-document.addEventListener('DOMContentLoaded', function() {
-    class TreeView {
-        constructor() {
-            // Инициализация основных элементов
-            this.treeTable = document.getElementById('result_list');
-            if (!this.treeTable) return;
+/**
+ * 🌳 Ядро древовидного списка
+ * Управляет деревом и подключаемыми модулями
+ */
+class TreeCore {
+    constructor() {
+        // 🎯 Основные элементы
+        this.tree = document.getElementById('result_list');
+        this.expandAllBtn = document.querySelector('.expand-all');
+        this.collapseAllBtn = document.querySelector('.collapse-all');
+        this.searchInput = document.querySelector('.tree-search');
 
-            // Поиск элементов управления
-            this.expandAllBtn = document.querySelector('.expand-all');
-            this.collapseAllBtn = document.querySelector('.collapse-all');
+        // 🔌 Подключаемые модули
+        this.plugins = new Map();
 
-            // Инициализация поиска
-            this.search = new TreeSearch(this.treeTable);
+        // Инициализация
+        this.init();
+    }
 
-            // Привязка обработчиков событий
-            this.bindEvents();
+    /**
+     * 🚀 Инициализация дерева
+     */
+    init() {
+        if (!this.tree) return;
 
-            // Восстановление состояния дерева
-            this.restoreTreeState();
-        }
+        // Привязываем обработчики событий
+        this._bindEvents();
 
-        bindEvents() {
-            // Обработчик кликов по кнопкам сворачивания/разворачивания
-            this.treeTable.addEventListener('click', (e) => {
-                if (e.target.classList.contains('toggle-btn')) {
-                    const row = e.target.closest('tr');
-                    const nodeId = row.getAttribute('data-node-id');
-                    if (nodeId) {
-                        this.toggleNode(e.target, nodeId);
-                    }
-                }
-            });
+        // Восстанавливаем состояние
+        this._restoreState();
+    }
 
-            // Обработчики для кнопок "Развернуть/Свернуть все"
-            if (this.expandAllBtn) {
-                this.expandAllBtn.addEventListener('click', () => this.expandAll());
+    /**
+     * 📌 Привязка обработчиков событий
+     */
+    _bindEvents() {
+        // Делегирование кликов на дереве
+        this.tree.addEventListener('click', (e) => {
+            // Клик по кнопке разворачивания
+            if (e.target.classList.contains('toggle-btn')) {
+                this._handleToggleClick(e);
             }
-            if (this.collapseAllBtn) {
-                this.collapseAllBtn.addEventListener('click', () => this.collapseAll());
-            }
+        });
+
+        // Кнопки управления
+        if (this.expandAllBtn) {
+            this.expandAllBtn.addEventListener('click', () => this.expandAll());
         }
-
-        toggleNode(button, nodeId) {
-            const childRows = this.getChildRows(nodeId);
-            const isExpanded = button.getAttribute('data-state') === 'expanded';
-
-            // Обновляем состояние кнопки
-            button.setAttribute('data-state', isExpanded ? 'collapsed' : 'expanded');
-            button.textContent = isExpanded ? '[+]' : '[-]';
-
-            // Обновляем видимость дочерних элементов
-            childRows.forEach(row => {
-                row.classList.toggle('tree-row-hidden', isExpanded);
-
-                // Если сворачиваем узел, сворачиваем все дочерние узлы
-                if (isExpanded) {
-                    const childButton = row.querySelector('.toggle-btn');
-                    if (childButton) {
-                        childButton.setAttribute('data-state', 'collapsed');
-                        childButton.textContent = '[+]';
-                        const childId = row.getAttribute('data-node-id');
-                        if (childId) {
-                            this.getChildRows(childId).forEach(childRow => {
-                                childRow.classList.add('tree-row-hidden');
-                            });
-                        }
-                    }
-                }
-            });
-
-            // Сохраняем состояние
-            this.saveTreeState();
-        }
-
-        getChildRows(parentId) {
-            return Array.from(this.treeTable.querySelectorAll(`tr[data-parent-id="${parentId}"]`));
-        }
-
-        expandAll() {
-            const buttons = this.treeTable.querySelectorAll('.toggle-btn[data-state="collapsed"]');
-            buttons.forEach(button => {
-                const row = button.closest('tr');
-                const nodeId = row.getAttribute('data-node-id');
-                if (nodeId) {
-                    this.toggleNode(button, nodeId);
-                }
-            });
-        }
-
-        collapseAll() {
-            const buttons = this.treeTable.querySelectorAll('.toggle-btn[data-state="expanded"]');
-            Array.from(buttons).reverse().forEach(button => {
-                const row = button.closest('tr');
-                const nodeId = row.getAttribute('data-node-id');
-                if (nodeId) {
-                    this.toggleNode(button, nodeId);
-                }
-            });
-        }
-
-        updateToggleButtons() {
-            const rows = this.treeTable.querySelectorAll('tbody tr');
-            rows.forEach(row => {
-                const button = row.querySelector('.toggle-btn');
-                const nodeId = row.getAttribute('data-node-id');
-                if (button && nodeId) {
-                    const hasVisibleChild = this.getChildRows(nodeId).some(
-                        child => !child.classList.contains('tree-row-hidden')
-                    );
-                    button.style.display = hasVisibleChild ? '' : 'none';
-                }
-            });
-        }
-
-        saveTreeState() {
-            const state = {};
-            this.treeTable.querySelectorAll('.toggle-btn').forEach(button => {
-                const row = button.closest('tr');
-                const nodeId = row.getAttribute('data-node-id');
-                if (nodeId) {
-                    state[nodeId] = button.getAttribute('data-state');
-                }
-            });
-            localStorage.setItem('treeViewState', JSON.stringify(state));
-        }
-
-        restoreTreeState() {
-            try {
-                const state = JSON.parse(localStorage.getItem('treeViewState'));
-                if (state) {
-                    this.treeTable.querySelectorAll('.toggle-btn').forEach(button => {
-                        const row = button.closest('tr');
-                        const nodeId = row.getAttribute('data-node-id');
-                        if (nodeId && state[nodeId]) {
-                            if (state[nodeId] !== button.getAttribute('data-state')) {
-                                this.toggleNode(button, nodeId);
-                            }
-                        }
-                    });
-                }
-            } catch (e) {
-                console.error('Error restoring tree state:', e);
-            }
+        if (this.collapseAllBtn) {
+            this.collapseAllBtn.addEventListener('click', () => this.collapseAll());
         }
     }
 
-    // Инициализация при загрузке страницы
-    new TreeView();
+    /**
+     * 🔄 Обработка клика по кнопке разворачивания
+     */
+    _handleToggleClick(event) {
+        const button = event.target;
+        const row = button.closest('tr');
+        const nodeId = row.dataset.nodeId;
+
+        if (!nodeId) return;
+
+        const isExpanded = button.getAttribute('data-state') === 'expanded';
+        this.toggleNode(nodeId, !isExpanded);
+    }
+
+    /**
+     * 📖 Развернуть/свернуть узел
+     */
+    toggleNode(nodeId, expand = true) {
+        const row = this.tree.querySelector(`tr[data-node-id="${nodeId}"]`);
+        if (!row) return;
+
+        const button = row.querySelector('.toggle-btn');
+        if (!button) return;
+
+        // Обновляем состояние кнопки
+        button.setAttribute('data-state', expand ? 'expanded' : 'collapsed');
+        button.textContent = expand ? '[-]' : '[+]';
+
+        // Обновляем видимость дочерних элементов
+        const childRows = this.tree.querySelectorAll(`tr[data-parent-id="${nodeId}"]`);
+        childRows.forEach(childRow => {
+            childRow.classList.toggle('tree-row-hidden', !expand);
+
+            // Если сворачиваем родителя, сворачиваем и дочерние узлы
+            if (!expand) {
+                const childButton = childRow.querySelector('.toggle-btn');
+                if (childButton) {
+                    const childId = childRow.dataset.nodeId;
+                    if (childId) {
+                        this.toggleNode(childId, false);
+                    }
+                }
+            }
+        });
+
+        // Сохраняем состояние
+        this._saveState();
+    }
+
+    /**
+     * ⬇️ Развернуть все узлы
+     */
+    expandAll() {
+        const buttons = this.tree.querySelectorAll('.toggle-btn[data-state="collapsed"]');
+        buttons.forEach(button => {
+            const row = button.closest('tr');
+            const nodeId = row.dataset.nodeId;
+            if (nodeId) {
+                this.toggleNode(nodeId, true);
+            }
+        });
+    }
+
+    /**
+     * ⬆️ Свернуть все узлы
+     */
+    collapseAll() {
+        // Собираем все корневые узлы (с data-level="0")
+        const rootRows = this.tree.querySelectorAll('tr[data-level="0"]');
+        rootRows.forEach(row => {
+            const nodeId = row.dataset.nodeId;
+            if (nodeId) {
+                this.toggleNode(nodeId, false);
+            }
+        });
+    }
+
+    /**
+     * 💾 Сохранение состояния дерева
+     */
+    _saveState() {
+        const state = {};
+        this.tree.querySelectorAll('.toggle-btn').forEach(button => {
+            const row = button.closest('tr');
+            const nodeId = row.dataset.nodeId;
+            if (nodeId) {
+                state[nodeId] = button.getAttribute('data-state');
+            }
+        });
+        localStorage.setItem('treeViewState', JSON.stringify(state));
+    }
+
+    /**
+     * 🔄 Восстановление состояния дерева
+     */
+    _restoreState() {
+        try {
+            const state = JSON.parse(localStorage.getItem('treeViewState'));
+            if (state) {
+                Object.entries(state).forEach(([nodeId, isExpanded]) => {
+                    this.toggleNode(nodeId, isExpanded === 'expanded');
+                });
+            }
+        } catch (e) {
+            console.error('Error restoring tree state:', e);
+        }
+    }
+
+    /**
+     * 🔌 Регистрация плагина
+     */
+    registerPlugin(name, plugin) {
+        if (this.plugins.has(name)) {
+            console.warn(`Plugin ${name} is already registered`);
+            return;
+        }
+        this.plugins.set(name, new plugin(this));
+    }
+}
+
+// Автоматическая инициализация при загрузке страницы
+document.addEventListener('DOMContentLoaded', () => {
+    window.treeCore = new TreeCore();
 });

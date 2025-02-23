@@ -1,119 +1,101 @@
+"""
+🌳 Миксин для древовидного отображения в админке
+"""
+
 from django.contrib import admin
 from django.db.models import Q
-from typing import Dict, Any, List
+from typing import Dict, Any
 
 
 class TreeViewMixin:
-    """
-    🌳 Миксин для древовидного отображения в админке
-    """
+    change_list_template = "admin/directory/position/change_list_tree.html"
+
+    tree_settings = {
+        'icons': {
+            'organization': '🏢',
+            'subdivision': '🏭',
+            'department': '📂',
+            'position': '👔',
+            'no_subdivision': '🏗️',
+            'no_department': '📁'
+        },
+        'fields': {
+            'name_field': 'position_name',
+            'organization_field': 'organization',
+            'subdivision_field': 'subdivision',
+            'department_field': 'department',
+        },
+        'display_rules': {
+            'hide_empty_branches': True,
+            'hide_no_subdivision_no_department': True
+        }
+    }
 
     def get_tree_data(self, request) -> Dict[str, Any]:
         """
         📊 Формирование древовидной структуры данных
         """
-        # Получаем queryset с учетом прав доступа
         queryset = self.get_queryset(request)
-
-        # Оптимизация запросов
         queryset = self._optimize_queryset(queryset)
 
-        # Структура дерева
         tree = {}
-
-        # Получаем настройки полей
         fields = self.tree_settings['fields']
-        org_field = fields['organization_field']
-        sub_field = fields['subdivision_field']
-        dept_field = fields['department_field']
 
-        # Получаем все организации
-        organizations = set(getattr(obj, org_field) for obj in queryset if getattr(obj, org_field))
+        for obj in queryset:
+            org = getattr(obj, fields['organization_field'])
+            if not org:
+                continue
 
-        # Формируем структуру дерева
-        for org in organizations:
+            # Инициализируем структуру для организации
             if org not in tree:
                 tree[org] = {
+                    'name': org.short_name_ru,  # используем short_name_ru для организации
                     'items': [],
                     'subdivisions': {}
                 }
 
-            # Фильтруем объекты для текущей организации
-            org_objects = [obj for obj in queryset if getattr(obj, org_field) == org]
+            sub = getattr(obj, fields['subdivision_field'])
+            dept = getattr(obj, fields['department_field'])
 
-            for obj in org_objects:
-                sub = getattr(obj, sub_field)
-                dept = getattr(obj, dept_field)
+            # Создаем данные для позиции
+            position_data = {
+                'name': obj.position_name,
+                'object': obj,
+                'pk': obj.pk  # Важно! Добавляем pk
+            }
 
-                # Объекты без подразделения и отдела
-                if not sub and not dept:
-                    if not self.tree_settings['display_rules']['hide_no_subdivision_no_department']:
-                        tree[org]['items'].append(obj)
-                    continue
+            # Если нет подразделения
+            if not sub:
+                tree[org]['items'].append(position_data)
+                continue
 
-                # Объекты с подразделением
-                if sub:
-                    if sub not in tree[org]['subdivisions']:
-                        tree[org]['subdivisions'][sub] = {
-                            'items': [],
-                            'departments': {}
-                        }
+            # Инициализируем структуру для подразделения
+            if sub not in tree[org]['subdivisions']:
+                tree[org]['subdivisions'][sub] = {
+                    'name': sub.name,
+                    'items': [],
+                    'departments': {}
+                }
 
-                    if dept:
-                        # Объекты с отделом
-                        if dept not in tree[org]['subdivisions'][sub]['departments']:
-                            tree[org]['subdivisions'][sub]['departments'][dept] = []
-                        tree[org]['subdivisions'][sub]['departments'][dept].append(obj)
-                    else:
-                        # Объекты только с подразделением
-                        tree[org]['subdivisions'][sub]['items'].append(obj)
-                else:
-                    # Объекты без подразделения, но с отделом
-                    if 'no_subdivision' not in tree[org]['subdivisions']:
-                        tree[org]['subdivisions']['no_subdivision'] = {
-                            'items': [],
-                            'departments': {}
-                        }
-                    if dept:
-                        if dept not in tree[org]['subdivisions']['no_subdivision']['departments']:
-                            tree[org]['subdivisions']['no_subdivision']['departments'][dept] = []
-                        tree[org]['subdivisions']['no_subdivision']['departments'][dept].append(obj)
+            # Если нет отдела
+            if not dept:
+                tree[org]['subdivisions'][sub]['items'].append(position_data)
+                continue
 
-        # Удаляем пустые ветки если включена соответствующая настройка
-        if self.tree_settings['display_rules']['hide_empty_branches']:
-            tree = self._remove_empty_branches(tree)
+            # Добавляем должность в отдел
+            if dept not in tree[org]['subdivisions'][sub]['departments']:
+                tree[org]['subdivisions'][sub]['departments'][dept] = {
+                    'name': dept.name,
+                    'items': []
+                }
+
+            tree[org]['subdivisions'][sub]['departments'][dept]['items'].append(position_data)
 
         return tree
 
-    def _remove_empty_branches(self, tree):
-        """
-        🗑️ Удаление пустых веток дерева
-        """
-        result = {}
-        for org, org_data in tree.items():
-            # Проверяем есть ли данные в организации
-            has_items = bool(org_data['items'])
-            has_subdivisions = False
-
-            # Проверяем подразделения
-            subdivisions = {}
-            for sub, sub_data in org_data['subdivisions'].items():
-                # Проверяем есть ли данные в подразделении
-                if sub_data['items'] or sub_data['departments']:
-                    has_subdivisions = True
-                    subdivisions[sub] = sub_data
-
-            if has_items or has_subdivisions:
-                result[org] = {
-                    'items': org_data['items'],
-                    'subdivisions': subdivisions
-                }
-
-        return result
-
     def _optimize_queryset(self, queryset):
         """
-        🚀 Оптимизация запросов через select_related
+        🚀 Оптимизация запросов
         """
         fields = self.tree_settings['fields']
         related_fields = [
@@ -125,11 +107,13 @@ class TreeViewMixin:
 
     def changelist_view(self, request, extra_context=None):
         """
-        👁️ Переопределение отображения списка
+        👁️ Отображение списка
         """
         extra_context = extra_context or {}
+        tree = self.get_tree_data(request)
+
         extra_context.update({
-            'tree': self.get_tree_data(request),
+            'tree': tree,
             'tree_settings': self.tree_settings
         })
         return super().changelist_view(request, extra_context)

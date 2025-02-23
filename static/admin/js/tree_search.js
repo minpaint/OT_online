@@ -1,96 +1,147 @@
-// 🔍 Расширенный поиск по дереву
-
+/**
+ * 🔍 Улучшенный поиск по дереву
+ */
 class TreeSearch {
     constructor(treeElement) {
         this.tree = treeElement;
         this.searchCache = new Map();
         this.debounceTimer = null;
+        this.lastSearchTerm = '';
     }
 
-    // Поиск с подсветкой совпадений
     search(searchText) {
         if (this.debounceTimer) {
             clearTimeout(this.debounceTimer);
         }
 
         this.debounceTimer = setTimeout(() => {
-            this._performSearch(searchText.toLowerCase());
-        }, 300);
+            this._performSearch(searchText.toLowerCase().trim());
+        }, 200);
     }
 
-    // Выполнение поиска
     _performSearch(searchText) {
         if (!searchText) {
             this._resetSearch();
             return;
         }
 
-        this.tree.querySelectorAll('tr').forEach(row => {
-            const nameCell = row.querySelector('.field-name');
-            if (!nameCell) return;
-
-            const text = nameCell.textContent.toLowerCase();
-            const cacheKey = `${text}_${searchText}`;
-
-            let isMatch = this.searchCache.get(cacheKey);
-            if (isMatch === undefined) {
-                isMatch = this._matchText(text, searchText);
-                this.searchCache.set(cacheKey, isMatch);
-            }
-
-            this._updateRowVisibility(row, isMatch, searchText);
-        });
-    }
-
-    // Сброс поиска
-    _resetSearch() {
-        this.tree.querySelectorAll('tr').forEach(row => {
-            row.classList.remove('hidden-by-search', 'highlight-search');
-        });
-    }
-
-    // Проверка совпадения текста
-    _matchText(text, searchText) {
-        return text.includes(searchText);
-    }
-
-    // Обновление видимости строки
-    _updateRowVisibility(row, isMatch, searchText) {
-        row.classList.toggle('hidden-by-search', !isMatch);
-        row.classList.toggle('highlight-search', isMatch);
-
-        if (isMatch) {
-            this._showParents(row);
+        if (this.lastSearchTerm === searchText) {
+            return;
         }
+
+        this.lastSearchTerm = searchText;
+
+        // Сначала скрываем все строки
+        this.tree.querySelectorAll('tr').forEach(row => {
+            row.classList.add('hidden-by-search');
+            row.classList.remove('highlight-search');
+        });
+
+        // Ищем совпадения
+        this.tree.querySelectorAll('tr').forEach(row => {
+            const searchableContent = this._getSearchableContent(row);
+            const hasMatch = searchableContent.includes(searchText);
+
+            if (hasMatch) {
+                this._showMatchedRow(row);
+            }
+        });
     }
 
-    // Показ родительских узлов
+    _getSearchableContent(row) {
+        const searchableParts = [];
+
+        // Ищем в названии
+        const nameCell = row.querySelector('.field-name');
+        if (nameCell) {
+            searchableParts.push(nameCell.textContent);
+        }
+
+        // Ищем в ролях
+        const rolesCell = row.querySelector('.field-roles');
+        if (rolesCell) {
+            // Получаем текст из title атрибутов
+            rolesCell.querySelectorAll('[title]').forEach(el => {
+                searchableParts.push(el.getAttribute('title'));
+            });
+            searchableParts.push(rolesCell.textContent);
+        }
+
+        return searchableParts.join(' ').toLowerCase();
+    }
+
+    _showMatchedRow(row) {
+        // Показываем найденную строку
+        row.classList.remove('hidden-by-search');
+        row.classList.add('highlight-search');
+
+        // Показываем и разворачиваем родителей
+        this._showParents(row);
+    }
+
     _showParents(row) {
         let parentId = row.dataset.parentId;
+
         while (parentId) {
             const parentRow = this.tree.querySelector(`tr[data-node-id="${parentId}"]`);
             if (!parentRow) break;
 
+            // Показываем родителя
             parentRow.classList.remove('hidden-by-search');
+
+            // Разворачиваем узел
             const toggleBtn = parentRow.querySelector('.toggle-btn');
-            if (toggleBtn && toggleBtn.dataset.state === 'collapsed') {
-                toggleBtn.click();
+            if (toggleBtn) {
+                if (toggleBtn.getAttribute('data-state') === 'collapsed') {
+                    toggleBtn.setAttribute('data-state', 'expanded');
+                    toggleBtn.textContent = '[-]';
+
+                    // Показываем дочерние элементы
+                    const nodeId = parentRow.dataset.nodeId;
+                    if (nodeId) {
+                        this.tree.querySelectorAll(`tr[data-parent-id="${nodeId}"]`)
+                            .forEach(child => {
+                                child.classList.remove('tree-row-hidden');
+                            });
+                    }
+                }
             }
 
             parentId = parentRow.dataset.parentId;
         }
     }
+
+    _resetSearch() {
+        if (this.lastSearchTerm === '') return;
+
+        this.lastSearchTerm = '';
+        this.searchCache.clear();
+
+        this.tree.querySelectorAll('tr').forEach(row => {
+            // Убираем классы поиска
+            row.classList.remove('hidden-by-search', 'highlight-search');
+        });
+    }
 }
 
 // Инициализация поиска
-document.addEventListener('DOMContentLoaded', function() {
-    const tree = document.querySelector('#result_list tbody');
+document.addEventListener('DOMContentLoaded', () => {
+    const treeTable = document.getElementById('result_list');
     const searchInput = document.querySelector('.tree-search');
-    
-    if (tree && searchInput) {
-        const treeSearch = new TreeSearch(tree);
+
+    if (treeTable && searchInput) {
+        const treeSearch = new TreeSearch(treeTable);
+
         searchInput.addEventListener('input', (e) => {
             treeSearch.search(e.target.value);
+        });
+
+        // Очистка поиска по Escape
+        searchInput.addEventListener('keydown', (e) => {
+            if (e.key === 'Escape') {
+                searchInput.value = '';
+                treeSearch.search('');
+            }
         });
     }
 });
