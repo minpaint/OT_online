@@ -6,6 +6,10 @@
 
 from django.contrib import admin
 from django.contrib.admin.widgets import FilteredSelectMultiple
+from django.utils.translation import ngettext
+from django.contrib import messages
+from django.db.models import QuerySet
+
 from directory.models import Position
 from directory.forms.position import PositionForm
 from directory.admin.mixins.tree_view import TreeViewMixin
@@ -14,10 +18,8 @@ from directory.admin.mixins.tree_view import TreeViewMixin
 @admin.register(Position)
 class PositionAdmin(TreeViewMixin, admin.ModelAdmin):
     form = PositionForm
-
     # Указываем путь к шаблону для древовидного отображения
     change_list_template = "admin/directory/position/change_list_tree.html"
-
     # Определяем порядок полей в форме
     fieldsets = (
         ('Основная информация', {
@@ -44,18 +46,14 @@ class PositionAdmin(TreeViewMixin, admin.ModelAdmin):
             'classes': ('collapse',)
         }),
     )
-
     # Фильтры для боковой панели
     list_filter = ['organization', 'subdivision', 'department']
-
     # Очищаем стандартное отображение столбцов
     list_display = []
-
     search_fields = [
         'position_name',
         'safety_instructions_numbers'
     ]
-
     # Настройки дерева
     tree_settings = {
         'icons': {
@@ -78,7 +76,6 @@ class PositionAdmin(TreeViewMixin, admin.ModelAdmin):
             'hide_no_subdivision_no_department': False
         }
     }
-
     class Media:
         css = {
             'all': ('admin/css/widgets.css',)
@@ -135,32 +132,26 @@ class PositionAdmin(TreeViewMixin, admin.ModelAdmin):
             def __init__(self, *args, **kwargs):
                 self.user = request.user
                 super().__init__(*args, **kwargs)
-
                 # Настраиваем labels и help_text для полей
                 self.fields['documents'].label = "ДОСТУПНЫЕ ДОКУМЕНТЫ"
                 self.fields['equipment'].label = "ДОСТУПНОЕ ОБОРУДОВАНИЕ"
-
                 self.fields['documents'].help_text = "Удерживайте 'Control' (или 'Command' на Mac), чтобы выбрать несколько значений."
                 self.fields['equipment'].help_text = "Удерживайте 'Control' (или 'Command' на Mac), чтобы выбрать несколько значений."
-
                 # Фильтруем документы и оборудование по организациям
                 if hasattr(request.user, 'profile'):
                     allowed_orgs = request.user.profile.organizations.all()
-
                     # Базовые queryset
                     docs_qs = self.fields['documents'].queryset
                     equip_qs = self.fields['equipment'].queryset
-
                     # Если редактируем существующий объект
                     if obj:
                         # Фильтруем по организации объекта
                         docs_qs = docs_qs.filter(organization=obj.organization)
                         equip_qs = equip_qs.filter(organization=obj.organization)
-
                     # Фильтруем по доступным организациям
                     docs_qs = docs_qs.filter(organization__in=allowed_orgs).distinct().order_by('name')
-                    equip_qs = equip_qs.filter(organization__in=allowed_orgs).distinct().order_by('equipment_name')
-
+                    equip_qs = equip_qs.filter(
+                        organization__in=allowed_orgs).distinct().order_by('equipment_name')
                     self.fields['documents'].queryset = docs_qs
                     self.fields['equipment'].queryset = equip_qs
 
@@ -222,3 +213,21 @@ class PositionAdmin(TreeViewMixin, admin.ModelAdmin):
         if hasattr(request.user, 'profile'):
             return request.user.profile.organizations.exists()
         return False
+
+    @admin.action(description='Удалить выбранные должности')
+    def delete_selected_positions(self, request, queryset):
+        """
+        🗑️ Action для удаления выбранных должностей.
+        """
+        deleted_count = queryset.delete()[0]
+        self.message_user(
+            request,
+            ngettext(
+                '%d должность была успешно удалена.',
+                '%d должности были успешно удалены.',
+                deleted_count,
+            ) % deleted_count,
+            messages.SUCCESS,
+        )
+
+    actions = ['delete_selected_positions']

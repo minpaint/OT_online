@@ -32,7 +32,7 @@
     gap: 10px;
 }
 
-.tree-btn {
+.tree-controls .tree-btn {
     padding: 6px 12px;
     background: white;
     border: 1px solid #ddd;
@@ -42,7 +42,7 @@
     transition: all 0.2s ease;
 }
 
-.tree-btn:hover {
+.tree-controls .tree-btn:hover {
     background: #f5f5f5;
     border-color: #ccc;
 }
@@ -100,4 +100,21 @@ tr:hover td {
 
 .tree-action-btn:hover {
     opacity: 1;
+}
+
+/* Стили для кнопки "Добавить должность" */
+.addlink {
+    padding: 6px 12px;
+    background: #4CAF50; /* Зеленый цвет */
+    color: white;
+    border: none;
+    border-radius: 4px;
+    cursor: pointer;
+    font-size: 13px;
+    transition: all 0.3s ease;
+    text-decoration: none;
+}
+
+.addlink:hover {
+    background: #367c39; /* Более темный зеленый цвет */
 }

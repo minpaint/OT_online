@@ -1,30 +1,42 @@
 /**
- * 🔍 Улучшенный поиск по дереву
+ * 🔍 Поиск по дереву
+ * Показывает только найденные позиции со структурным путём
  */
 class TreeSearch {
     constructor(treeElement) {
+        // 🌳 Элемент дерева
         this.tree = treeElement;
+        // 💾 Кэш для хранения результатов поиска
         this.searchCache = new Map();
+        // ⏲️ Таймер для debounce
         this.debounceTimer = null;
+        // 📝 Последний поисковый запрос
         this.lastSearchTerm = '';
     }
 
+    /**
+     * 🔎 Поиск с debounce
+     */
     search(searchText) {
         if (this.debounceTimer) {
             clearTimeout(this.debounceTimer);
         }
-
         this.debounceTimer = setTimeout(() => {
             this._performSearch(searchText.toLowerCase().trim());
-        }, 200);
+        }, 300);
     }
 
+    /**
+     * 🎯 Выполнение поиска
+     */
     _performSearch(searchText) {
+        // Если поисковый запрос пустой - сбрасываем поиск
         if (!searchText) {
             this._resetSearch();
             return;
         }
 
+        // Если поисковый запрос не изменился - пропускаем
         if (this.lastSearchTerm === searchText) {
             return;
         }
@@ -37,94 +49,85 @@ class TreeSearch {
             row.classList.remove('highlight-search');
         });
 
-        // Ищем совпадения
+        // Ищем совпадения только среди должностей
         this.tree.querySelectorAll('tr').forEach(row => {
-            const searchableContent = this._getSearchableContent(row);
-            const hasMatch = searchableContent.includes(searchText);
+            // Проверяем, что это строка с должностью (имеет checkbox)
+            const hasCheckbox = row.querySelector('.action-select');
+            if (!hasCheckbox) return;
 
-            if (hasMatch) {
-                this._showMatchedRow(row);
+            const nameCell = row.querySelector('.field-name');
+            if (!nameCell) return;
+
+            const text = nameCell.textContent.toLowerCase();
+            if (text.includes(searchText)) {
+                // Показываем только строку с должностью
+                row.classList.remove('hidden-by-search');
+                row.classList.add('highlight-search');
+
+                // Добавляем структурный путь, если его еще нет
+                if (!row.querySelector('.structure-path')) {
+                    const structurePath = this._getStructurePath(row);
+                    const pathSpan = document.createElement('span');
+                    pathSpan.className = 'structure-path';
+                    pathSpan.style.color = '#666';
+                    pathSpan.style.marginLeft = '5px';
+                    pathSpan.textContent = `(${structurePath})`;
+                    nameCell.appendChild(pathSpan);
+                }
             }
         });
     }
 
-    _getSearchableContent(row) {
-        const searchableParts = [];
+    /**
+     * 📍 Получение структурного пути
+     */
+    _getStructurePath(row) {
+        const path = [];
+        let currentRow = row;
 
-        // Ищем в названии
-        const nameCell = row.querySelector('.field-name');
-        if (nameCell) {
-            searchableParts.push(nameCell.textContent);
-        }
+        while (currentRow) {
+            const parentId = currentRow.dataset.parentId;
+            if (!parentId) break;
 
-        // Ищем в ролях
-        const rolesCell = row.querySelector('.field-roles');
-        if (rolesCell) {
-            // Получаем текст из title атрибутов
-            rolesCell.querySelectorAll('[title]').forEach(el => {
-                searchableParts.push(el.getAttribute('title'));
-            });
-            searchableParts.push(rolesCell.textContent);
-        }
-
-        return searchableParts.join(' ').toLowerCase();
-    }
-
-    _showMatchedRow(row) {
-        // Показываем найденную строку
-        row.classList.remove('hidden-by-search');
-        row.classList.add('highlight-search');
-
-        // Показываем и разворачиваем родителей
-        this._showParents(row);
-    }
-
-    _showParents(row) {
-        let parentId = row.dataset.parentId;
-
-        while (parentId) {
             const parentRow = this.tree.querySelector(`tr[data-node-id="${parentId}"]`);
             if (!parentRow) break;
 
-            // Показываем родителя
-            parentRow.classList.remove('hidden-by-search');
-
-            // Разворачиваем узел
-            const toggleBtn = parentRow.querySelector('.toggle-btn');
-            if (toggleBtn) {
-                if (toggleBtn.getAttribute('data-state') === 'collapsed') {
-                    toggleBtn.setAttribute('data-state', 'expanded');
-                    toggleBtn.textContent = '[-]';
-
-                    // Показываем дочерние элементы
-                    const nodeId = parentRow.dataset.nodeId;
-                    if (nodeId) {
-                        this.tree.querySelectorAll(`tr[data-parent-id="${nodeId}"]`)
-                            .forEach(child => {
-                                child.classList.remove('tree-row-hidden');
-                            });
-                    }
-                }
+            const nameCell = parentRow.querySelector('.field-name');
+            if (nameCell) {
+                // Получаем только текст, убирая кнопки и иконки
+                const name = nameCell.textContent.replace(/[$$$$\-\+]/g, '').trim();
+                path.unshift(name);
             }
 
-            parentId = parentRow.dataset.parentId;
+            currentRow = parentRow;
         }
+
+        return path.join(' → ');
     }
 
+    /**
+     * 🔄 Сброс поиска
+     */
     _resetSearch() {
         if (this.lastSearchTerm === '') return;
 
         this.lastSearchTerm = '';
-        this.searchCache.clear();
 
+        // Возвращаем исходный вид
         this.tree.querySelectorAll('tr').forEach(row => {
             // Убираем классы поиска
             row.classList.remove('hidden-by-search', 'highlight-search');
+
+            // Удаляем добавленный путь структуры
+            const structurePath = row.querySelector('.structure-path');
+            if (structurePath) {
+                structurePath.remove();
+            }
         });
     }
 }
 
-// Инициализация поиска
+// 🚀 Инициализация
 document.addEventListener('DOMContentLoaded', () => {
     const treeTable = document.getElementById('result_list');
     const searchInput = document.querySelector('.tree-search');
@@ -136,7 +139,6 @@ document.addEventListener('DOMContentLoaded', () => {
             treeSearch.search(e.target.value);
         });
 
-        // Очистка поиска по Escape
         searchInput.addEventListener('keydown', (e) => {
             if (e.key === 'Escape') {
                 searchInput.value = '';
