@@ -1,34 +1,48 @@
-/* 🌳 Основные стили дерева */
+/*
+ * ========== tree_view.css ==========
+ * Обновлённый полный код с учётом нужных правок.
+ */
+
+/* Сбрасываем нежелательные отступы и выравниваем таблицу */
 #result_list {
-    width: 100%;
-    margin: 0;
-    border-collapse: collapse;
+    width: 100% !important;
+    margin: 0 !important;
+    border-collapse: collapse !important;
 }
 
 /* Стандартные размеры для чекбоксов Django admin */
 .column-checkbox {
     width: 33px !important;  /* Стандартный размер из админки */
     padding: 8px !important; /* Стандартный padding */
-    text-align: center;
+    text-align: center !important;
 }
 
-.action-select, #select-all {
+.action-select,
+#select-all {
     margin: 0;
     vertical-align: middle;
 }
 
-/* Отступы для уровней дерева */
+/*
+ * Отступы для уровней дерева (важно, чтобы в HTML у <tr> было data-level="N",
+ * а у ячейки с названием был класс .field-name).
+ * Используем !important, чтобы гарантированно перебить стили админки.
+ */
 .tree-row[data-level="0"] .field-name {
-    padding-left: 5px;
+    padding-left: 5px !important;
+    text-align: left !important;
 }
 .tree-row[data-level="1"] .field-name {
-    padding-left: 20px;  /* +15px относительно уровня 0 */
+    padding-left: 20px !important; /* Шаг +15px от уровня 0 */
+    text-align: left !important;
 }
 .tree-row[data-level="2"] .field-name {
-    padding-left: 35px;  /* +15px относительно уровня 1 */
+    padding-left: 35px !important; /* Шаг +15px от уровня 1 */
+    text-align: left !important;
 }
 .tree-row[data-level="3"] .field-name {
-    padding-left: 50px;  /* +15px относительно уровня 2 */
+    padding-left: 50px !important; /* Шаг +15px от уровня 2 */
+    text-align: left !important;
 }
 
 /* 🔘 Кнопка разворачивания */
@@ -49,7 +63,7 @@
     border-color: #ccc;
 }
 
-/* 🎯 Контролы дерева */
+/* 🎯 Контролы дерева (Развернуть все / Свернуть все / Поиск и т.д.) */
 .tree-controls {
     padding: 8px;
     background: #f8f8f8;
@@ -94,7 +108,7 @@
     box-shadow: 0 0 3px rgba(0,0,0,0.1);
 }
 
-/* Скрытые элементы */
+/* Скрытые элементы (при сворачивании) */
 .tree-row-hidden {
     display: none !important;
 }
@@ -131,16 +145,18 @@ tr:hover td {
 
 /* Настройка остальных колонок */
 .column-name {
-    width: 40%;
+    width: 40% !important;   /* Можно увеличить/уменьшить при необходимости */
+    text-align: left !important; /* Принудительно слева */
 }
 
 .column-roles {
-    width: 40%;
+    width: 40% !important;   /* При желании можно уменьшить */
+    text-align: left !important;
 }
 
 .column-actions {
-    width: auto;
-    text-align: right;
+    width: auto !important;
+    text-align: right !important;
     padding-right: 15px !important;
 }
 
@@ -149,6 +165,7 @@ tr:hover td {
     padding: 8px;
     vertical-align: middle;
     border-bottom: 1px solid #eee;
+    /* text-align: left; -- не задаём глобально, чтобы не ломать "Действия" */
 }
 
 /* Счетчик выбранных элементов */
