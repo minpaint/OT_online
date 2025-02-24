@@ -1,7 +1,6 @@
 from django.db import models
 from django.core.exceptions import ValidationError
 
-
 class Position(models.Model):
     """
     👔 Модель для хранения информации о должностях.
@@ -27,7 +26,6 @@ class Position(models.Model):
         default='none',
         help_text="Укажите роль сотрудника в комиссии"
     )
-    # В классе Position:
 
     contract_work_name = models.TextField(
         "🔨 Наименование работы по договору подряда",
@@ -42,10 +40,10 @@ class Position(models.Model):
         help_text="Укажите номера инструкций по охране труда для данного вида работ"
     )
 
-
-
-
-    position_name = models.CharField(max_length=255, verbose_name="Название")
+    position_name = models.CharField(
+        max_length=255,
+        verbose_name="Название"
+    )
     organization = models.ForeignKey(
         'directory.Organization',
         on_delete=models.PROTECT,
@@ -120,6 +118,7 @@ class Position(models.Model):
         ]
 
     def clean(self):
+        # Проверка логики: отдел не может быть указан без подразделения, и т.д.
         if self.department:
             if not self.subdivision:
                 raise ValidationError({
@@ -144,11 +143,16 @@ class Position(models.Model):
         super().save(*args, **kwargs)
 
     def __str__(self):
+        """
+        🏷️ Возвращаем название должности. Если нет отдела,
+        добавляем в скобках подразделение или организацию.
+        """
         parts = [self.position_name]
-        if self.department:
-            parts.append(f"({self.department.name})")
-        elif self.subdivision:
-            parts.append(f"({self.subdivision.name})")
-        else:
-            parts.append(f"({self.organization.short_name_ru})")
+        # Убираем вывод (Отдел ...), если department существует
+        # => ничего не добавляем
+        if not self.department:
+            if self.subdivision:
+                parts.append(f"({self.subdivision.name})")
+            else:
+                parts.append(f"({self.organization.short_name_ru})")
         return " ".join(parts)

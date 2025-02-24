@@ -1,11 +1,13 @@
+"""
+🏭 Модель для хранения структурных подразделений.
+Убрали наследование от MPTTModel, теперь это обычная Model
+(без поля parent). Т.о. у нас одноуровневое подразделение,
+привязанное напрямую к Organization.
+"""
 from django.db import models
-from mptt.models import MPTTModel, TreeForeignKey
+from django.core.exceptions import ValidationError
 
-class StructuralSubdivision(MPTTModel):
-    """
-    🏭 Модель для хранения структурных подразделений.
-    Использует MPTT для организации иерархической структуры.
-    """
+class StructuralSubdivision(models.Model):
     name = models.CharField(
         "Наименование",
         max_length=255
@@ -21,17 +23,6 @@ class StructuralSubdivision(MPTTModel):
         related_name="subdivisions",
         verbose_name="Организация"
     )
-    parent = TreeForeignKey(
-        'self',
-        on_delete=models.CASCADE,
-        null=True,
-        blank=True,
-        related_name='children',
-        verbose_name="Родительское подразделение"
-    )
-
-    class MPTTMeta:
-        order_insertion_by = ['name']
 
     class Meta:
         verbose_name = "Структурное подразделение"
@@ -39,15 +30,14 @@ class StructuralSubdivision(MPTTModel):
         ordering = ['name']
         unique_together = ['name', 'organization']
 
+    def clean(self):
+        # Если нужна логика валидации, напишите здесь 👇
+        pass
+
+    def save(self, *args, **kwargs):
+        self.clean()
+        super().save(*args, **kwargs)
+
     def __str__(self):
+        # 👷 Возвращаем название + организацию
         return f"{self.name} ({self.organization.short_name_ru})"
-
-    def get_ancestors_list(self):
-        """Получить список всех предков"""
-        return [ancestor.name for ancestor in self.get_ancestors(include_self=False)]
-
-    def get_full_path(self):
-        """Получить полный путь подразделения"""
-        ancestors = self.get_ancestors_list()
-        ancestors.append(self.name)
-        return ' → '.join(ancestors)

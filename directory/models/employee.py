@@ -21,8 +21,14 @@ class Employee(models.Model):
     ]
     SHOE_SIZE_CHOICES = [(str(i), str(i)) for i in range(36, 49)]
 
-    full_name_nominative = models.CharField(max_length=255, verbose_name="ФИО (именительный)")
-    full_name_dative = models.CharField(max_length=255, verbose_name="ФИО (дательный)")
+    full_name_nominative = models.CharField(
+        max_length=255,
+        verbose_name="ФИО (именительный)"
+    )
+    full_name_dative = models.CharField(
+        max_length=255,
+        verbose_name="ФИО (дательный)"
+    )
     date_of_birth = models.DateField(verbose_name="Дата рождения")
     place_of_residence = models.TextField(verbose_name="Место проживания")
 
@@ -52,15 +58,34 @@ class Employee(models.Model):
         verbose_name="Должность"
     )
 
-    height = models.CharField(max_length=15, choices=HEIGHT_CHOICES, blank=True, verbose_name="Рост")
-    clothing_size = models.CharField(max_length=5, choices=CLOTHING_SIZE_CHOICES, blank=True,
-                                     verbose_name="Размер одежды")
-    shoe_size = models.CharField(max_length=2, choices=SHOE_SIZE_CHOICES, blank=True,
-                                 verbose_name="Размер обуви")
-    is_contractor = models.BooleanField(default=False, verbose_name="Договор подряда")
+    height = models.CharField(
+        max_length=15,
+        choices=HEIGHT_CHOICES,
+        blank=True,
+        verbose_name="Рост"
+    )
+    clothing_size = models.CharField(
+        max_length=5,
+        choices=CLOTHING_SIZE_CHOICES,
+        blank=True,
+        verbose_name="Размер одежды"
+    )
+    shoe_size = models.CharField(
+        max_length=2,
+        choices=SHOE_SIZE_CHOICES,
+        blank=True,
+        verbose_name="Размер обуви"
+    )
+    is_contractor = models.BooleanField(
+        default=False,
+        verbose_name="Договор подряда"
+    )
 
     def clean(self):
-        # Проверка соответствия должности организационной структуре
+        """
+        Валидация соответствия организации, подразделения, отдела и должности.
+        """
+        # Проверка, что должность принадлежит выбранной организации
         if self.position.organization != self.organization:
             raise ValidationError({
                 'position': 'Должность должна принадлежать выбранной организации'
@@ -100,7 +125,18 @@ class Employee(models.Model):
         self.clean()
         super().save(*args, **kwargs)
 
+    @property
+    def name_with_position(self):
+        """
+        👷 Возвращаем строку "ФИО (именительный) – Название должности".
+        Если должность не указана (маловероятно), просто ФИО.
+        """
+        if self.position:
+            return f"{self.full_name_nominative} — {self.position}"
+        return self.full_name_nominative
+
     def __str__(self):
+        # По умолчанию __str__ оставляем старый вариант: "ФИО - Должность"
         parts = [self.full_name_nominative, "-", str(self.position)]
         return " ".join(parts)
 
