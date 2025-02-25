@@ -1,6 +1,8 @@
 """
 🌳 Единый миксин для древовидного отображения в админке.
+
 Логика формирования дерева: Организация → Подразделение → Отдел → Объект.
+
 Если какое-либо поле не применяется (например, у Department нет department),
 его можно задать как None. Миксин проверяет наличие поля перед вызовом getattr.
 """
@@ -49,7 +51,6 @@ class TreeViewMixin:
         """
         📊 Формирует иерархическую структуру (словарь) дерева.
         Структура выглядит так:
-
         {
             org_obj: {
                 'name': ...,
@@ -79,7 +80,6 @@ class TreeViewMixin:
 
         tree = {}
         fields = self.tree_settings['fields']
-
         # Получаем названия полей из настроек; если поле не применяется, то значение будет None
         org_field = fields.get('organization_field')
         sub_field = fields.get('subdivision_field')
@@ -98,8 +98,12 @@ class TreeViewMixin:
             # Получаем department, если задано
             dept = getattr(obj, dept_field) if dept_field else None
 
-            # Получаем название объекта из заданного поля или используем str(obj)
-            item_name = getattr(obj, name_field, str(obj)) if name_field else str(obj)
+            # Используем метод tree_display_name, если он существует
+            if hasattr(obj, 'tree_display_name'):
+                item_name = obj.tree_display_name()
+            else:
+                # Иначе получаем название объекта из заданного поля или используем str(obj)
+                item_name = getattr(obj, name_field, str(obj)) if name_field else str(obj)
 
             # Формируем словарь данных для объекта (лист дерева)
             item_data = {
@@ -141,6 +145,7 @@ class TreeViewMixin:
                     'name': getattr(dept, 'name', str(dept)),
                     'items': []
                 }
+
             tree[org]['subdivisions'][sub]['departments'][dept]['items'].append(item_data)
 
         return tree
@@ -158,4 +163,5 @@ class TreeViewMixin:
         ]
         # Убираем значения None
         related_fields = [field for field in related_fields if field is not None]
+
         return queryset.select_related(*related_fields)

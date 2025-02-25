@@ -140,6 +140,13 @@ class Employee(models.Model):
         parts = [self.full_name_nominative, "-", str(self.position)]
         return " ".join(parts)
 
+    def tree_display_name(self):
+        """
+        👤 Метод для отображения имени сотрудника в древовидной структуре
+        без избыточной информации в скобках.
+        """
+        return f"{self.full_name_nominative} — {self.position.position_name}"
+
     class Meta:
         verbose_name = "Сотрудник"
         verbose_name_plural = "Сотрудники"
