@@ -2,7 +2,12 @@
 {% load static %}
 
 {% block content %}
-<div id="content-main">
+        <div id="content-main">
+        <div class="object-tools">
+        <a href="{% url 'admin:directory_equipment_add' %}" class="addlink">
+            Добавить
+        </a>
+    </div>
     <form id="changelist-form" method="post"
           {% if cl.formset and cl.formset.is_multipart %} enctype="multipart/form-data"{% endif %}
           novalidate>

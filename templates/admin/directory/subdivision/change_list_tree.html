@@ -1,9 +1,13 @@
 {% extends "admin/change_list.html" %}
-
 {% load static %}
 
 {% block content %}
 <div id="content-main">
+    <div class="object-tools">
+        <a href="{% url 'admin:directory_structuralsubdivision_add' %}" class="addlink">
+            Добавить
+        </a>
+    </div>
     <form id="changelist-form" method="post"
           {% if cl.formset and cl.formset.is_multipart %} enctype="multipart/form-data"{% endif %}
           novalidate>
@@ -18,7 +22,6 @@
                 <span class="action-counter" style="display: none;">0 из {{ cl.result_count }} выбрано</span>
             </div>
         {% endif %}
-
         <div class="tree-controls">
             <button type="button" class="tree-btn expand-all">↓ Развернуть все</button>
             <button type="button" class="tree-btn collapse-all">↑ Свернуть все</button>
@@ -26,7 +29,6 @@
                 <input type="text" class="tree-search" placeholder="🔍 Поиск по дереву...">
             </div>
         </div>
-
         <div class="results">
             <table id="result_list">
                 <thead>
@@ -49,7 +51,6 @@
                         <td class="field-roles"></td>
                         <td class="field-actions"></td>
                     </tr>
-
                     {# Элементы без subdivision #}
                     {% for item in org_data.items %}
                     <tr class="tree-row" data-level="1" data-parent-id="org_{{ org.id }}">
@@ -70,7 +71,6 @@
                         </td>
                     </tr>
                     {% endfor %}
-
                     {# Подразделения #}
                     {% for sub, sub_data in org_data.subdivisions.items %}
                     <tr class="tree-row" data-level="1" data-parent-id="org_{{ org.id }}" data-node-id="sub_{{ sub.id }}">
@@ -103,7 +103,6 @@
                             </td>
                         </tr>
                         {% endfor %}
-
                         {# Отделы #}
                         {% for dept, dept_data in sub_data.departments.items %}
                         <tr class="tree-row" data-level="2" data-parent-id="sub_{{ sub.id }}" data-node-id="dept_{{ dept.id }}">

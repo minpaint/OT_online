@@ -3,6 +3,13 @@
 
 {% block content %}
 <div id="content-main">
+    <div class="object-tools">
+        <a href="{% url 'admin:directory_structuralsubdivision_add' %}" class="addlink">
+            Добавить
+        </a>
+    </div>
+
+    <div id="content-main">
     <form id="changelist-form" method="post"
           {% if cl.formset and cl.formset.is_multipart %} enctype="multipart/form-data"{% endif %}
           novalidate>
@@ -151,4 +158,5 @@
     <link rel="stylesheet" href="{% static 'admin/css/tree_view.css' %}">
     <script src="{% static 'admin/js/tree_view.js' %}"></script>
     <script src="{% static 'admin/js/tree_search.js' %}"></script>
+
 {% endblock %}
