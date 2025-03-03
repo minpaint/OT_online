@@ -1,0 +1,103 @@
+{% extends "admin/change_form.html" %}
+{# 
+    Шаблон для формы добавления/редактирования нормы СИЗ.
+    Расширяет стандартную форму админки добавлением дополнительных скриптов
+    для работы с полем выбора обобщенной профессии/должности.
+#}
+
+{% load i18n admin_urls %}
+
+{% block extrahead %}
+{{ block.super }}
+<script type="text/javascript">
+    (function($) {
+        $(document).ready(function() {
+            // Обработка выбора обобщенной профессии/должности
+            var uniquePositionField = $('#id_unique_position_name');
+            
+            // Начальная настройка поля профессии
+            uniquePositionField.addClass('select2-enable').css('width', '100%');
+            
+            // Включаем Select2 для более удобного выбора
+            if ($.fn.select2) {
+                uniquePositionField.select2({
+                    placeholder: "Выберите профессию/должность",
+                    allowClear: true,
+                    width: '100%'
+                });
+            }
+            
+            // При выборе СИЗ, подгружаем информацию об этом СИЗ для отображения
+            $('#id_siz').on('change', function() {
+                var sizId = $(this).val();
+                if (sizId) {
+                    $.getJSON('/directory/api/siz/' + sizId + '/', function(data) {
+                        if (data) {
+                            // Можно добавить отображение информации о СИЗ, например:
+                            var infoHtml = '<div class="siz-info">' +
+                                '<p><strong>Классификация:</strong> ' + data.classification + '</p>' +
+                                '<p><strong>Единица измерения:</strong> ' + data.unit + '</p>' +
+                                '<p><strong>Срок носки:</strong> ' + data.wear_period_display + '</p>' +
+                                '</div>';
+                            
+                            // Находим контейнер для отображения информации
+                            var infoContainer = $('#siz-info-container');
+                            if (infoContainer.length === 0) {
+                                infoContainer = $('<div id="siz-info-container" class="help"></div>');
+                                $('#id_siz').after(infoContainer);
+                            }
+                            
+                            infoContainer.html(infoHtml);
+                        }
+                    });
+                }
+            });
+            
+            // Подсказки для поля условий выдачи
+            var conditionField = $('#id_condition');
+            conditionField.on('focus', function() {
+                // Отображение выпадающего списка с подсказками
+                if (this.list) {
+                    this.showPicker();
+                }
+            });
+        });
+    })(django.jQuery);
+</script>
+
+<style>
+    /* Стили для информации о СИЗ */
+    .siz-info {
+        margin-top: 10px;
+        padding: 10px;
+        background-color: #f8f9fa;
+        border-radius: 4px;
+        border-left: 4px solid #17a2b8;
+    }
+    
+    /* Стили для поля выбора профессии */
+    .select2-container--default .select2-selection--single {
+        height: 35px;
+        padding: 3px 10px;
+        border: 1px solid #ccc;
+        border-radius: 4px;
+    }
+    
+    .select2-container--default .select2-selection--single .select2-selection__rendered {
+        line-height: 28px;
+    }
+    
+    .select2-container--default .select2-selection--single .select2-selection__arrow {
+        height: 33px;
+    }
+</style>
+{% endblock %}
+
+{% block after_field_sets %}
+<div class="help">
+    <p><strong>Примечание:</strong> При выборе профессии/должности нормы СИЗ будут привязаны 
+    к эталонной должности с выбранным названием, независимо от организации.</p>
+    <p>Для просмотра уже созданных норм используйте древовидное представление норм СИЗ.</p>
+</div>
+{{ block.super }}
+{% endblock %}

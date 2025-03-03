@@ -3,6 +3,7 @@ from django.urls import reverse
 from django.utils.html import format_html
 from directory.models.siz import SIZ, SIZNorm
 from directory.models.position import Position
+from directory.forms.siz import SIZForm, SIZNormForm
 from import_export import resources
 from import_export.admin import ImportExportModelAdmin
 from django.db.models import Count, Case, When, Value, IntegerField, Q
@@ -25,6 +26,7 @@ class SIZResource(resources.ModelResource):
 class SIZAdmin(ImportExportModelAdmin):
     """🛡️ Административный интерфейс для СИЗ"""
     resource_class = SIZResource
+    form = SIZForm
     list_display = ('name', 'classification', 'unit', 'get_wear_period', 'norms_count')
     list_filter = ('classification', 'unit')
     search_fields = ('name', 'classification')
@@ -97,16 +99,17 @@ class SIZNormInlineForPosition(admin.TabularInline):
 @admin.register(SIZNorm)
 class SIZNormAdmin(admin.ModelAdmin):
     """📊 Административный интерфейс для норм выдачи СИЗ"""
+    form = SIZNormForm
     list_display = ('position', 'siz', 'quantity', 'get_condition', 'order')
     list_filter = ('position', 'condition', 'siz')
     search_fields = ('position__position_name', 'siz__name', 'condition')
-    autocomplete_fields = ['position', 'siz']
+    autocomplete_fields = ['siz']
     # Указываем шаблон для отображения древовидной структуры
     change_list_template = "admin/directory/siznorm/change_list_tree.html"
 
     fieldsets = (
         ('Основная информация', {
-            'fields': ('position', 'siz', 'quantity', 'order')
+            'fields': ('unique_position_name', 'siz', 'quantity', 'order')
         }),
         ('Условия выдачи', {
             'fields': ('condition',),
@@ -120,14 +123,20 @@ class SIZNormAdmin(admin.ModelAdmin):
 
     get_condition.short_description = "Условие выдачи"
 
-    def formfield_for_foreignkey(self, db_field, request, **kwargs):
-        """🔗 Настройка фильтрации полей выбора по организации"""
-        if db_field.name == "position" and not request.user.is_superuser:
-            if hasattr(request.user, 'profile'):
-                kwargs["queryset"] = Position.objects.filter(
-                    organization__in=request.user.profile.organizations.all()
-                )
-        return super().formfield_for_foreignkey(db_field, request, **kwargs)
+    def get_form(self, request, obj=None, **kwargs):
+        """Получение формы с передачей дополнительных параметров"""
+        position_id = request.GET.get('position')
+        Form = super().get_form(request, obj, **kwargs)
+
+        if position_id:
+            # Создаем замыкание с position_id
+            class FormWithPosition(Form):
+                def __new__(cls, *args, **kwargs):
+                    kwargs['position_id'] = position_id
+                    return Form(*args, **kwargs)
+
+            return FormWithPosition
+        return Form
 
     # Обновленный метод для группировки норм СИЗ по уникальным названиям профессий
     def changelist_view(self, request, extra_context=None):
@@ -145,8 +154,14 @@ class SIZNormAdmin(admin.ModelAdmin):
             # Получаем все должности с таким названием
             positions = Position.objects.filter(position_name=position_name)
 
-            # Получаем все нормы СИЗ для этих должностей
-            all_norms = SIZNorm.objects.filter(position__in=positions).select_related('siz', 'position')
+            # Берем первую должность как эталонную (по алфавиту организаций)
+            reference_position = positions.order_by('organization__full_name_ru').first()
+
+            if not reference_position:
+                continue
+
+            # Получаем все нормы СИЗ для эталонной должности
+            all_norms = SIZNorm.objects.filter(position=reference_position).select_related('siz', 'position')
 
             # Базовые нормы (без условий)
             base_norms = all_norms.filter(condition='').order_by('order', 'siz__name')
@@ -169,7 +184,6 @@ class SIZNormAdmin(admin.ModelAdmin):
                 'positions': positions,
                 'base_norms': base_norms,
                 'group_norms': group_norms,
-                # Убираем подсчёт норм и позиций из отображения
             }
 
             professions_data.append(profession_data)
