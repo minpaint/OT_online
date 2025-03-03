@@ -8,18 +8,71 @@ from django.contrib import admin
 from django.contrib.admin.widgets import FilteredSelectMultiple
 from django.utils.translation import ngettext
 from django.contrib import messages
-from django.db.models import QuerySet
-
+from django.shortcuts import redirect, render
+from django.urls import path, reverse
 from directory.models import Position
 from directory.forms.position import PositionForm
 from directory.admin.mixins.tree_view import TreeViewMixin
+from directory.models.siz import SIZNorm, SIZ
 
+
+# Обновленный инлайн для СИЗ
+class SIZNormInlineForPosition(admin.TabularInline):
+    """📋 Встроенные нормы СИЗ для должности с отображением всех полей"""
+    model = SIZNorm
+    extra = 1
+    fields = ('siz', 'classification', 'unit', 'quantity', 'wear_period', 'condition', 'order')
+    readonly_fields = ('classification', 'unit', 'wear_period')
+    verbose_name = "Норма СИЗ"
+    verbose_name_plural = "Нормы СИЗ"
+    autocomplete_fields = ['siz']
+    template = 'admin/directory/position/edit_inline/tabular_siz_norms.html'
+
+    def get_queryset(self, request):
+        # Все нормы для должности, отсортированные по условию и порядку
+        return super().get_queryset(request).select_related('siz').order_by('condition', 'order')
+
+    def classification(self, obj):
+        """📊 Отображение классификации СИЗ"""
+        return obj.siz.classification if obj.siz else ""
+
+    classification.short_description = "Классификация"
+
+    def unit(self, obj):
+        """📏 Отображение единицы измерения СИЗ"""
+        return obj.siz.unit if obj.siz else ""
+
+    unit.short_description = "Ед. изм."
+
+    def wear_period(self, obj):
+        """⌛ Отображение срока носки СИЗ"""
+        if obj.siz:
+            if obj.siz.wear_period == 0:
+                return "До износа"
+            return f"{obj.siz.wear_period} мес."
+        return ""
+
+    wear_period.short_description = "Срок носки"
+
+    def formfield_for_dbfield(self, db_field, **kwargs):
+        """Настройка полей формы"""
+        form_field = super().formfield_for_dbfield(db_field, **kwargs)
+        if db_field.name == 'quantity':
+            form_field.widget.attrs['style'] = 'width: 80px;'
+        if db_field.name == 'condition':
+            form_field.widget.attrs['style'] = 'width: 200px;'
+        if db_field.name == 'order':
+            form_field.widget.attrs['style'] = 'width: 60px;'
+        return form_field
 
 @admin.register(Position)
 class PositionAdmin(TreeViewMixin, admin.ModelAdmin):
     form = PositionForm
     # Указываем путь к шаблону для древовидного отображения
     change_list_template = "admin/directory/position/change_list_tree.html"
+    # Указываем кастомный шаблон формы для добавления кнопки подтягивания норм
+    change_form_template = "admin/directory/position/change_form.html"
+
     # Определяем порядок полей в форме
     fieldsets = (
         ('Основная информация', {
@@ -38,6 +91,9 @@ class PositionAdmin(TreeViewMixin, admin.ModelAdmin):
             'fields': (
                 'contract_work_name',
                 'safety_instructions_numbers',
+                'contract_safety_instructions',
+                'electrical_safety_group',
+                'internship_period_days',
             )
         }),
         ('Связанные документы и оборудование', {
@@ -46,6 +102,7 @@ class PositionAdmin(TreeViewMixin, admin.ModelAdmin):
             'classes': ('collapse',)
         }),
     )
+
     # Фильтры для боковой панели
     list_filter = ['organization', 'subdivision', 'department']
     # Очищаем стандартное отображение столбцов
@@ -54,6 +111,7 @@ class PositionAdmin(TreeViewMixin, admin.ModelAdmin):
         'position_name',
         'safety_instructions_numbers'
     ]
+
     # Настройки дерева
     tree_settings = {
         'icons': {
@@ -76,16 +134,86 @@ class PositionAdmin(TreeViewMixin, admin.ModelAdmin):
             'hide_no_subdivision_no_department': False
         }
     }
+
+    # Добавляем инлайны для СИЗ
+    inlines = [
+        SIZNormInlineForPosition,
+    ]
+
     class Media:
         css = {
-            'all': ('admin/css/widgets.css',)
+            'all': ('admin/css/widgets.css', 'admin/css/position_siz_norms.css',)
         }
         js = [
             'admin/js/jquery.init.js',
             'admin/js/core.js',
             'admin/js/SelectBox.js',
             'admin/js/SelectFilter2.js',
+            'admin/js/position_siz_norms.js',  # JS файл для управления нормами СИЗ
         ]
+
+    def get_urls(self):
+        """🔗 Добавляем кастомный URL для подтягивания норм СИЗ"""
+        urls = super().get_urls()
+        custom_urls = [
+            path(
+                '<path:object_id>/copy_reference_norms/',
+                self.admin_site.admin_view(self.copy_reference_norms_view),
+                name='position_copy_reference_norms',
+            ),
+        ]
+        return custom_urls + urls
+
+    def copy_reference_norms_view(self, request, object_id):
+        """👥 View для копирования эталонных норм в текущую должность"""
+        position = self.get_object(request, object_id)
+        if not position:
+            messages.error(request, "Должность не найдена.")
+            return redirect('admin:directory_position_change', object_id)
+
+        # Находим эталонные нормы для этой должности
+        reference_norms = Position.find_reference_norms(position.position_name)
+
+        if not reference_norms.exists():
+            messages.warning(request, f"Эталонные нормы СИЗ для должности '{position.position_name}' не найдены.")
+            return redirect('admin:directory_position_change', object_id)
+
+        # Счетчики для статистики
+        created_count = 0
+        updated_count = 0
+
+        # Копируем нормы
+        for norm in reference_norms:
+            # Проверяем, существует ли уже такая норма
+            existing_norm = SIZNorm.objects.filter(
+                position=position,
+                siz=norm.siz,
+                condition=norm.condition
+            ).first()
+
+            if existing_norm:
+                # Обновляем существующую норму
+                existing_norm.quantity = norm.quantity
+                existing_norm.order = norm.order
+                existing_norm.save()
+                updated_count += 1
+            else:
+                # Создаем новую норму
+                SIZNorm.objects.create(
+                    position=position,
+                    siz=norm.siz,
+                    quantity=norm.quantity,
+                    condition=norm.condition,
+                    order=norm.order
+                )
+                created_count += 1
+
+        messages.success(
+            request,
+            f"Успешно применены эталонные нормы СИЗ: создано {created_count}, обновлено {updated_count}."
+        )
+
+        return redirect('admin:directory_position_change', object_id)
 
     def formfield_for_manytomany(self, db_field, request, **kwargs):
         """
@@ -113,7 +241,8 @@ class PositionAdmin(TreeViewMixin, admin.ModelAdmin):
             'department'
         ).prefetch_related(
             'documents',
-            'equipment'
+            'equipment',
+            'siz_norms'  # Добавляем предзагрузку СИЗ для оптимизации
         )
         if not request.user.is_superuser and hasattr(request.user, 'profile'):
             allowed_orgs = request.user.profile.organizations.all()
@@ -127,7 +256,6 @@ class PositionAdmin(TreeViewMixin, admin.ModelAdmin):
         2) Фильтрации M2M-полей по организациям
         """
         Form = super().get_form(request, obj, **kwargs)
-
         class PositionFormWithUser(Form):
             def __init__(self, *args, **kwargs):
                 self.user = request.user
@@ -154,20 +282,31 @@ class PositionAdmin(TreeViewMixin, admin.ModelAdmin):
                         organization__in=allowed_orgs).distinct().order_by('equipment_name')
                     self.fields['documents'].queryset = docs_qs
                     self.fields['equipment'].queryset = equip_qs
-
         return PositionFormWithUser
 
     def get_additional_node_data(self, obj):
         """
-        ➕ Дополнительные данные для узла: роли и атрибуты должности.
+        ➕ Упрощенные дополнительные данные для узла в древовидном отображении
         """
+        # Проверяем наличие эталонных норм
+        has_reference_norms = Position.find_reference_norms(obj.position_name).exists()
+
+        # Подсчитываем количество норм, но не разделяем по условиям
+        total_norms_count = obj.siz_norms.count()
+
         return {
+            # Основные атрибуты безопасности
             'is_responsible_for_safety': obj.is_responsible_for_safety,
             'can_be_internship_leader': obj.can_be_internship_leader,
-            'commission_role': obj.commission_role,
             'is_electrical_personnel': obj.is_electrical_personnel,
+
+            # Счетчики связанных объектов
             'documents_count': obj.documents.count(),
             'equipment_count': obj.equipment.count(),
+
+            # Упрощенная информация о СИЗ
+            'total_siz_norms': total_norms_count,
+            'has_reference_norms': has_reference_norms,
         }
 
     def has_module_permission(self, request):
@@ -203,31 +342,3 @@ class PositionAdmin(TreeViewMixin, admin.ModelAdmin):
         🗑️ Проверка прав на удаление
         """
         return self.has_view_permission(request, obj)
-
-    def has_add_permission(self, request):
-        """
-        ➕ Проверка прав на добавление
-        """
-        if request.user.is_superuser:
-            return True
-        if hasattr(request.user, 'profile'):
-            return request.user.profile.organizations.exists()
-        return False
-
-    @admin.action(description='Удалить выбранные должности')
-    def delete_selected_positions(self, request, queryset):
-        """
-        🗑️ Action для удаления выбранных должностей.
-        """
-        deleted_count = queryset.delete()[0]
-        self.message_user(
-            request,
-            ngettext(
-                '%d должность была успешно удалена.',
-                '%d должности были успешно удалены.',
-                deleted_count,
-            ) % deleted_count,
-            messages.SUCCESS,
-        )
-
-    actions = ['delete_selected_positions']

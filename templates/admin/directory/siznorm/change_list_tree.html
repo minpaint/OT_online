@@ -1,0 +1,187 @@
+{% extends "admin/change_list.html" %}
+
+{% load static %}
+
+{% block content %}
+<div id="content-main">
+ <div class="object-tools">
+ <a href="{% url 'admin:directory_siznorm_add' %}" class="addlink">
+ Добавить норму СИЗ
+</a>
+ <a href="{% url 'admin:directory_siz_add' %}" class="addlink">
+ Добавить СИЗ
+</a>
+ </div>
+
+ <form id="changelist-form" method="post"
+ {% if cl.formset and cl.formset.is_multipart %} enctype="multipart/form-data"{% endif %}
+novalidate>
+ {% csrf_token %}
+{% if action_form and actions_on_top and cl.show_admin_actions %}
+<div class="actions">
+ {% for field in action_form %}
+{% if field.label %}<label>{{ field.label }}</label>{% endif %}
+{{ field }}
+{% endfor %}
+<button type="submit" class="button" title="Выполнить выбранное действие">Выполнить</button>
+ <span class="action-counter" style="display: none;">0 из {{ cl.result_count }} выбрано</span>
+ </div>
+ {% endif %}
+
+<div class="tree-controls">
+ <button type="button" class="tree-btn expand-all">↓ Развернуть все</button>
+ <button type="button" class="tree-btn collapse-all">↑ Свернуть все</button>
+ <div class="tree-search-container">
+ <input type="text" class="tree-search" placeholder="🔍 Поиск по списку...">
+ </div>
+ </div>
+
+ <div class="results">
+ <table id="result_list">
+ <thead>
+ <tr>
+ <th class="column-checkbox"><input type="checkbox" id="select-all"></th>
+ <th class="column-name">ПРОФЕССИЯ/ДОЛЖНОСТЬ</th>
+ <th class="column-roles">НОРМЫ СИЗ / ЭКЗЕМПЛЯРЫ</th>
+ <th class="column-actions">ДЕЙСТВИЯ</th>
+ </tr>
+ </thead>
+ <tbody>
+ {% for profession in professions %}
+<tr class="tree-row" data-level="0" data-node-id="profession_{{ forloop.counter }}">
+ <td class="field-checkbox"></td>
+ <td class="field-name">
+ <button type="button" class="toggle-btn" data-state="expanded">[-]</button>
+ <span class="tree-icon">👔</span>
+ <strong>{{ profession.name }}</strong>
+ </td>
+ <td class="field-roles">{{ profession.positions|length }} экземпляров</td>
+ <td class="field-actions">
+ <!-- Действия для профессии -->
+ </td>
+ </tr>
+
+ <!-- Список экземпляров этой профессии в разных организациях -->
+ <tr class="tree-row" data-level="1" data-parent-id="profession_{{ forloop.counter }}">
+ <td class="field-checkbox"></td>
+ <td class="field-name">
+ <span class="tree-icon">📂</span>
+ <strong>Экземпляры должности ({{ profession.positions|length }})</strong>
+ </td>
+ <td class="field-roles"></td>
+ <td class="field-actions"></td>
+ </tr>
+
+ {% for position in profession.positions %}
+<tr class="tree-row" data-level="2" data-parent-id="profession_{{ forloop.counter }}">
+ <td class="field-checkbox">
+ <input type="checkbox" name="_selected_action" value="{{ position.id }}" class="action-select">
+ </td>
+ <td class="field-name">
+ <span class="tree-icon">📝</span>
+ <a href="{% url 'admin:directory_position_change' position.id %}">
+ {{ position.organization.short_name_ru }}
+{% if position.department %}
+- {{ position.department.name }}
+{% elif position.subdivision %}
+- {{ position.subdivision.name }}
+{% endif %}
+</a>
+ </td>
+ <td class="field-roles">{{ position.siz_norms.count }} норм</td>
+ <td class="field-actions">
+ <a href="{% url 'admin:directory_position_change' position.id %}" class="edit-link" title="Редактировать должность">✏️</a>
+ <a href="{% url 'admin:directory_siznorm_add' %}?position={{ position.id }}" class="add-link" title="Добавить норму СИЗ">+</a>
+ </td>
+ </tr>
+ {% endfor %}
+
+<!-- Базовые нормы СИЗ для профессии - УДАЛЁН ЗАГОЛОВОК "Основные нормы" -->
+ {% if profession.base_norms %}
+<tr class="tree-row" data-level="1" data-parent-id="profession_{{ forloop.counter }}">
+ <td colspan="4" style="padding:0">
+ <table class="table table-bordered table-striped" style="width:100%">
+ <thead>
+ <tr>
+ <th>Наименование СИЗ</th>
+ <th>Классификация</th>
+ <th>Ед. изм.</th>
+ <th>Кол-во</th>
+ <th>Срок носки</th>
+ <th>Действия</th>
+ </tr>
+ </thead>
+ <tbody>
+ {% for norm in profession.base_norms %}
+<tr>
+ <td>{{ norm.siz.name }}</td>
+ <td>{{ norm.siz.classification }}</td>
+ <td>{{ norm.siz.unit }}</td>
+ <td>{{ norm.quantity }}</td>
+ <td>{% if norm.siz.wear_period == 0 %}До износа{% else %}{{ norm.siz.wear_period }} мес.{% endif %}</td>
+ <td>
+ <a href="{% url 'admin:directory_siznorm_change' norm.id %}" class="edit-link">✏️</a>
+ <a href="{% url 'admin:directory_siznorm_delete' norm.id %}" class="delete-link">🗑️</a>
+ </td>
+ </tr>
+ {% endfor %}
+</tbody>
+ </table>
+ </td>
+ </tr>
+ {% endif %}
+
+<!-- Нормы СИЗ по условиям - оставляем как есть -->
+ {% for group in profession.group_norms %}
+<tr class="tree-row" data-level="1" data-parent-id="profession_{{ forloop.counter }}">
+ <td class="field-checkbox"></td>
+ <td class="field-name">
+ <span class="tree-icon">🔍</span>
+ <strong>{{ group.name }}</strong>
+ </td>
+ <td class="field-roles">{{ group.norms|length }} позиций</td>
+ <td class="field-actions"></td>
+ </tr>
+
+ <tr class="tree-row" data-level="2" data-parent-id="profession_{{ forloop.counter }}">
+ <td colspan="4" style="padding:0">
+ <table class="table table-bordered table-striped" style="width:100%">
+ <thead>
+ <tr>
+ <th>Наименование СИЗ</th>
+ <th>Классификация</th>
+ <th>Ед. изм.</th>
+ <th>Кол-во</th>
+ <th>Срок носки</th>
+ <th>Действия</th>
+ </tr>
+ </thead>
+ <tbody>
+ {% for norm in group.norms %}
+<tr>
+ <td>{{ norm.siz.name }}</td>
+ <td>{{ norm.siz.classification }}</td>
+ <td>{{ norm.siz.unit }}</td>
+ <td>{{ norm.quantity }}</td>
+ <td>{% if norm.siz.wear_period == 0 %}До износа{% else %}{{ norm.siz.wear_period }} мес.{% endif %}</td>
+ <td>
+ <a href="{% url 'admin:directory_siznorm_change' norm.id %}" class="edit-link">✏️</a>
+ <a href="{% url 'admin:directory_siznorm_delete' norm.id %}" class="delete-link">🗑️</a>
+ </td>
+ </tr>
+ {% endfor %}
+</tbody>
+ </table>
+ </td>
+ </tr>
+ {% endfor %}
+{% endfor %}
+</tbody>
+ </table>
+ </div>
+ </form>
+</div>
+
+<script src="{% static 'admin/js/tree_view.js' %}"></script>
+<script src="{% static 'admin/js/tree_search.js' %}"></script>
+{% endblock %}

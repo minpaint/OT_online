@@ -1,0 +1,79 @@
+{% extends "base.html" %}
+{% load static %}
+
+{% block title %}Нормы СИЗ для {{ position }}{% endblock %}
+
+{% block content %}
+<div class="container mt-4">
+    <div class="card">
+        <div class="card-header bg-light">
+            <h3>Нормы средств индивидуальной защиты</h3>
+            <h5>{{ position.position_name }} ({{ position.organization.short_name_ru }})</h5>
+        </div>
+
+        <div class="card-body">
+            <!-- Убираем заголовок "Основные нормы" -->
+            <table class="table table-bordered table-striped">
+                <thead class="thead-light">
+                    <tr>
+                        <th>Наименование СИЗ</th>
+                        <th>Классификация (маркировка)</th>
+                        <th>Единица измерения</th>
+                        <th>Количество</th>
+                        <th>Срок носки</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for norm in base_norms %}
+                    <tr>
+                        <td>{{ norm.siz.name }}</td>
+                        <td>{{ norm.siz.classification }}</td>
+                        <td>{{ norm.siz.unit }}</td>
+                        <td>{{ norm.quantity }}</td>
+                        <td>{% if norm.siz.wear_period == 0 %}До износа{% else %}{{ norm.siz.wear_period }} мес.{% endif %}</td>
+                    </tr>
+                    {% empty %}
+                    <tr><td colspan="5" class="text-center">Нет основных норм СИЗ</td></tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+
+            <!-- Отображаем нормы с условиями с заголовками -->
+            {% for group in groups %}
+            <div class="mt-4">
+                <h5 class="alert alert-info p-2 mb-2">{{ group.name }}</h5>
+                <table class="table table-bordered table-striped">
+                    <thead class="thead-light">
+                        <tr>
+                            <th>Наименование СИЗ</th>
+                            <th>Классификация (маркировка)</th>
+                            <th>Единица измерения</th>
+                            <th>Количество</th>
+                            <th>Срок носки</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {% for norm in group.norms %}
+                        <tr>
+                            <td>{{ norm.siz.name }}</td>
+                            <td>{{ norm.siz.classification }}</td>
+                            <td>{{ norm.siz.unit }}</td>
+                            <td>{{ norm.quantity }}</td>
+                            <td>{% if norm.siz.wear_period == 0 %}До износа{% else %}{{ norm.siz.wear_period }} мес.{% endif %}</td>
+                        </tr>
+                        {% empty %}
+                        <tr><td colspan="5" class="text-center">Нет норм СИЗ для этого условия</td></tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+            </div>
+            {% endfor %}
+
+            <div class="mt-4">
+                <a href="{% url 'directory:position_detail' position.id %}" class="btn btn-secondary">Назад к должности</a>
+                <a href="{% url 'directory:siz_norm_create' %}?position={{ position.id }}" class="btn btn-primary">Добавить норму СИЗ</a>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}

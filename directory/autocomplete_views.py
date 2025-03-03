@@ -1,5 +1,6 @@
 from dal import autocomplete
 from django.db.models import Q
+from directory.models.siz import SIZ
 from directory.models import (
     Organization,
     StructuralSubdivision,
@@ -281,3 +282,21 @@ class EquipmentAutocomplete(autocomplete.Select2QuerySetView):
         else:
             parts.append(f"- {item.organization.short_name_ru}")
         return " ".join(parts)
+
+
+class SIZAutocomplete(autocomplete.Select2QuerySetView):
+    """
+    🛡️ Автодополнение для выбора СИЗ
+    Используется в формах для удобного выбора СИЗ из списка
+    """
+    def get_queryset(self):
+        """
+        🔍 Получение отфильтрованного набора СИЗ
+        на основе поискового запроса
+        """
+        qs = SIZ.objects.all()
+
+        if self.q:
+            qs = qs.filter(name__icontains=self.q)
+
+        return qs.order_by('name')

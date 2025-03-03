@@ -10,6 +10,8 @@ from .position import PositionAdmin
 # Вместо файла subdivision_nested импортируем оригинальный файл subdivision.py с MPTTModelAdmin
 from .subdivision import StructuralSubdivisionAdmin
 from .user import CustomUserAdmin
+# Убираем SIZNormGroupAdmin из импортов
+from .siz import SIZAdmin, SIZNormAdmin
 
 __all__ = [
     'DepartmentAdmin',

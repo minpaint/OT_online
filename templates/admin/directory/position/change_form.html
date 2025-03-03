@@ -1,0 +1,13 @@
+{% extends "admin/change_form.html" %}
+{% load i18n admin_urls %}
+
+{% block object-tools-items %}
+    {% if original %}
+    <li>
+        <a href="{% url 'admin:position_copy_reference_norms' original.pk %}" class="historylink" onclick="return confirm('Вы уверены, что хотите подтянуть эталонные нормы СИЗ для этой должности? Это может обновить существующие нормы.');">
+            🔄 Подтянуть эталонные нормы СИЗ
+        </a>
+    </li>
+    {% endif %}
+    {{ block.super }}
+{% endblock %}

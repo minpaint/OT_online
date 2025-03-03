@@ -1,5 +1,7 @@
 from django.db import models
 from django.core.exceptions import ValidationError
+from django.db.models import Count
+
 
 class Position(models.Model):
     """
@@ -156,3 +158,43 @@ class Position(models.Model):
             else:
                 parts.append(f"({self.organization.short_name_ru})")
         return " ".join(parts)
+
+    def get_full_path(self):
+        """
+        📍 Получение полного пути размещения должности
+
+        Возвращает строку вида "Организация → Подразделение → Отдел → Должность"
+        """
+        parts = [self.organization.short_name_ru or self.organization.full_name_ru]
+
+        if self.subdivision:
+            parts.append(self.subdivision.name)
+
+        if self.department:
+            parts.append(self.department.name)
+
+        parts.append(self.position_name)
+        return " → ".join(parts)
+
+    @classmethod
+    def find_reference_norms(cls, position_name):
+        """
+        🔍 Ищет эталонные нормы СИЗ для должности по названию
+        """
+        # Найти все должности с таким же названием
+        positions = cls.objects.filter(position_name__iexact=position_name)
+
+        # Найти все нормы для этих должностей
+        from directory.models.siz import SIZNorm
+        norms = SIZNorm.objects.filter(position__in=positions).select_related('siz')
+
+        # Если норм не найдено, пытаемся найти по аналогичным названиям
+        if not norms.exists():
+            # Поиск по части названия должности
+            similar_positions = cls.objects.filter(
+                position_name__icontains=position_name.split()[0] if position_name.split() else ""
+            )
+            if similar_positions.exists():
+                norms = SIZNorm.objects.filter(position__in=similar_positions).select_related('siz')
+
+        return norms
