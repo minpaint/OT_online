@@ -1,0 +1,157 @@
+{% extends 'base.html' %}
+{% load static %}
+
+{% block title %}{{ title }}{% endblock %}
+
+{% block content %}
+<div class="container">
+    <div class="row mb-4">
+        <div class="col">
+            <h1>🛡️ Средства индивидуальной защиты</h1>
+            <p class="lead">Учет и выдача СИЗ сотрудникам</p>
+        </div>
+        <div class="col-auto d-flex align-items-center">
+            {% if user.is_staff %}
+            <a href="{% url 'admin:directory_siz_add' %}" class="btn btn-success me-2">
+                <i class="fas fa-plus"></i> Добавить СИЗ
+            </a>
+            {% endif %}
+            <a href="{% url 'directory:siz:siz_issue' %}" class="btn btn-primary">
+                <i class="fas fa-hand-holding"></i> Выдать СИЗ
+            </a>
+        </div>
+    </div>
+
+    <!-- Карточки с основными функциями -->
+    <div class="row mb-4">
+        <div class="col-md-4 mb-3">
+            <div class="card h-100">
+                <div class="card-body">
+                    <h5 class="card-title">📋 Выдача СИЗ</h5>
+                    <p class="card-text">Оформление выдачи СИЗ сотрудникам с формированием личной карточки учета.</p>
+                    <a href="{% url 'directory:siz:siz_issue' %}" class="btn btn-outline-primary">Перейти</a>
+                </div>
+            </div>
+        </div>
+        <div class="col-md-4 mb-3">
+            <div class="card h-100">
+                <div class="card-body">
+                    <h5 class="card-title">👤 Личные карточки</h5>
+                    <p class="card-text">Просмотр личных карточек учета выдачи СИЗ сотрудникам.</p>
+                    <a href="#" class="btn btn-outline-primary" onclick="showEmployeeSelector()">Выбрать сотрудника</a>
+                </div>
+            </div>
+        </div>
+        <div class="col-md-4 mb-3">
+            <div class="card h-100">
+                <div class="card-body">
+                    <h5 class="card-title">🔄 Возврат СИЗ</h5>
+                    <p class="card-text">Оформление возврата ранее выданных СИЗ от сотрудников.</p>
+                    <a href="#" class="btn btn-outline-primary" onclick="showEmployeeSelector()">Выбрать сотрудника</a>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Список недавно выданных СИЗ -->
+    <div class="card mb-4">
+        <div class="card-header">
+            <h5>📊 Недавно выданные СИЗ</h5>
+        </div>
+        <div class="card-body">
+            <div class="table-responsive">
+                <table class="table table-striped table-hover">
+                    <thead>
+                        <tr>
+                            <th>Дата выдачи</th>
+                            <th>Сотрудник</th>
+                            <th>СИЗ</th>
+                            <th>Количество</th>
+                            <th>Статус</th>
+                            <th>Действия</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {% for item in recent_issued %}
+                        <tr>
+                            <td>{{ item.issue_date|date:"d.m.Y" }}</td>
+                            <td>{{ item.employee }}</td>
+                            <td>{{ item.siz }}</td>
+                            <td>{{ item.quantity }}</td>
+                            <td>
+                                {% if item.is_returned %}
+                                <span class="badge bg-secondary">Возвращено</span>
+                                {% else %}
+                                <span class="badge bg-success">Активно</span>
+                                {% endif %}
+                            </td>
+                            <td>
+                                <a href="{% url 'directory:siz:siz_personal_card' item.employee.id %}" class="btn btn-sm btn-outline-info">
+                                    <i class="fas fa-id-card"></i>
+                                </a>
+                                {% if not item.is_returned %}
+                                <a href="{% url 'directory:siz:siz_return' item.id %}" class="btn btn-sm btn-outline-warning">
+                                    <i class="fas fa-undo"></i>
+                                </a>
+                                {% endif %}
+                            </td>
+                        </tr>
+                        {% empty %}
+                        <tr>
+                            <td colspan="6" class="text-center">Нет недавно выданных СИЗ</td>
+                        </tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Модальное окно для выбора сотрудника -->
+<div class="modal fade" id="employeeSelectModal" tabindex="-1" aria-labelledby="employeeSelectModalLabel" aria-hidden="true">
+    <div class="modal-dialog">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title" id="employeeSelectModalLabel">Выбор сотрудника</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+            </div>
+            <div class="modal-body">
+                <form id="employeeSelectForm">
+                    <div class="mb-3">
+                        <label for="employeeSelect" class="form-label">Выберите сотрудника</label>
+                        <select class="form-select" id="employeeSelect" required>
+                            <option value="">Выберите сотрудника...</option>
+                            {% for employee in employees %}
+                            <option value="{{ employee.id }}">{{ employee.full_name_nominative }}</option>
+                            {% endfor %}
+                        </select>
+                    </div>
+                </form>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Отмена</button>
+                <button type="button" class="btn btn-primary" id="goToEmployeeCardBtn">Перейти</button>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+// Функция для показа модального окна выбора сотрудника
+function showEmployeeSelector() {
+    const modal = new bootstrap.Modal(document.getElementById('employeeSelectModal'));
+    modal.show();
+}
+
+// Обработчик кнопки перехода к карточке сотрудника
+document.getElementById('goToEmployeeCardBtn').addEventListener('click', function() {
+    const employeeId = document.getElementById('employeeSelect').value;
+    if (employeeId) {
+        window.location.href = "{% url 'directory:siz:siz_personal_card' 0 %}".replace('0', employeeId);
+    }
+});
+</script>
+{% endblock %}

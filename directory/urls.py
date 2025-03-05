@@ -1,7 +1,8 @@
 from django.urls import path, include, reverse_lazy
 from django.contrib.auth import views as auth_views
-from directory.views import siz_issued
+
 from .views import siz
+from .views import siz_issued  # 👈 Добавляем импорт модуля siz_issued
 from directory.views import (
     HomePageView,  # 🏠 Главная страница
     EmployeeListView,  # 👥 Список сотрудников
@@ -69,7 +70,7 @@ siz_patterns = [
     path('', siz.SIZListView.as_view(), name='siz_list'),
     path('norms/create/', siz.SIZNormCreateView.as_view(), name='siznorm_create'),
     path('norms/api/', siz.siz_by_position_api, name='siz_api'),
-# 🆕 Добавляем новые маршруты для выдачи СИЗ
+    # 🆕 Добавляем новые маршруты для выдачи СИЗ
     path('issue/', siz_issued.SIZIssueFormView.as_view(), name='siz_issue'),
     path('issue/employee/<int:employee_id>/', siz_issued.SIZIssueFormView.as_view(), name='siz_issue_for_employee'),
     path('personal-card/<int:employee_id>/', siz_issued.SIZPersonalCardView.as_view(), name='siz_personal_card'),
@@ -119,15 +120,14 @@ urlpatterns = [
     path('autocomplete/', include(autocomplete_patterns)),
     path('employees/', include((employee_patterns, 'employees'))),
     path('positions/', include((position_patterns, 'positions'))),
-    path('documents/', include((document_patterns, 'documents'))),  # Если появятся документы
-    path('equipment/', include((equipment_patterns, 'equipment'))),  # Если появится оборудование
+    path('documents/', include((document_patterns, 'documents'))),
+    path('equipment/', include((equipment_patterns, 'equipment'))),
     path('positions/<int:position_id>/siz-norms/', siz.position_siz_norms, name='position_siz_norms'),
     path('siz/', include((siz_patterns, 'siz'))),
 
-    # Новые API эндпоинты для работы с личной карточкой СИЗ
+    # API эндпоинты для работы с личной карточкой СИЗ
     path('api/positions/<int:position_id>/siz-norms/', siz.get_position_siz_norms, name='api_position_siz_norms'),
     path('api/employees/<int:employee_id>/issued-siz/', siz.get_employee_issued_siz, name='api_employee_issued_siz'),
     path('api/siz/<int:siz_id>/', siz.get_siz_details, name='api_siz_details'),
     path('api/employees/<int:employee_id>/issued-siz/', siz_issued.employee_siz_issued_list, name='api_employee_issued_siz'),
-
 ]

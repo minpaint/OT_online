@@ -4,6 +4,7 @@ from django.contrib.auth.mixins import LoginRequiredMixin
 from django.http import JsonResponse
 from django.urls import reverse_lazy
 from django.views.decorators.http import require_GET
+from directory.models import Employee, SIZIssued  # Добавляем импорт SIZIssued
 
 from directory.models.siz import SIZ, SIZNorm
 from directory.models.position import Position
@@ -22,6 +23,15 @@ class SIZListView(LoginRequiredMixin, ListView):
     def get_context_data(self, **kwargs):
         context = super().get_context_data(**kwargs)
         context['title'] = 'Средства индивидуальной защиты'
+
+        # Добавляем список сотрудников для модального окна
+        context['employees'] = Employee.objects.all().order_by('full_name_nominative')
+
+        # Добавляем последние выданные СИЗ
+        context['recent_issued'] = SIZIssued.objects.select_related(
+            'employee', 'siz'
+        ).order_by('-issue_date')[:10]
+
         return context
 
 
