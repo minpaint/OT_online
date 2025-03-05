@@ -1,0 +1,208 @@
+{% extends 'base.html' %}
+{% load static %}
+{% load crispy_forms_tags %}
+
+{% block title %}{{ title }}{% endblock %}
+
+{% block extra_css %}
+<style>
+    /* 🎨 Стили для группировки СИЗ по условиям */
+    .siz-group {
+        margin-bottom: 15px;
+        border: 1px solid #dee2e6;
+        border-radius: 4px;
+    }
+    
+    .siz-group-header {
+        padding: 10px 15px;
+        background-color: #f8f9fa;
+        border-bottom: 1px solid #dee2e6;
+        font-weight: bold;
+    }
+    
+    .siz-group-body {
+        padding: 15px;
+    }
+    
+    .siz-item {
+        padding: 10px;
+        border-bottom: 1px solid #eee;
+    }
+    
+    .siz-item:last-child {
+        border-bottom: none;
+    }
+    
+    .siz-item:hover {
+        background-color: #f8f9fa;
+    }
+    
+    .siz-checkbox-label {
+        font-weight: 500;
+    }
+    
+    .siz-details {
+        display: none;
+        padding: 10px 0 0 25px;
+    }
+    
+    .siz-details.visible {
+        display: block;
+    }
+    
+    /* 🛡️ Иконки для статусов СИЗ */
+    .siz-status-icon {
+        margin-right: 5px;
+    }
+    
+    .wear-good {
+        color: #28a745;
+    }
+    
+    .wear-medium {
+        color: #ffc107;
+    }
+    
+    .wear-bad {
+        color: #dc3545;
+    }
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="container">
+    <h1>{{ title }}</h1>
+    
+    <div class="card mb-4">
+        <div class="card-header">
+            <h3>👤 Информация о сотруднике</h3>
+        </div>
+        <div class="card-body">
+            {% if employee %}
+            <div class="row">
+                <div class="col-md-6">
+                    <p><strong>ФИО:</strong> {{ employee.full_name_nominative }}</p>
+                    <p><strong>Дата рождения:</strong> {{ employee.date_of_birth|date:"d.m.Y" }}</p>
+                </div>
+                <div class="col-md-6">
+                    <p><strong>Организация:</strong> {{ employee.organization }}</p>
+                    {% if employee.subdivision %}
+                    <p><strong>Подразделение:</strong> {{ employee.subdivision }}</p>
+                    {% endif %}
+                    {% if employee.department %}
+                    <p><strong>Отдел:</strong> {{ employee.department }}</p>
+                    {% endif %}
+                    {% if employee.position %}
+                    <p><strong>Должность:</strong> {{ employee.position }}</p>
+                    {% endif %}
+                </div>
+            </div>
+            {% endif %}
+        </div>
+    </div>
+    
+    <form method="post" id="siz-issue-form">
+        {% csrf_token %}
+        {% crispy form %}
+    </form>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+    document.addEventListener('DOMContentLoaded', function() {
+        const form = document.getElementById('siz-issue-form');
+        const employeeSelect = document.getElementById('id_employee');
+        const groupsContainer = document.getElementById('siz-groups-container');
+        
+        // 🔄 Обновление полей при изменении сотрудника
+        if (employeeSelect) {
+            employeeSelect.addEventListener('change', function() {
+                form.submit();
+            });
+        }
+        
+        // 🔍 Обработка чекбоксов для выбора СИЗ
+        const sizCheckboxes = document.querySelectorAll('.siz-select');
+        sizCheckboxes.forEach(function(checkbox) {
+            const normId = checkbox.dataset.normId;
+            const detailsDiv = document.querySelector(`.siz-details[data-norm-id="${normId}"]`);
+            
+            // Изначально показываем или скрываем поля в зависимости от состояния чекбокса
+            if (detailsDiv) {
+                detailsDiv.classList.toggle('visible', checkbox.checked);
+            }
+            
+            // Обработчик события для переключения видимости
+            checkbox.addEventListener('change', function() {
+                if (detailsDiv) {
+                    detailsDiv.classList.toggle('visible', this.checked);
+                }
+            });
+        });
+        
+        // 📋 Группировка СИЗ по условиям
+        const sizItems = Array.from(document.querySelectorAll('.siz-select'));
+        const conditions = {};
+        
+        // Собираем все условия из атрибутов данных
+        sizItems.forEach(function(item) {
+            const condition = item.dataset.condition || 'Основные СИЗ';
+            if (!conditions[condition]) {
+                conditions[condition] = [];
+            }
+            
+            // Находим родительский div (содержащий чекбокс и связанные поля)
+            let sizItem = item.closest('.form-group');
+            if (!sizItem) {
+                sizItem = item.closest('.row');
+            }
+            
+            if (sizItem) {
+                conditions[condition].push(sizItem);
+            }
+        });
+        
+        // Создаем группы для каждого условия
+        if (groupsContainer) {
+            // Очищаем контейнер перед добавлением групп
+            groupsContainer.innerHTML = '';
+            
+            Object.keys(conditions).forEach(function(condition) {
+                const items = conditions[condition];
+                if (items.length > 0) {
+                    // Создаем группу
+                    const group = document.createElement('div');
+                    group.className = 'siz-group mb-4';
+                    
+                    // Заголовок группы
+                    const header = document.createElement('div');
+                    header.className = 'siz-group-header';
+                    header.textContent = condition;
+                    
+                    // Тело группы
+                    const body = document.createElement('div');
+                    body.className = 'siz-group-body';
+                    
+                    // Перемещаем элементы в группу
+                    items.forEach(function(item) {
+                        const container = item.parentNode;
+                        const clone = item.cloneNode(true);
+                        body.appendChild(clone);
+                        
+                        // Если элемент в контейнере, удаляем его из текущего места
+                        if (container && container.contains(item)) {
+                            container.removeChild(item);
+                        }
+                    });
+                    
+                    // Собираем группу
+                    group.appendChild(header);
+                    group.appendChild(body);
+                    groupsContainer.appendChild(group);
+                }
+            });
+        }
+    });
+</script>
+{% endblock %}

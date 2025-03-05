@@ -1,6 +1,6 @@
 from django.urls import path, include, reverse_lazy
 from django.contrib.auth import views as auth_views
-
+from directory.views import siz_issued
 from .views import siz
 from directory.views import (
     HomePageView,  # 🏠 Главная страница

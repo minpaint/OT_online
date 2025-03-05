@@ -8,6 +8,7 @@ from .position import Position
 from .employee import Employee
 from .profile import Profile
 from .siz_issued import SIZIssued
+from .siz import SIZ, SIZNorm  # 👈 Добавляем импорт моделей SIZ и SIZNorm
 
 __all__ = [
     'Organization',
@@ -19,4 +20,6 @@ __all__ = [
     'Position',
     'Employee',
     'SIZIssued',
+    'SIZ',         # 👈 Добавляем в __all__
+    'SIZNorm',     # 👈 Добавляем в __all__
 ]

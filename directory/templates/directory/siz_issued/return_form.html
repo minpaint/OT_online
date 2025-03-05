@@ -1,0 +1,52 @@
+{% extends 'base.html' %}
+{% load static %}
+{% load crispy_forms_tags %}
+
+{% block title %}{{ title }}{% endblock %}
+
+{% block content %}
+<div class="container">
+    <h1>{{ title }}</h1>
+
+    <div class="card mb-4">
+        <div class="card-header">
+            <h3>📋 Информация о возвращаемом СИЗ</h3>
+        </div>
+        <div class="card-body">
+            <div class="row">
+                <div class="col-md-6">
+                    <p><strong>Сотрудник:</strong> {{ employee.full_name_nominative }}</p>
+                    <p><strong>СИЗ:</strong> {{ siz_name }}</p>
+                </div>
+                <div class="col-md-6">
+                    <p><strong>Дата выдачи:</strong> {{ issue_date|date:"d.m.Y" }}</p>
+                    {% if employee.position %}
+                    <p><strong>Должность:</strong> {{ employee.position }}</p>
+                    {% endif %}
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <div class="card">
+        <div class="card-header">
+            <h3>🔙 Информация о возврате</h3>
+        </div>
+        <div class="card-body">
+            <form method="post">
+                {% csrf_token %}
+                {{ form|crispy }}
+
+                <div class="text-center mt-4">
+                    <button type="submit" class="btn btn-primary btn-lg">
+                        <i class="fas fa-save"></i> Подтвердить возврат
+                    </button>
+                    <a href="{% url 'directory:siz:siz_personal_card' employee.id %}" class="btn btn-secondary btn-lg ml-2">
+                        <i class="fas fa-times"></i> Отмена
+                    </a>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
+{% endblock %}
