@@ -9,6 +9,8 @@ from .position import PositionForm
 from .subdivision import StructuralSubdivisionForm
 from .registration import CustomUserCreationForm
 from .employee_hiring import EmployeeHiringForm  # ✅ Добавляем импорт
+from .siz_issued import SIZIssueMassForm, SIZIssueReturnForm
+from .siz import SIZForm, SIZNormForm
 
 __all__ = [
     "DepartmentForm",
@@ -20,4 +22,9 @@ __all__ = [
     "StructuralSubdivisionForm",
     "CustomUserCreationForm",
     "EmployeeHiringForm",  # ✅ Добавляем в список
+    "SIZForm",
+    "SIZNormForm",
+    # 🆕 Добавляем в список экспорта
+    "SIZIssueMassForm",
+    "SIZIssueReturnForm",
 ]

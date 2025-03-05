@@ -26,6 +26,14 @@ from .positions import (
     get_departments
 )
 
+# 🆕 Импортируем представления для выдачи СИЗ
+from .siz_issued import (
+    SIZIssueFormView,
+    SIZPersonalCardView,
+    SIZIssueReturnView,
+    employee_siz_issued_list,
+)
+
 class HomePageView(LoginRequiredMixin, TemplateView):
     """🏠 Главная страница"""
     template_name = 'directory/home.html'
@@ -49,7 +57,7 @@ class HomePageView(LoginRequiredMixin, TemplateView):
                 request,
                 f"✅ Сотрудник {employee.full_name_nominative} успешно принят на работу"
             )
-            return redirect('directory:employees:employee_list')  # Изменено на employee_list
+            return redirect('directory:employees:employee_list')
         return render(request, self.template_name, {
             'form': form,
             'title': '🏠 Главная'
@@ -69,5 +77,10 @@ __all__ = [
     'get_subdivisions',
     'get_positions',
     'get_departments',
-    'UserRegistrationView', # ✅ Экспорт UserRegistrationView
+    'UserRegistrationView',
+    # 🆕 Добавляем в список экспорта
+    'SIZIssueFormView',
+    'SIZPersonalCardView',
+    'SIZIssueReturnView',
+    'employee_siz_issued_list',
 ]

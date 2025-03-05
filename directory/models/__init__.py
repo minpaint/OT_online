@@ -7,6 +7,7 @@ from .equipment import Equipment
 from .position import Position
 from .employee import Employee
 from .profile import Profile
+from .siz_issued import SIZIssued
 
 __all__ = [
     'Organization',
@@ -17,4 +18,5 @@ __all__ = [
     'Equipment',
     'Position',
     'Employee',
+    'SIZIssued',
 ]

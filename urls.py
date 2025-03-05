@@ -6,6 +6,7 @@ from directory.error_handlers import error_400, error_403, error_404, error_500
 # Импортируем представление главной страницы
 from directory.views.home import HomePageView
 
+
 urlpatterns = [
     # Изменено: вместо редиректа на /admin/ с корня, теперь главная страница обрабатывается HomePageView
     path('', HomePageView.as_view(), name='home'),
