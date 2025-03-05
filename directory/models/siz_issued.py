@@ -1,6 +1,8 @@
+# 📁 directory/models/siz_issued.py
 from django.db import models
 from django.utils import timezone
 from django.core.exceptions import ValidationError
+from datetime import timedelta
 
 
 class SIZIssued(models.Model):
@@ -114,26 +116,53 @@ class SIZIssued(models.Model):
 
     def save(self, *args, **kwargs):
         """
-        💾 Метод сохранения с валидацией
+        💾 Переопределение метода сохранения
+
+        - Автоматически вычисляет дату замены на основе срока носки СИЗ
+        - Выполняет валидацию перед сохранением
         """
+        # Если дата замены не указана, вычисляем на основе срока носки
+        if not self.replacement_date and self.siz and self.siz.wear_period > 0 and self.issue_date:
+            wear_period_days = self.siz.wear_period * 30  # Примерное количество дней
+            self.replacement_date = self.issue_date + timedelta(days=wear_period_days)
+
+        # Выполняем валидацию
         self.clean()
+
         super().save(*args, **kwargs)
 
     @property
-    def is_active(self):
+    def days_until_replacement(self):
         """
-        ✅ Проверка, является ли выданное СИЗ активным (не возвращено и не заменено)
+        📅 Возвращает количество дней до замены СИЗ
+
+        Returns:
+            int или None: Количество дней до замены или None, если "До износа"
         """
-        return not self.is_returned and not self.replacement_date
+        if self.is_returned or not self.replacement_date:
+            return None
+
+        today = timezone.now().date()
+        return (self.replacement_date - today).days if self.replacement_date > today else 0
 
     @property
-    def wear_status(self):
+    def status(self):
         """
-        📊 Получение текстового статуса износа
+        🔄 Возвращает текущий статус выданного СИЗ
+
+        Returns:
+            str: Статус СИЗ (В использовании, Возвращено, Требует замены, и т.д.)
         """
-        if self.wear_percentage < 30:
-            return "Хорошее состояние"
-        elif self.wear_percentage < 70:
-            return "Удовлетворительное состояние"
-        else:
+        if self.is_returned:
+            return "Возвращено"
+
+        days = self.days_until_replacement
+        if days is not None and days <= 0:
             return "Требует замены"
+
+        if self.wear_percentage >= 80:
+            return "Сильный износ"
+        elif self.wear_percentage >= 50:
+            return "Средний износ"
+
+        return "В использовании"

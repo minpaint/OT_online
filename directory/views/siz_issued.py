@@ -1,200 +1,193 @@
-from django.views.generic import FormView, DetailView, UpdateView, ListView
-from django.shortcuts import render, redirect, get_object_or_404
+# 📁 directory/views/siz_issued.py
+from django.views.generic import CreateView, DetailView, FormView, UpdateView
 from django.contrib.auth.mixins import LoginRequiredMixin
-from django.contrib.auth.decorators import login_required
+from django.shortcuts import get_object_or_404, redirect
 from django.urls import reverse_lazy, reverse
-from django.http import JsonResponse, HttpResponse
+from django.http import JsonResponse
 from django.contrib import messages
-from django.utils import timezone
-from django.db.models import Q, F, Sum, Case, When, Value, IntegerField
+from django.utils.decorators import method_decorator
 from django.views.decorators.http import require_GET
+from django.contrib.auth.decorators import login_required
+from django.db.models import Q, Count
 
-from directory.models.siz import SIZ, SIZNorm
-from directory.models.siz_issued import SIZIssued
-from directory.models.employee import Employee
-from directory.models.position import Position
-from directory.forms.siz_issued import SIZIssueMassForm, SIZIssueReturnForm
+from directory.models import Employee, SIZ, SIZNorm, SIZIssued, Position
+from directory.forms.siz_issued import SIZIssueForm, SIZIssueMassForm, SIZIssueReturnForm
 
 
-class SIZIssueFormView(LoginRequiredMixin, FormView):
+class SIZIssueFormView(LoginRequiredMixin, CreateView):
     """
-    📝 Представление для формы выдачи СИЗ сотруднику
+    📝 Представление для выдачи СИЗ сотруднику
     """
+    model = SIZIssued
+    form_class = SIZIssueForm
     template_name = 'directory/siz_issued/issue_form.html'
-    form_class = SIZIssueMassForm
-    success_url = reverse_lazy('directory:siz:siz_list')
+
+    def get_success_url(self):
+        """
+        🔗 Возвращает URL для перенаправления после успешной выдачи СИЗ
+        """
+        return reverse('directory:siz:siz_personal_card', kwargs={'employee_id': self.object.employee.id})
 
     def get_form_kwargs(self):
         """
-        🔑 Получение аргументов для формы
+        📋 Передаем дополнительные параметры в форму
         """
         kwargs = super().get_form_kwargs()
         kwargs['user'] = self.request.user
 
-        # Если передан ID сотрудника, добавляем его в kwargs
+        # Если в URL есть параметр employee_id, передаем его в форму
         employee_id = self.kwargs.get('employee_id')
         if employee_id:
             kwargs['employee_id'] = employee_id
 
         return kwargs
 
-    def form_valid(self, form):
-        """
-        ✅ Обработка успешной валидации формы
-        """
-        # Сохраняем выбранные СИЗ
-        issued_items = form.save()
-
-        if issued_items:
-            # Получаем информацию о сотруднике для сообщения
-            employee = form.cleaned_data['employee']
-
-            # Формируем сообщение об успешной выдаче
-            success_message = f"✅ Сотруднику {employee.full_name_dative} выдано {len(issued_items)} СИЗ"
-            messages.success(self.request, success_message)
-
-            # Перенаправляем на личную карточку сотрудника
-            return redirect('directory:siz:siz_personal_card', employee_id=employee.pk)
-        else:
-            # Если ничего не выбрано, выводим предупреждение
-            messages.warning(self.request, "⚠️ Не выбрано ни одного СИЗ для выдачи")
-
-        return super().form_valid(form)
-
     def get_context_data(self, **kwargs):
         """
-        📊 Получение контекста для шаблона
+        📊 Добавляем дополнительные данные в контекст
         """
         context = super().get_context_data(**kwargs)
+        context['title'] = 'Выдача СИЗ'
 
-        # Добавляем заголовок страницы
-        context['title'] = "Выдача СИЗ"
-
-        # Если передан ID сотрудника, добавляем его в контекст
+        # Если есть employee_id в URL, добавляем информацию о сотруднике
         employee_id = self.kwargs.get('employee_id')
         if employee_id:
-            try:
-                employee = Employee.objects.get(pk=employee_id)
-                context['employee'] = employee
-                context['title'] = f"Выдача СИЗ для {employee.full_name_nominative}"
-            except Employee.DoesNotExist:
-                pass
+            employee = get_object_or_404(Employee, id=employee_id)
+            context['employee'] = employee
+
+            # Получаем нормы СИЗ для должности сотрудника
+            if employee.position:
+                norms = SIZNorm.objects.filter(
+                    position=employee.position
+                ).select_related('siz')
+
+                # Группируем нормы по условиям
+                context['base_norms'] = norms.filter(condition='')
+
+                condition_groups = {}
+                for norm in norms.exclude(condition=''):
+                    if norm.condition not in condition_groups:
+                        condition_groups[norm.condition] = []
+                    condition_groups[norm.condition].append(norm)
+
+                context['condition_groups'] = [
+                    {'name': condition, 'norms': norms}
+                    for condition, norms in condition_groups.items()
+                ]
 
         return context
+
+    def form_valid(self, form):
+        """
+        ✅ Обработка валидной формы
+        """
+        # Сохраняем объект
+        response = super().form_valid(form)
+
+        # Добавляем сообщение об успешной выдаче
+        messages.success(
+            self.request,
+            f"✅ СИЗ '{self.object.siz.name}' успешно выдано сотруднику {self.object.employee.full_name_nominative}"
+        )
+
+        return response
 
 
 class SIZPersonalCardView(LoginRequiredMixin, DetailView):
     """
-    👤 Представление личной карточки учета СИЗ
+    👤 Представление для отображения личной карточки учета СИЗ сотрудника
     """
     model = Employee
     template_name = 'directory/siz_issued/personal_card.html'
     context_object_name = 'employee'
 
-    def get_object(self, queryset=None):
+    def get_object(self):
         """
-        🔍 Получение объекта сотрудника по ID
+        🔍 Получаем объект сотрудника по его ID
         """
-        employee_id = self.kwargs.get('employee_id')
-        return get_object_or_404(
-            Employee.objects.select_related('position', 'organization', 'subdivision', 'department'),
-            pk=employee_id
-        )
+        return get_object_or_404(Employee, id=self.kwargs.get('employee_id'))
 
     def get_context_data(self, **kwargs):
         """
-        📊 Получение контекста для шаблона
+        📊 Добавляем дополнительные данные в контекст
         """
         context = super().get_context_data(**kwargs)
-        employee = self.object
+        context['title'] = f'Личная карточка учета СИЗ - {self.object.full_name_nominative}'
 
-        # Добавляем заголовок страницы
-        context['title'] = f"Личная карточка учета СИЗ - {employee.full_name_nominative}"
-
-        # Получаем нормы СИЗ для должности сотрудника
-        if employee.position:
-            # Группируем нормы по условиям
-            norms = SIZNorm.objects.filter(
-                position=employee.position
-            ).select_related('siz').order_by('condition', 'order', 'siz__name')
-
-            # Разделяем нормы на базовые (без условий) и по условиям
-            base_norms = norms.filter(condition='')
-
-            # Получаем уникальные условия
-            conditions = norms.exclude(condition='').values_list('condition', flat=True).distinct()
-
-            # Формируем группы норм по условиям
-            condition_groups = []
-            for condition in conditions:
-                condition_norms = norms.filter(condition=condition)
-                condition_groups.append({
-                    'name': condition,
-                    'norms': condition_norms
-                })
-
-            context['base_norms'] = base_norms
-            context['condition_groups'] = condition_groups
-
-        # Получаем выданные СИЗ для сотрудника
+        # Получаем все выданные сотруднику СИЗ
         issued_items = SIZIssued.objects.filter(
-            employee=employee
+            employee=self.object
         ).select_related('siz').order_by('-issue_date')
 
-        # Разделяем на активные (не возвращенные) и возвращенные
-        active_items = issued_items.filter(is_returned=False)
-        returned_items = issued_items.filter(is_returned=True)
-
         context['issued_items'] = issued_items
-        context['active_items'] = active_items
-        context['returned_items'] = returned_items
+
+        # Получаем нормы СИЗ для должности сотрудника
+        if self.object.position:
+            norms = SIZNorm.objects.filter(
+                position=self.object.position
+            ).select_related('siz')
+
+            # Базовые нормы (без условий)
+            context['base_norms'] = norms.filter(condition='')
+
+            # Нормы по условиям
+            conditions = list(set(norm.condition for norm in norms if norm.condition))
+            condition_groups = []
+
+            for condition in conditions:
+                condition_norms = [norm for norm in norms if norm.condition == condition]
+                if condition_norms:
+                    condition_groups.append({
+                        'name': condition,
+                        'norms': condition_norms
+                    })
+
+            context['condition_groups'] = condition_groups
 
         return context
 
 
 class SIZIssueReturnView(LoginRequiredMixin, UpdateView):
     """
-    🔙 Представление для возврата выданного СИЗ
+    🔄 Представление для возврата выданного СИЗ
     """
     model = SIZIssued
     form_class = SIZIssueReturnForm
     template_name = 'directory/siz_issued/return_form.html'
+    pk_url_kwarg = 'siz_issued_id'
 
     def get_success_url(self):
         """
-        🔄 URL для перенаправления после успешного возврата
+        🔗 Возвращает URL для перенаправления после успешного возврата СИЗ
         """
-        # Перенаправляем на личную карточку сотрудника
-        return reverse('directory:siz:siz_personal_card', kwargs={'employee_id': self.object.employee.pk})
-
-    def form_valid(self, form):
-        """
-        ✅ Обработка успешной валидации формы
-        """
-        response = super().form_valid(form)
-
-        # Формируем сообщение об успешном возврате
-        employee = self.object.employee
-        siz = self.object.siz
-        success_message = f"✅ СИЗ '{siz.name}' от {self.object.issue_date.strftime('%d.%m.%Y')} успешно возвращено"
-        messages.success(self.request, success_message)
-
-        return response
+        return reverse('directory:siz:siz_personal_card', kwargs={'employee_id': self.object.employee.id})
 
     def get_context_data(self, **kwargs):
         """
-        📊 Получение контекста для шаблона
+        📊 Добавляем дополнительные данные в контекст
         """
         context = super().get_context_data(**kwargs)
-
-        # Добавляем заголовок страницы и информацию о возвращаемом СИЗ
-        issued_item = self.object
-        context['title'] = f"Возврат СИЗ"
-        context['siz_name'] = issued_item.siz.name
-        context['issue_date'] = issued_item.issue_date
-        context['employee'] = issued_item.employee
+        context['title'] = 'Возврат СИЗ'
+        context['employee'] = self.object.employee
+        context['siz_name'] = self.object.siz.name
+        context['issue_date'] = self.object.issue_date
 
         return context
+
+    def form_valid(self, form):
+        """
+        ✅ Обработка валидной формы
+        """
+        # Сохраняем объект
+        response = super().form_valid(form)
+
+        # Добавляем сообщение об успешном возврате
+        messages.success(
+            self.request,
+            f"✅ СИЗ '{self.object.siz.name}' успешно возвращено"
+        )
+
+        return response
 
 
 @login_required
@@ -243,5 +236,49 @@ def employee_siz_issued_list(request, employee_id):
             'condition': item.condition
         }
         result['issued_items'].append(item_data)
+
+    return JsonResponse(result)
+
+
+@login_required
+@require_GET
+def position_siz_norms(request, position_id):
+    """
+    📋 API для получения норм СИЗ по должности
+
+    Args:
+        request: HttpRequest объект
+        position_id: ID должности
+
+    Returns:
+        JsonResponse с данными о нормах СИЗ
+    """
+    position = get_object_or_404(Position, pk=position_id)
+
+    # Получаем нормы СИЗ для должности
+    norms = SIZNorm.objects.filter(
+        position=position
+    ).select_related('siz')
+
+    # Формируем данные для JSON
+    result = {
+        'position_id': position.id,
+        'position_name': position.position_name,
+        'norms': []
+    }
+
+    # Добавляем информацию о каждой норме СИЗ
+    for norm in norms:
+        norm_data = {
+            'id': norm.id,
+            'siz_id': norm.siz.id,
+            'siz_name': norm.siz.name,
+            'classification': norm.siz.classification,
+            'quantity': norm.quantity,
+            'condition': norm.condition,
+            'unit': norm.siz.unit,
+            'wear_period': norm.siz.wear_period
+        }
+        result['norms'].append(norm_data)
 
     return JsonResponse(result)
