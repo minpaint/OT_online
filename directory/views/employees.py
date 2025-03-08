@@ -1,9 +1,13 @@
-from django.views.generic import ListView, CreateView, UpdateView, DeleteView
+from django.views.generic import ListView, CreateView, UpdateView, DeleteView, FormView
 from django.contrib.auth.mixins import LoginRequiredMixin
 from django.urls import reverse_lazy
 from django.http import JsonResponse
+from django.shortcuts import render, redirect
+from django.contrib import messages
+
 from directory.models import Employee, StructuralSubdivision, Position
 from directory.forms import EmployeeForm
+from directory.forms.employee_hiring import EmployeeHiringForm
 
 
 class EmployeeListView(LoginRequiredMixin, ListView):
@@ -70,6 +74,70 @@ class EmployeeDeleteView(LoginRequiredMixin, DeleteView):
         context = super().get_context_data(**kwargs)
         context['title'] = 'Удаление сотрудника'
         return context
+
+
+class EmployeeHiringView(LoginRequiredMixin, FormView):
+    """
+    👥 Представление для страницы найма сотрудника
+
+    Отображает форму найма сотрудника с сохранением логики
+    ограничения по организациям из профиля пользователя.
+    """
+    template_name = 'directory/employees/hire.html'
+    form_class = EmployeeHiringForm
+    success_url = reverse_lazy('directory:employees:employee_list')
+
+    def get_form_kwargs(self):
+        """
+        🔑 Передаем текущего пользователя в форму
+        для ограничения доступных организаций
+        """
+        kwargs = super().get_form_kwargs()
+        kwargs['user'] = self.request.user
+        return kwargs
+
+    def get_context_data(self, **kwargs):
+        """
+        📊 Добавляем контекст для шаблона
+        """
+        context = super().get_context_data(**kwargs)
+        context['title'] = '📝 Прием на работу'
+
+        # Получаем недавно принятых сотрудников, с учетом доступных организаций
+        user = self.request.user
+        recent_employees_query = Employee.objects.all().order_by('-id')[:5]
+
+        # Ограничиваем по организациям из профиля пользователя
+        if not user.is_superuser and hasattr(user, 'profile'):
+            allowed_orgs = user.profile.organizations.all()
+            recent_employees_query = recent_employees_query.filter(organization__in=allowed_orgs)
+
+        context['recent_employees'] = recent_employees_query
+
+        return context
+
+    def form_valid(self, form):
+        """
+        ✅ Обработка валидной формы с сохранением или предпросмотром
+        """
+        # Проверяем, нужен ли предпросмотр
+        if 'preview' in self.request.POST:
+            # Отображаем страницу предпросмотра с данными из формы
+            return render(self.request, 'directory/preview.html', {
+                'form': form,
+                'data': form.cleaned_data
+            })
+
+        # Сохраняем данные формы
+        employee = form.save()
+
+        # Добавляем сообщение об успешном найме
+        messages.success(
+            self.request,
+            f"✅ Сотрудник {employee.full_name_nominative} успешно принят на работу"
+        )
+
+        return super().form_valid(form)
 
 
 def get_subdivisions(request):

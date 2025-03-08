@@ -3,12 +3,14 @@ from django.contrib.auth import views as auth_views
 
 from .views import siz
 from .views import siz_issued  # 👈 Добавляем импорт модуля siz_issued
+
 from directory.views import (
     HomePageView,  # 🏠 Главная страница
     EmployeeListView,  # 👥 Список сотрудников
     EmployeeCreateView,  # 👤 Создание сотрудника
     EmployeeUpdateView,  # ✏️ Редактирование сотрудника
     EmployeeDeleteView,  # 🗑️ Удаление сотрудника
+    EmployeeHiringView,  # 👥 Найм сотрудника - добавляем импорт
     PositionListView,  # 👔 Список должностей
     PositionCreateView,  # ➕ Создание должности
     PositionUpdateView,  # ✏️ Редактирование должности
@@ -43,6 +45,7 @@ autocomplete_patterns = [
 employee_patterns = [
     path('', EmployeeListView.as_view(), name='employee_list'),
     path('create/', EmployeeCreateView.as_view(), name='employee_create'),
+    path('hire/', EmployeeHiringView.as_view(), name='employee_hire'),  # Новый маршрут
     path('<int:pk>/update/', EmployeeUpdateView.as_view(), name='employee_update'),
     path('<int:pk>/delete/', EmployeeDeleteView.as_view(), name='employee_delete'),
 ]
