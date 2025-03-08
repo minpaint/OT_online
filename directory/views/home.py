@@ -1,41 +1,105 @@
-# D:\YandexDisk\OT_online\directory\views\home.py
+# 📁 directory/views/home.py
 
-from django.views.generic import CreateView
+from django.views.generic import TemplateView
 from django.contrib.auth.mixins import LoginRequiredMixin
-from django.urls import reverse_lazy
-from django.contrib import messages
 from django.shortcuts import render
-from directory.forms.employee_hiring import EmployeeHiringForm  # Подключаем форму найма
-from directory.models import Employee
-import logging
+from django.db.models import Prefetch, Q
 
-logger = logging.getLogger(__name__)
+from directory.models import (
+    Organization,
+    StructuralSubdivision,
+    Department,
+    Employee,
+    Position
+)
 
-class HomePageView(LoginRequiredMixin, CreateView):
+
+class HomePageView(LoginRequiredMixin, TemplateView):
     """
-    🏠 Главная страница (публичная форма), используем EmployeeHiringForm.
+    🏠 Главная страница с древовидным списком сотрудников
+
+    Отображает иерархическую структуру организаций, подразделений,
+    отделов и сотрудников с возможностью выбора через чекбоксы.
     """
     template_name = 'directory/home.html'
-    form_class = EmployeeHiringForm  # Используем обновлённую форму
-    success_url = reverse_lazy('directory:home')
 
-    def get_form_kwargs(self):
-        kwargs = super().get_form_kwargs()
-        kwargs['user'] = self.request.user  # Фильтрация по организациям
-        return kwargs
+    def get_context_data(self, **kwargs):
+        """📊 Получение данных для шаблона"""
+        context = super().get_context_data(**kwargs)
+        context['title'] = '🏠 Главная'
 
-    def form_valid(self, form):
-        try:
-            response = super().form_valid(form)
-            messages.success(
-                self.request,
-                f"✅ Сотрудник {form.instance.full_name_nominative} успешно создан!"
+        # 🔍 Получаем организации из профиля пользователя
+        user = self.request.user
+        if hasattr(user, 'profile'):
+            allowed_orgs = user.profile.organizations.all()
+        else:
+            allowed_orgs = Organization.objects.none()
+
+        # 📝 Подготавливаем данные для древовидной структуры
+        organizations = []
+
+        # 📊 Для каждой организации получаем древовидную структуру
+        for org in allowed_orgs:
+            # 📋 Получаем подразделения организации
+            subdivisions = StructuralSubdivision.objects.filter(
+                organization=org
+            ).prefetch_related(
+                Prefetch(
+                    'departments',
+                    queryset=Department.objects.all()
+                )
             )
-            return response
-        except Exception as e:
-            logger.error(f"Ошибка создания сотрудника: {str(e)}")
-            messages.error(
-                self.request,
-                f"❌ Ошибка при создании сотрудника: {str(e)}"
-            )
-            return self.form_invalid(form)
+
+            # 👥 Получаем сотрудников без подразделения (напрямую в организации)
+            org_employees = Employee.objects.filter(
+                organization=org,
+                subdivision__isnull=True
+            ).select_related('position')
+
+            # 🏢 Формируем структуру организации
+            org_data = {
+                'id': org.id,
+                'name': org.full_name_ru,
+                'short_name': org.short_name_ru,
+                'employees': list(org_employees),
+                'subdivisions': []
+            }
+
+            # 🏭 Для каждого подразделения получаем отделы и сотрудников
+            for subdivision in subdivisions:
+                # 👥 Сотрудники подразделения без отдела
+                sub_employees = Employee.objects.filter(
+                    subdivision=subdivision,
+                    department__isnull=True
+                ).select_related('position')
+
+                # 🏭 Формируем структуру подразделения
+                sub_data = {
+                    'id': subdivision.id,
+                    'name': subdivision.name,
+                    'employees': list(sub_employees),
+                    'departments': []
+                }
+
+                # 📂 Для каждого отдела получаем сотрудников
+                for department in subdivision.departments.all():
+                    # 👥 Сотрудники отдела
+                    dept_employees = Employee.objects.filter(
+                        department=department
+                    ).select_related('position')
+
+                    # 📂 Формируем структуру отдела
+                    dept_data = {
+                        'id': department.id,
+                        'name': department.name,
+                        'employees': list(dept_employees)
+                    }
+
+                    sub_data['departments'].append(dept_data)
+
+                org_data['subdivisions'].append(sub_data)
+
+            organizations.append(org_data)
+
+        context['organizations'] = organizations
+        return context
