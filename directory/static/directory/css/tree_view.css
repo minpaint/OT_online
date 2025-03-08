@@ -111,6 +111,26 @@
     display: none;
 }
 
+/* Стили для результатов поиска */
+.hidden-by-search {
+    display: none !important;
+}
+
+.highlight-search {
+    background-color: rgba(255, 243, 205, 0.5) !important;
+}
+
+.highlight-search td {
+    background-color: rgba(255, 243, 205, 0.5) !important;
+}
+
+.structure-path {
+    color: #6c757d;
+    font-style: italic;
+    margin-left: 8px;
+    font-size: 0.9em;
+}
+
 /* Стили для мобильных устройств */
 @media (max-width: 768px) {
     .tree-level {
