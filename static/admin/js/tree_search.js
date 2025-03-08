@@ -93,21 +93,8 @@ class TreeSearch {
             row.classList.remove('hidden-by-search');
             row.classList.add('highlight-search');
 
-            // Добавляем структурный путь, если его еще нет
-            const nameCell = row.querySelector('.field-name') || row.querySelector('td:first-child');
-            if (nameCell && !row.querySelector('.structure-path')) {
-                const structurePath = this._getCleanPathToParents(row);
-
-                // Добавляем путь только если он не пустой и его еще нет в отображении
-                if (structurePath && !nameCell.textContent.includes(structurePath)) {
-                    const pathSpan = document.createElement('span');
-                    pathSpan.className = 'structure-path';
-                    pathSpan.style.color = '#666';
-                    pathSpan.style.marginLeft = '5px';
-                    pathSpan.textContent = `(${structurePath})`;
-                    nameCell.appendChild(pathSpan);
-                }
-            }
+            // Показываем родительские элементы
+            this._showParents(row);
         });
 
         // Если ничего не найдено, показываем сообщение
@@ -125,6 +112,11 @@ class TreeSearch {
         } else if (document.getElementById('no-search-results')) {
             document.getElementById('no-search-results').classList.add('hidden-by-search');
         }
+
+        // Автоматически разворачиваем элементы
+        setTimeout(() => {
+            document.querySelector('.expand-all')?.click();
+        }, 100);
     }
 
     /**
@@ -151,86 +143,7 @@ class TreeSearch {
             parentId = this.isAdminMode
                 ? parentRow.dataset.parentId
                 : parentRow.dataset.parent;
-
-            // Раскрываем родителя, если он свернут
-            if (this.isAdminMode) {
-                const toggleBtn = parentRow.querySelector('.toggle-btn');
-                if (toggleBtn && toggleBtn.getAttribute('data-state') === 'collapsed') {
-                    toggleBtn.setAttribute('data-state', 'expanded');
-                    toggleBtn.textContent = '[-]';
-
-                    // Показываем детей
-                    const childRows = this.tree.querySelectorAll(`tr[data-parent-id="${parentRow.dataset.nodeId}"]`);
-                    childRows.forEach(child => {
-                        child.classList.remove('tree-row-hidden');
-                    });
-                }
-            } else {
-                const toggleBtn = parentRow.querySelector('.tree-toggle');
-                if (toggleBtn && toggleBtn.textContent === '+') {
-                    toggleBtn.textContent = '-';
-
-                    // Показываем детей
-                    const childNodeId = parentRow.dataset.nodeId;
-                    const children = this.tree.querySelectorAll(`tr[data-parent="${childNodeId}"]`);
-                    children.forEach(child => {
-                        child.classList.remove('tree-hidden');
-                    });
-                }
-            }
         }
-    }
-
-    /**
-     * 📍 Получение чистого пути до родительских элементов
-     */
-    _getCleanPathToParents(row) {
-        const path = [];
-
-        // Определяем атрибуты в зависимости от режима
-        let parentAttr = this.isAdminMode ? 'parentId' : 'parent';
-        let nodeAttr = this.isAdminMode ? 'nodeId' : 'nodeId';
-
-        let parentId = row.dataset[parentAttr];
-
-        while (parentId) {
-            // Определяем селектор для родителя
-            const parentSelector = this.isAdminMode
-                ? `tr[data-node-id="${parentId}"]`
-                : `tr[data-node-id="${parentId}"]`;
-
-            const parentRow = this.tree.querySelector(parentSelector);
-            if (!parentRow) break;
-
-            const parentNameCell = parentRow.querySelector('.field-name') || parentRow.querySelector('td:first-child');
-            if (parentNameCell) {
-                // Получаем название родителя из strong тега, если он есть
-                const strongElement = parentNameCell.querySelector('strong');
-                let parentName = '';
-
-                if (strongElement) {
-                    parentName = strongElement.textContent.trim();
-                } else {
-                    // Если нет strong, берем весь текст и очищаем от управляющих символов
-                    parentName = parentNameCell.textContent.replace(/[-+\[\]]/g, '').trim();
-                }
-
-                if (parentName) {
-                    path.unshift(parentName); // Добавляем в начало массива
-                }
-            }
-
-            // Переходим к следующему родителю
-            parentId = this.isAdminMode
-                ? parentRow.dataset.parentId
-                : parentRow.dataset.parent;
-        }
-
-        if (path.length === 0) {
-            return '';
-        }
-
-        return path.join(' → ');
     }
 
     /**
@@ -352,30 +265,95 @@ document.addEventListener('DOMContentLoaded', () => {
         });
 
         // Обработка клавиш в поле поиска
-       searchInput.addEventListener('keydown', (e) => {
-           if (e.key === 'Enter') {
-               treeSearch.search(searchInput.value);
-           } else if (e.key === 'Escape') {
-               searchInput.value = '';
-               treeSearch.search('');
-           }
-       });
+        searchInput.addEventListener('keydown', (e) => {
+            if (e.key === 'Enter') {
+                treeSearch.search(searchInput.value);
+            } else if (e.key === 'Escape') {
+                searchInput.value = '';
+                treeSearch.search('');
+            }
+        });
 
-       // Обработка кнопки поиска, если она есть
-       const searchButton = document.getElementById('localSearchBtn');
-       if (searchButton) {
-           searchButton.addEventListener('click', () => {
-               treeSearch.search(searchInput.value);
-           });
-       }
+        // Обработка кнопки поиска, если она есть
+        const searchButton = document.getElementById('localSearchBtn');
+        if (searchButton) {
+            searchButton.addEventListener('click', () => {
+                treeSearch.search(searchInput.value);
+            });
+        }
 
-       // Обработка кнопки очистки, если она есть
-       const clearButton = document.getElementById('clearSearchBtn');
-       if (clearButton) {
-           clearButton.addEventListener('click', () => {
-               searchInput.value = '';
-               treeSearch.search('');
-           });
-       }
-   }
+        // Обработка кнопки очистки, если она есть
+        const clearButton = document.getElementById('clearSearchBtn');
+        if (clearButton) {
+            clearButton.addEventListener('click', () => {
+                searchInput.value = '';
+                treeSearch.search('');
+            });
+        }
+
+        // Выполняем поиск сразу, если строка поиска уже содержит значение
+        if (searchInput.value.trim()) {
+            treeSearch.search(searchInput.value);
+        }
+    }
+
+    // Дополнительная инициализация прямых обработчиков для крестиков
+    setTimeout(() => {
+        fixTreeToggles();
+    }, 500);
 });
+
+/**
+ * Функция для исправления работы крестиков разворачивания/сворачивания
+ */
+function fixTreeToggles() {
+    // Находим все крестики во фронтенде
+    const toggles = document.querySelectorAll('.tree-toggle');
+
+    // Удаляем существующие обработчики событий
+    toggles.forEach(toggle => {
+        const clone = toggle.cloneNode(true);
+        toggle.parentNode.replaceChild(clone, toggle);
+    });
+
+    // Добавляем новые обработчики
+    document.querySelectorAll('.tree-toggle').forEach(toggle => {
+        toggle.addEventListener('click', function(e) {
+            const nodeId = this.getAttribute('data-node');
+            if (!nodeId) return;
+
+            // Определяем текущее состояние
+            const isExpanded = this.textContent === '-';
+
+            // Меняем текст
+            this.textContent = isExpanded ? '+' : '-';
+
+            // Находим все дочерние элементы
+            const children = document.querySelectorAll(`tr[data-parent="${nodeId}"]`);
+            children.forEach(child => {
+                if (isExpanded) {
+                    // Сворачиваем
+                    child.classList.add('tree-hidden');
+
+                    // Сворачиваем все дочерние узлы рекурсивно
+                    const childNodeId = child.dataset.nodeId;
+                    if (childNodeId) {
+                        const childToggle = child.querySelector('.tree-toggle');
+                        if (childToggle && childToggle.textContent === '-') {
+                            childToggle.textContent = '+';
+                            document.querySelectorAll(`tr[data-parent="${childNodeId}"]`).forEach(grandchild => {
+                                grandchild.classList.add('tree-hidden');
+                            });
+                        }
+                    }
+                } else {
+                    // Разворачиваем
+                    child.classList.remove('tree-hidden');
+                }
+            });
+
+            // Останавливаем всплытие события
+            e.stopPropagation();
+        });
+    });
+}
