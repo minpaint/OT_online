@@ -6,65 +6,10 @@
 {% block extra_css %}
 <!-- Подключаем внешний CSS файл для стилей древовидной структуры -->
 <link rel="stylesheet" href="{% static 'directory/css/tree_view.css' %}">
-<style>
-    /* Стили для поиска */
-    .search-highlight {
-        background-color: #ffeb3b;
-        font-weight: bold;
-    }
-    
-    .search-form {
-        margin-bottom: 1rem;
-    }
-    
-    .search-results-info {
-        margin-bottom: 1rem;
-        font-style: italic;
-        color: #6c757d;
-    }
-    
-    /* Улучшение внешнего вида пагинации */
-    .pagination {
-        justify-content: center;
-        margin-top: 1rem;
-    }
-    
-    .pagination .page-item.active .page-link {
-        background-color: #007bff;
-        border-color: #007bff;
-    }
-</style>
 {% endblock %}
 
 {% block content %}
 <div class="container-fluid">
- <!-- 🔍 Форма поиска сотрудников -->
- <div class="card mb-3">
-     <div class="card-body">
-         <form method="get" class="search-form">
-             <div class="input-group">
-                 <input type="text" name="search" class="form-control" placeholder="Поиск сотрудников..." value="{{ search_query }}">
-                 <div class="input-group-append">
-                     <button type="submit" class="btn btn-primary">
-                         <i class="fas fa-search"></i> Поиск
-                     </button>
-                     {% if search_query %}
-                     <a href="{% url 'directory:home' %}" class="btn btn-secondary">
-                         <i class="fas fa-times"></i> Очистить
-                     </a>
-                     {% endif %}
-                 </div>
-             </div>
-         </form>
-         
-         {% if search_query %}
-         <div class="search-results-info">
-             <span>Найдено: {{ total_found }} сотрудников</span>
-         </div>
-         {% endif %}
-     </div>
- </div>
-
  <!-- 🎯 Панель с действиями -->
  <div class="actions-bar">
  <button id="btnExpandAll" class="btn btn-sm btn-outline-secondary me-2">
@@ -74,7 +19,7 @@
  <i class="fas fa-compress-alt"></i> Свернуть все
 </button>
  <div class="dropdown d-inline-block me-2">
- <button class="btn btn-primary btn-sm dropdown-toggle" type="button" id="actionsDropdown" 
+ <button class="btn btn-primary btn-sm dropdown-toggle" type="button" id="actionsDropdown"
  data-bs-toggle="dropdown" aria-expanded="false" disabled>
  Действия <span id="selectedCount" class="badge bg-light text-dark ms-1">0</span>
  </button>
@@ -91,11 +36,11 @@
 </a></li>
  </ul>
  </div>
- 
- <a href="{% url 'directory:employees:employee_hire' %}" class="btn btn-success btn-sm ms-auto">
+
+ <button id="btnHireEmployee" class="btn btn-success btn-sm ms-auto">
  <i class="fas fa-user-plus"></i> Принять на работу
-</a>
- 
+</button>
+
  <div id="selectedCounter" class="select-count text-muted" style="display: none;">
  Выбрано: <span id="counterValue">0</span>
  </div>
@@ -118,21 +63,21 @@
 <!-- 🏢 Организация -->
  <tr class="tree-row organization-row" data-level="0" data-node-id="org-{{ organization.id }}">
  <td>
- <input type="checkbox" class="custom-checkbox org-checkbox" 
+ <input type="checkbox" class="custom-checkbox org-checkbox"
  data-id="org-{{ organization.id }}">
  </td>
  <td>
  <span class="tree-toggle" data-node="org-{{ organization.id }}">-</span>
- <span class="tree-icon">🏢</span> <strong>{{ organization.short_name }}</strong>
+ <span class="tree-icon">🏢</span> {{ organization.short_name }}
 </td>
  <td></td>
  </tr>
- 
+
  <!-- 👤 Сотрудники организации (без подразделения) -->
  {% for employee in organization.employees %}
 <tr class="tree-row" data-level="1" data-parent="org-{{ organization.id }}">
  <td>
- <input type="checkbox" class="custom-checkbox employee-checkbox" 
+ <input type="checkbox" class="custom-checkbox employee-checkbox"
  data-id="{{ employee.id }}" data-type="employee">
  </td>
  <td>
@@ -142,15 +87,15 @@
  </td>
  <td>
  <div class="btn-group btn-group-sm">
- <a href="{% url 'directory:employees:employee_update' employee.pk %}" 
+ <a href="{% url 'directory:employees:employee_update' employee.pk %}"
  class="btn btn-outline-primary">
  <i class="fas fa-edit"></i>
  </a>
- <a href="{% url 'directory:siz:siz_personal_card' employee.id %}" 
+ <a href="{% url 'directory:siz:siz_personal_card' employee.id %}"
  class="btn btn-outline-info">
  <i class="fas fa-id-card"></i>
  </a>
- <a href="{% url 'directory:siz:siz_issue_for_employee' employee.id %}" 
+ <a href="{% url 'directory:siz:siz_issue_for_employee' employee.id %}"
  class="btn btn-outline-success">
  <i class="fas fa-hard-hat"></i>
  </a>
@@ -161,27 +106,27 @@
 
 <!-- 🏭 Подразделения -->
  {% for subdivision in organization.subdivisions %}
-<tr class="tree-row subdivision-row" data-level="1" 
- data-parent="org-{{ organization.id }}" 
+<tr class="tree-row subdivision-row" data-level="1"
+ data-parent="org-{{ organization.id }}"
  data-node-id="sub-{{ subdivision.id }}">
  <td>
- <input type="checkbox" class="custom-checkbox sub-checkbox" 
+ <input type="checkbox" class="custom-checkbox sub-checkbox"
  data-id="sub-{{ subdivision.id }}">
  </td>
  <td>
  <div class="tree-level">
  <span class="tree-toggle" data-node="sub-{{ subdivision.id }}">-</span>
- <span class="tree-icon">🏭</span> <strong>{{ subdivision.name }}</strong>
+ <span class="tree-icon">🏭</span> {{ subdivision.name }}
 </div>
  </td>
  <td></td>
  </tr>
- 
+
  <!-- 👤 Сотрудники подразделения (без отдела) -->
  {% for employee in subdivision.employees %}
 <tr class="tree-row" data-level="2" data-parent="sub-{{ subdivision.id }}">
  <td>
- <input type="checkbox" class="custom-checkbox employee-checkbox" 
+ <input type="checkbox" class="custom-checkbox employee-checkbox"
  data-id="{{ employee.id }}" data-type="employee">
  </td>
  <td>
@@ -191,15 +136,15 @@
  </td>
  <td>
  <div class="btn-group btn-group-sm">
- <a href="{% url 'directory:employees:employee_update' employee.pk %}" 
+ <a href="{% url 'directory:employees:employee_update' employee.pk %}"
  class="btn btn-outline-primary">
  <i class="fas fa-edit"></i>
  </a>
- <a href="{% url 'directory:siz:siz_personal_card' employee.id %}" 
+ <a href="{% url 'directory:siz:siz_personal_card' employee.id %}"
  class="btn btn-outline-info">
  <i class="fas fa-id-card"></i>
  </a>
- <a href="{% url 'directory:siz:siz_issue_for_employee' employee.id %}" 
+ <a href="{% url 'directory:siz:siz_issue_for_employee' employee.id %}"
  class="btn btn-outline-success">
  <i class="fas fa-hard-hat"></i>
  </a>
@@ -210,27 +155,27 @@
 
 <!-- 📂 Отделы -->
  {% for department in subdivision.departments %}
-<tr class="tree-row department-row" data-level="2" 
- data-parent="sub-{{ subdivision.id }}" 
+<tr class="tree-row department-row" data-level="2"
+ data-parent="sub-{{ subdivision.id }}"
  data-node-id="dept-{{ department.id }}">
  <td>
- <input type="checkbox" class="custom-checkbox dept-checkbox" 
+ <input type="checkbox" class="custom-checkbox dept-checkbox"
  data-id="dept-{{ department.id }}">
  </td>
  <td>
  <div class="tree-level tree-level-2">
  <span class="tree-toggle" data-node="dept-{{ department.id }}">-</span>
- <span class="tree-icon">📂</span> <strong>{{ department.name }}</strong>
+ <span class="tree-icon">📂</span> {{ department.name }}
 </div>
  </td>
  <td></td>
  </tr>
- 
+
  <!-- 👤 Сотрудники отдела -->
  {% for employee in department.employees %}
 <tr class="tree-row" data-level="3" data-parent="dept-{{ department.id }}">
  <td>
- <input type="checkbox" class="custom-checkbox employee-checkbox" 
+ <input type="checkbox" class="custom-checkbox employee-checkbox"
  data-id="{{ employee.id }}" data-type="employee">
  </td>
  <td>
@@ -240,15 +185,15 @@
  </td>
  <td>
  <div class="btn-group btn-group-sm">
- <a href="{% url 'directory:employees:employee_update' employee.pk %}" 
+ <a href="{% url 'directory:employees:employee_update' employee.pk %}"
  class="btn btn-outline-primary">
  <i class="fas fa-edit"></i>
  </a>
- <a href="{% url 'directory:siz:siz_personal_card' employee.id %}" 
+ <a href="{% url 'directory:siz:siz_personal_card' employee.id %}"
  class="btn btn-outline-info">
  <i class="fas fa-id-card"></i>
  </a>
- <a href="{% url 'directory:siz:siz_issue_for_employee' employee.id %}" 
+ <a href="{% url 'directory:siz:siz_issue_for_employee' employee.id %}"
  class="btn btn-outline-success">
  <i class="fas fa-hard-hat"></i>
  </a>
@@ -262,65 +207,52 @@
  </tbody>
  </table>
  </div>
- 
- <!-- 📄 Пагинация -->
- {% if is_paginated %}
- <nav aria-label="Навигация по страницам" class="mt-3">
-     <ul class="pagination">
-         {% if organizations.has_previous %}
-         <li class="page-item">
-             <a class="page-link" href="?page=1{% if search_query %}&search={{ search_query }}{% endif %}" aria-label="Первая">
-                 <span aria-hidden="true">&laquo;&laquo;</span>
-             </a>
-         </li>
-         <li class="page-item">
-             <a class="page-link" href="?page={{ organizations.previous_page_number }}{% if search_query %}&search={{ search_query }}{% endif %}" aria-label="Предыдущая">
-                 <span aria-hidden="true">&laquo;</span>
-             </a>
-         </li>
-         {% else %}
-         <li class="page-item disabled">
-             <span class="page-link">&laquo;&laquo;</span>
-         </li>
-         <li class="page-item disabled">
-             <span class="page-link">&laquo;</span>
-         </li>
-         {% endif %}
-         
-         {% for num in paginator.page_range %}
-             {% if organizations.number == num %}
-             <li class="page-item active">
-                 <span class="page-link">{{ num }}</span>
-             </li>
-             {% elif num > organizations.number|add:'-3' and num < organizations.number|add:'3' %}
-             <li class="page-item">
-                 <a class="page-link" href="?page={{ num }}{% if search_query %}&search={{ search_query }}{% endif %}">{{ num }}</a>
-             </li>
-             {% endif %}
-         {% endfor %}
-         
-         {% if organizations.has_next %}
-         <li class="page-item">
-             <a class="page-link" href="?page={{ organizations.next_page_number }}{% if search_query %}&search={{ search_query }}{% endif %}" aria-label="Следующая">
-                 <span aria-hidden="true">&raquo;</span>
-             </a>
-         </li>
-         <li class="page-item">
-             <a class="page-link" href="?page={{ paginator.num_pages }}{% if search_query %}&search={{ search_query }}{% endif %}" aria-label="Последняя">
-                 <span aria-hidden="true">&raquo;&raquo;</span>
-             </a>
-         </li>
-         {% else %}
-         <li class="page-item disabled">
-             <span class="page-link">&raquo;</span>
-         </li>
-         <li class="page-item disabled">
-             <span class="page-link">&raquo;&raquo;</span>
-         </li>
-         {% endif %}
-     </ul>
- </nav>
- {% endif %}
+</div>
+
+<!-- 📝 Модальное окно найма сотрудника -->
+<div class="modal fade" id="hireEmployeeModal" tabindex="-1" aria-labelledby="hireEmployeeModalLabel" aria-hidden="true">
+ <div class="modal-dialog modal-lg">
+ <div class="modal-content">
+ <div class="modal-header">
+ <h5 class="modal-title" id="hireEmployeeModalLabel">Прием сотрудника на работу</h5>
+ <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+ </div>
+ <div class="modal-body">
+ <div id="hireFormContainer">
+ <!-- Сюда будет загружаться форма найма через AJAX -->
+ <div class="text-center">
+ <div class="spinner-border text-primary" role="status">
+ <span class="visually-hidden">Загрузка...</span>
+ </div>
+ <p>Загрузка формы...</p>
+ </div>
+ </div>
+ </div>
+ </div>
+ </div>
+</div>
+
+<!-- 🛡️ Модальное окно выдачи СИЗ -->
+<div class="modal fade" id="issueSIZModal" tabindex="-1" aria-labelledby="issueSIZModalLabel" aria-hidden="true">
+ <div class="modal-dialog modal-lg">
+ <div class="modal-content">
+ <div class="modal-header">
+ <h5 class="modal-title" id="issueSIZModalLabel">Выдача СИЗ</h5>
+ <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+ </div>
+ <div class="modal-body">
+ <div id="sizFormContainer">
+ <!-- Сюда будет загружаться форма выдачи СИЗ через AJAX -->
+ <div class="text-center">
+ <div class="spinner-border text-primary" role="status">
+ <span class="visually-hidden">Загрузка...</span>
+ </div>
+ <p>Загрузка формы...</p>
+ </div>
+ </div>
+ </div>
+ </div>
+ </div>
 </div>
 {% endblock %}
 
@@ -335,7 +267,7 @@ const counterValue = document.getElementById('counterValue');
 const selectAllCheckbox = document.getElementById('selectAll');
 
 let selectedEmployees = []; // 👥 Массив выбранных сотрудников
- 
+
  // 🌳 Функция для переключения узла дерева
  function toggleNode(nodeId, expand = true) {
 const toggleElement = document.querySelector(`.tree-toggle[data-node="${nodeId}"]`);
@@ -414,8 +346,8 @@ selectedEmployees.splice(index, 1);
 
 updateCounter();
 
-} else if (checkbox.classList.contains('org-checkbox') || 
-checkbox.classList.contains('sub-checkbox') || 
+} else if (checkbox.classList.contains('org-checkbox') ||
+checkbox.classList.contains('sub-checkbox') ||
 checkbox.classList.contains('dept-checkbox')) {
 // Обработка выбора группы (организация/подразделение/отдел)
  const nodeId = checkbox.dataset.id;
@@ -444,13 +376,13 @@ updateCounter();
  const allEmployeeCheckboxes = document.querySelectorAll('.employee-checkbox');
 const checkedEmployeeCheckboxes = document.querySelectorAll('.employee-checkbox:checked');
 
-selectAllCheckbox.checked = 
-allEmployeeCheckboxes.length > 0 && 
+selectAllCheckbox.checked =
+allEmployeeCheckboxes.length > 0 &&
 allEmployeeCheckboxes.length === checkedEmployeeCheckboxes.length;
 
 // Определяем, выбраны ли частично (indeterminate)
- selectAllCheckbox.indeterminate = 
-checkedEmployeeCheckboxes.length > 0 && 
+ selectAllCheckbox.indeterminate =
+checkedEmployeeCheckboxes.length > 0 &&
 checkedEmployeeCheckboxes.length < allEmployeeCheckboxes.length;
 });
 
@@ -480,6 +412,12 @@ orgNodes.forEach(node => {
 const nodeId = node.dataset.node;
 toggleNode(nodeId, false);
 });
+});
+
+// 📝 Обработка кнопки "Принять на работу"
+document.getElementById('btnHireEmployee').addEventListener('click', function() {
+  // Вместо показа модального окна перенаправляем на страницу найма
+  window.location.href = "{% url 'directory:employees:employee_hire' %}";
 });
 
 // 🛡️ Обработка кнопки "Выдать СИЗ"
