@@ -55,7 +55,6 @@
  <input type="checkbox" class="custom-checkbox" id="selectAll">
  </th>
  <th>Наименование</th>
- <th>Должность</th>
  <th>Действия</th>
  </tr>
  </thead>
@@ -69,9 +68,8 @@
  </td>
  <td>
  <span class="tree-toggle" data-node="org-{{ organization.id }}">-</span>
- <span class="tree-icon">🏢</span> {{ organization.name }}
+ <span class="tree-icon">🏢</span> {{ organization.short_name }}
 </td>
- <td></td>
  <td></td>
  </tr>
  
@@ -84,10 +82,9 @@
  </td>
  <td>
  <div class="tree-level">
- <span class="tree-icon">👤</span> {{ employee.full_name_nominative }}
+ <span class="tree-icon">👤</span> {{ employee.full_name_nominative }} - {{ employee.position.position_name }}
 </div>
  </td>
- <td>{{ employee.position.position_name }}</td>
  <td>
  <div class="btn-group btn-group-sm">
  <a href="{% url 'directory:employees:employee_update' employee.pk %}" 
@@ -123,7 +120,6 @@
 </div>
  </td>
  <td></td>
- <td></td>
  </tr>
  
  <!-- 👤 Сотрудники подразделения (без отдела) -->
@@ -135,10 +131,9 @@
  </td>
  <td>
  <div class="tree-level tree-level-2">
- <span class="tree-icon">👤</span> {{ employee.full_name_nominative }}
+ <span class="tree-icon">👤</span> {{ employee.full_name_nominative }} - {{ employee.position.position_name }}
 </div>
  </td>
- <td>{{ employee.position.position_name }}</td>
  <td>
  <div class="btn-group btn-group-sm">
  <a href="{% url 'directory:employees:employee_update' employee.pk %}" 
@@ -174,7 +169,6 @@
 </div>
  </td>
  <td></td>
- <td></td>
  </tr>
  
  <!-- 👤 Сотрудники отдела -->
@@ -186,10 +180,9 @@
  </td>
  <td>
  <div class="tree-level tree-level-3">
- <span class="tree-icon">👤</span> {{ employee.full_name_nominative }}
+ <span class="tree-icon">👤</span> {{ employee.full_name_nominative }} - {{ employee.position.position_name }}
 </div>
  </td>
- <td>{{ employee.position.position_name }}</td>
  <td>
  <div class="btn-group btn-group-sm">
  <a href="{% url 'directory:employees:employee_update' employee.pk %}" 
