@@ -29,6 +29,8 @@ class OrganizationRestrictionFormMixin:
         if self.user and hasattr(self.user, 'profile'):
             allowed_orgs = self.user.profile.organizations.all()
             if 'organization' in self.fields:
+                # 🔒 Важное исправление: Строго ограничиваем список организаций теми,
+                # что есть в профиле пользователя
                 self.fields['organization'].queryset = allowed_orgs
                 self.fields['organization'].help_text = "🏢 Выберите организацию из разрешённых"
 

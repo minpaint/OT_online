@@ -1,5 +1,7 @@
 from django.urls import path, include, reverse_lazy
 from django.contrib.auth import views as auth_views
+from django.shortcuts import redirect
+from django.contrib.auth import logout
 
 from .views import siz
 from .views import siz_issued  # 👈 Добавляем импорт модуля siz_issued
@@ -29,6 +31,12 @@ from directory.autocomplete_views import (
 )
 
 app_name = 'directory'
+
+# 🔄 Добавляем собственное представление для выхода из системы
+def logout_view(request):
+    """🚪 Выход из системы с редиректом на страницу входа"""
+    logout(request)
+    return redirect('directory:auth:login')
 
 # 🔍 URL-маршруты для автодополнения (DAL)
 autocomplete_patterns = [
@@ -86,9 +94,8 @@ auth_patterns = [
         template_name='registration/login.html',
         redirect_authenticated_user=True
     ), name='login'),
-    path('logout/', auth_views.LogoutView.as_view(
-        next_page='directory:auth:login'
-    ), name='logout'),
+    # 🔄 Исправление: используем собственное представление вместо LogoutView
+    path('logout/', logout_view, name='logout'),
     path('register/', UserRegistrationView.as_view(), name='register'),
     # URL для сброса пароля
     path('password_reset/',

@@ -105,12 +105,17 @@ class EmployeeHiringView(LoginRequiredMixin, FormView):
 
         # Получаем недавно принятых сотрудников, с учетом доступных организаций
         user = self.request.user
-        recent_employees_query = Employee.objects.all().order_by('-id')[:5]
+
+        # 🔄 ИСПРАВЛЕНИЕ: сначала создаем базовый запрос без среза
+        recent_employees_query = Employee.objects.all()
 
         # Ограничиваем по организациям из профиля пользователя
         if not user.is_superuser and hasattr(user, 'profile'):
             allowed_orgs = user.profile.organizations.all()
             recent_employees_query = recent_employees_query.filter(organization__in=allowed_orgs)
+
+        # Затем сортируем и применяем срез
+        recent_employees_query = recent_employees_query.order_by('-id')[:5]
 
         context['recent_employees'] = recent_employees_query
 

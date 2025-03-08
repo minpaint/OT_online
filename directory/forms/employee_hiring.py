@@ -110,10 +110,9 @@ class EmployeeHiringForm(OrganizationRestrictionFormMixin, forms.ModelForm):
         self.helper.form_method = 'post'
         self.helper.add_input(Submit('submit', '💾 Принять'))
 
-        # 🔒 Ограничиваем выбор организаций по профилю пользователя (OrganizationRestrictionFormMixin)
-        # + Если у пользователя ровно одна организация, выбираем её по умолчанию
+        # 🔒 Дополнительная настройка для начального значения организации
+        # (если у пользователя только одна организация)
         if self.user and hasattr(self.user, 'profile'):
             user_orgs = self.user.profile.organizations.all()
-            self.fields['organization'].queryset = user_orgs
             if user_orgs.count() == 1:
                 self.initial['organization'] = user_orgs.first().id
