@@ -1,0 +1,276 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <meta charset="UTF-8">
+    <title>{{ title }}</title>
+    <style>
+        @page {
+            size: A4 portrait;
+            margin: 1cm;
+        }
+        body {
+            font-family: Helvetica, Arial, sans-serif;
+            font-size: 12px;
+            line-height: 1.3;
+            margin: 0;
+            padding: 0;
+        }
+        .header {
+            text-align: center;
+            margin-bottom: 20px;
+            padding-bottom: 10px;
+            border-bottom: 1px solid #000;
+        }
+        .card-title {
+            font-size: 18px;
+            font-weight: bold;
+            margin-bottom: 5px;
+        }
+        .card-subtitle {
+            font-size: 14px;
+            margin-bottom: 15px;
+        }
+        .employee-info {
+            margin-bottom: 20px;
+            border: 1px solid #000;
+            padding: 10px;
+        }
+        .employee-info h2 {
+            margin-top: 0;
+            font-size: 14px;
+        }
+        .info-row {
+            margin-bottom: 5px;
+        }
+        .info-label {
+            font-weight: bold;
+            width: 200px;
+            display: inline-block;
+        }
+        table {
+            width: 100%;
+            border-collapse: collapse;
+            margin-bottom: 20px;
+        }
+        table, th, td {
+            border: 1px solid #000;
+        }
+        th, td {
+            padding: 5px;
+            text-align: left;
+            font-size: 10px;
+        }
+        th {
+            background-color: #f2f2f2;
+            font-weight: bold;
+        }
+        .section-title {
+            font-size: 14px;
+            font-weight: bold;
+            margin: 15px 0 10px 0;
+        }
+        .condition-title {
+            background-color: #f2f2f2;
+            padding: 5px;
+            margin: 10px 0 5px 0;
+            font-weight: bold;
+            border: 1px solid #000;
+        }
+        .signature-block {
+            margin-top: 30px;
+        }
+        .signature-line {
+            border-bottom: 1px solid #000;
+            width: 200px;
+            display: inline-block;
+            margin: 0 10px;
+        }
+        .text-center {
+            text-align: center;
+        }
+        .page-break {
+            page-break-after: always;
+        }
+        .footer {
+            text-align: center;
+            font-size: 9px;
+            margin-top: 30px;
+            border-top: 1px solid #ccc;
+            padding-top: 5px;
+        }
+    </style>
+</head>
+<body>
+     <!-- Титульная страница - Лицевая сторона карточки -->
+    <div class="header">
+        <div class="card-title">ЛИЧНАЯ КАРТОЧКА № {{ employee.id }}</div>
+        <div class="card-subtitle">УЧЕТА ВЫДАЧИ СИЗ</div>
+    </div>
+    
+    <div class="employee-info">
+        <h2>Сведения о сотруднике</h2>
+        <div class="info-row">
+            <div class="info-label">Фамилия Имя Отчество:</div>
+            <div class="info-value">{{ employee.full_name_nominative }}</div>
+        </div>
+        <div class="info-row">
+            <div class="info-label">Табельный номер:</div>
+            <div class="info-value">{{ employee.id }}</div>
+        </div>
+        <div class="info-row">
+            <div class="info-label">Должность:</div>
+            <div class="info-value">{{ employee.position }}</div>
+        </div>
+        <div class="info-row">
+            <div class="info-label">Организация:</div>
+            <div class="info-value">{{ employee.organization }}</div>
+        </div>
+        {% if employee.subdivision %}
+        <div class="info-row">
+            <div class="info-label">Подразделение:</div>
+            <div class="info-value">{{ employee.subdivision }}</div>
+        </div>
+        {% endif %}
+        {% if employee.department %}
+        <div class="info-row">
+            <div class="info-label">Отдел:</div>
+            <div class="info-value">{{ employee.department }}</div>
+        </div>
+        {% endif %}
+        <div class="info-row">
+            <div class="info-label">Дата рождения:</div>
+            <div class="info-value">{{ employee.date_of_birth|date:"d.m.Y" }}</div>
+        </div>
+    </div>
+    
+    <div class="section-title">Нормы выдачи СИЗ</div>
+    
+    {% if base_norms %}
+    <div class="condition-title">Основные СИЗ</div>
+    <table>
+        <thead>
+            <tr>
+                <th>Наименование СИЗ</th>
+                <th>Классификация</th>
+                <th>Ед. изм.</th>
+                <th>Кол-во</th>
+                <th>Срок носки</th>
+            </tr>
+        </thead>
+        <tbody>
+            {% for norm in base_norms %}
+            <tr>
+                <td>{{ norm.siz.name }}</td>
+                <td>{{ norm.siz.classification }}</td>
+                <td>{{ norm.siz.unit }}</td>
+                <td>{{ norm.quantity }}</td>
+                <td>
+                    {% if norm.siz.wear_period == 0 %}
+                    До износа
+                    {% else %}
+                    {{ norm.siz.wear_period }} мес.
+                    {% endif %}
+                </td>
+            </tr>
+            {% endfor %}
+        </tbody>
+    </table>
+    {% endif %}
+    
+    {% for group in condition_groups %}
+    <div class="condition-title">{{ group.name }}</div>
+    <table>
+        <thead>
+            <tr>
+                <th>Наименование СИЗ</th>
+                <th>Классификация</th>
+                <th>Ед. изм.</th>
+                <th>Кол-во</th>
+                <th>Срок носки</th>
+            </tr>
+        </thead>
+        <tbody>
+            {% for norm in group.norms %}
+            <tr>
+                <td>{{ norm.siz.name }}</td>
+                <td>{{ norm.siz.classification }}</td>
+                <td>{{ norm.siz.unit }}</td>
+                <td>{{ norm.quantity }}</td>
+                <td>
+                    {% if norm.siz.wear_period == 0 %}
+                    До износа
+                    {% else %}
+                    {{ norm.siz.wear_period }} мес.
+                    {% endif %}
+                </td>
+            </tr>
+            {% endfor %}
+        </tbody>
+    </table>
+    {% endfor %}
+    
+    <div class="page-break"></div>
+    
+    <!-- Оборотная сторона карточки -->
+    <div class="header">
+        <div class="card-title">ЛИЧНАЯ КАРТОЧКА № {{ employee.id }}</div>
+        <div class="card-subtitle">УЧЕТА ВЫДАЧИ СИЗ (ОБОРОТНАЯ СТОРОНА)</div>
+    </div>
+    
+    <div class="section-title">Выданные СИЗ</div>
+    
+    <table>
+        <thead>
+            <tr>
+                <th>Наименование СИЗ</th>
+                <th>Классификация</th>
+                <th>Дата выдачи</th>
+                <th>Кол-во</th>
+                <th>Статус</th>
+                <th>Дата возврата</th>
+                <th>Примечания</th>
+            </tr>
+        </thead>
+        <tbody>
+            {% for item in issued_items %}
+            <tr>
+                <td>{{ item.siz.name }}</td>
+                <td>{{ item.siz.classification }}</td>
+                <td>{{ item.issue_date|date:"d.m.Y" }}</td>
+                <td>{{ item.quantity }}</td>
+                <td>
+                    {% if item.is_returned %}
+                    Возвращено
+                    {% else %}
+                    В использовании ({{ item.wear_percentage }}%)
+                    {% endif %}
+                </td>
+                <td>{{ item.return_date|date:"d.m.Y"|default:"—" }}</td>
+                <td>{{ item.notes|default:"—" }}</td>
+            </tr>
+            {% empty %}
+            <tr>
+                <td colspan="7" style="text-align: center;">Нет выданных СИЗ</td>
+            </tr>
+            {% endfor %}
+        </tbody>
+    </table>
+    
+    <div class="signature-block">
+        <div>
+            <div>Сотрудник</div>
+            <div class="signature-line"></div>
+            <div>({{ employee.full_name_nominative }})</div>
+        </div>
+        <div>
+            <div>Ответственное лицо</div>
+            <div class="signature-line"></div>
+            <div>(_____________________)</div>
+        </div>
+    </div>
+    
+    <div class="footer">
+        Документ сформирован автоматически {{ now|date:"d.m.Y H:i" }}
+    </div>
+</body>
+</html>

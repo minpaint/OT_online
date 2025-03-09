@@ -3,12 +3,19 @@ from django.views.generic import CreateView, DetailView, FormView, UpdateView
 from django.contrib.auth.mixins import LoginRequiredMixin
 from django.shortcuts import get_object_or_404, redirect
 from django.urls import reverse_lazy, reverse
-from django.http import JsonResponse
+from django.http import JsonResponse, HttpResponse
 from django.contrib import messages
 from django.utils.decorators import method_decorator
 from django.views.decorators.http import require_GET
 from django.contrib.auth.decorators import login_required
 from django.db.models import Q, Count
+from django.template.loader import get_template
+from django.utils import timezone
+from xhtml2pdf import pisa
+from io import BytesIO
+
+from django.contrib.staticfiles import finders
+import os
 
 from directory.models import Employee, SIZ, SIZNorm, SIZIssued, Position
 from directory.forms.siz_issued import SIZIssueForm, SIZIssueMassForm, SIZIssueReturnForm
@@ -110,6 +117,11 @@ class SIZPersonalCardView(LoginRequiredMixin, DetailView):
     def get_context_data(self, **kwargs):
         """
         📊 Добавляем дополнительные данные в контекст
+
+        Улучшенная логика:
+        1. Получаем как прямые нормы должности, так и эталонные
+        2. Объединяем их, отдавая приоритет прямым нормам
+        3. Группируем по условиям применения
         """
         context = super().get_context_data(**kwargs)
         context['title'] = f'Личная карточка учета СИЗ - {self.object.full_name_nominative}'
@@ -123,26 +135,50 @@ class SIZPersonalCardView(LoginRequiredMixin, DetailView):
 
         # Получаем нормы СИЗ для должности сотрудника
         if self.object.position:
-            norms = SIZNorm.objects.filter(
-                position=self.object.position
+            # 🆕 Улучшенная логика получения норм: объединяем конкретные и эталонные
+            position = self.object.position
+
+            # 1. Получаем непосредственные нормы должности
+            direct_norms = SIZNorm.objects.filter(
+                position=position
             ).select_related('siz')
 
-            # Базовые нормы (без условий)
-            context['base_norms'] = norms.filter(condition='')
+            # 2. Получаем эталонные нормы по названию должности
+            reference_norms = Position.find_reference_norms(position.position_name)
 
-            # Нормы по условиям
-            conditions = list(set(norm.condition for norm in norms if norm.condition))
-            condition_groups = []
+            # 3. Формируем словарь норм, где ключ - комбинация siz_id + condition
+            norm_dict = {}
 
-            for condition in conditions:
-                condition_norms = [norm for norm in norms if norm.condition == condition]
-                if condition_norms:
-                    condition_groups.append({
-                        'name': condition,
-                        'norms': condition_norms
-                    })
+            # Сначала добавляем эталонные нормы (они будут перезаписаны прямыми при совпадении)
+            for norm in reference_norms:
+                key = f"{norm.siz_id}_{norm.condition}"
+                norm_dict[key] = norm
 
-            context['condition_groups'] = condition_groups
+            # Затем добавляем прямые нормы с более высоким приоритетом
+            for norm in direct_norms:
+                key = f"{norm.siz_id}_{norm.condition}"
+                norm_dict[key] = norm
+
+            # 4. Группируем нормы по условиям
+            base_norms = []
+            condition_groups = {}
+
+            for key, norm in norm_dict.items():
+                if not norm.condition:
+                    base_norms.append(norm)
+                else:
+                    if norm.condition not in condition_groups:
+                        condition_groups[norm.condition] = []
+                    condition_groups[norm.condition].append(norm)
+
+            # 5. Сортируем нормы по порядку (order) и названию СИЗ
+            base_norms.sort(key=lambda x: (x.order, x.siz.name))
+
+            context['base_norms'] = base_norms
+            context['condition_groups'] = [
+                {'name': condition, 'norms': sorted(norms, key=lambda x: (x.order, x.siz.name))}
+                for condition, norms in condition_groups.items()
+            ]
 
         return context
 
@@ -282,3 +318,117 @@ def position_siz_norms(request, position_id):
         result['norms'].append(norm_data)
 
     return JsonResponse(result)
+
+
+@login_required
+def export_personal_card_pdf(request, employee_id):
+    """
+    📄 Экспорт личной карточки учета СИЗ в формате PDF для печати на A4
+    Использует xhtml2pdf вместо WeasyPrint для большей совместимости с Windows
+
+    Args:
+        request: HttpRequest объект
+        employee_id: ID сотрудника
+
+    Returns:
+        HttpResponse с PDF-документом
+    """
+    # Получаем объект сотрудника
+    employee = get_object_or_404(Employee, id=employee_id)
+
+    # Получаем данные для карточки (аналогично методу get_context_data в SIZPersonalCardView)
+    # 📊 Данные о выданных СИЗ
+    issued_items = SIZIssued.objects.filter(
+        employee=employee
+    ).select_related('siz').order_by('-issue_date')
+
+    # 📊 Данные о нормах СИЗ
+    base_norms = []
+    condition_groups = []
+
+    if employee.position:
+        # 🆕 Логика получения норм (аналогично SIZPersonalCardView)
+        position = employee.position
+
+        # Получаем непосредственные нормы должности
+        direct_norms = SIZNorm.objects.filter(
+            position=position
+        ).select_related('siz')
+
+        # Получаем эталонные нормы по названию должности
+        reference_norms = Position.find_reference_norms(position.position_name)
+
+        # Формируем словарь норм, где ключ - комбинация siz_id + condition
+        norm_dict = {}
+
+        # Добавляем эталонные нормы
+        for norm in reference_norms:
+            key = f"{norm.siz_id}_{norm.condition}"
+            norm_dict[key] = norm
+
+        # Добавляем прямые нормы с более высоким приоритетом
+        for norm in direct_norms:
+            key = f"{norm.siz_id}_{norm.condition}"
+            norm_dict[key] = norm
+
+        # Группируем нормы по условиям
+        condition_groups_dict = {}
+
+        for key, norm in norm_dict.items():
+            if not norm.condition:
+                base_norms.append(norm)
+            else:
+                if norm.condition not in condition_groups_dict:
+                    condition_groups_dict[norm.condition] = []
+                condition_groups_dict[norm.condition].append(norm)
+
+        # Сортируем нормы
+        base_norms.sort(key=lambda x: (x.order, x.siz.name))
+
+        condition_groups = [
+            {'name': condition, 'norms': sorted(norms, key=lambda x: (x.order, x.siz.name))}
+            for condition, norms in condition_groups_dict.items()
+        ]
+
+    # Подготавливаем контекст для шаблона
+    context = {
+        'employee': employee,
+        'issued_items': issued_items,
+        'base_norms': base_norms,
+        'condition_groups': condition_groups,
+        'title': f'Личная карточка учета СИЗ - {employee.full_name_nominative}',
+        'is_pdf': True,  # Флаг для шаблона, что это PDF-версия
+        'now': timezone.now(),  # Текущая дата и время для отображения в PDF
+    }
+
+    # Загружаем шаблон
+    template = get_template('directory/siz_issued/personal_card_pdf.html')
+    html_content = template.render(context)
+
+    # Создаем буфер для PDF
+    result = BytesIO()
+
+    # Создаем PDF с использованием xhtml2pdf
+    pdf = pisa.pisaDocument(
+        BytesIO(html_content.encode("UTF-8")),
+        result,
+        encoding='UTF-8'
+    )
+
+    # Проверяем наличие ошибок
+    if not pdf.err:
+        # Формируем HTTP-ответ с PDF
+        response = HttpResponse(result.getvalue(), content_type='application/pdf')
+
+        # Формируем имя файла для скачивания
+        # Транслитерация имени для корректного отображения в заголовке Content-Disposition
+        employee_name = employee.full_name_nominative.replace(' ', '_')
+        filename = f"siz_card_{employee.id}_{employee_name}.pdf"
+
+        # Устанавливаем заголовок для скачивания файла
+        response['Content-Disposition'] = f'attachment; filename="{filename}"'
+
+        return response
+
+    # В случае ошибки возвращаем сообщение об ошибке
+    return HttpResponse("Ошибка создания PDF", status=500)
