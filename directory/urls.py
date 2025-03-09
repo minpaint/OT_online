@@ -88,6 +88,8 @@ siz_patterns = [
     path('issue/employee/<int:employee_id>/', siz_issued.SIZIssueFormView.as_view(), name='siz_issue_for_employee'),
     path('personal-card/<int:employee_id>/', siz_issued.SIZPersonalCardView.as_view(), name='siz_personal_card'),
     path('return/<int:siz_issued_id>/', siz_issued.SIZIssueReturnView.as_view(), name='siz_return'),
+    path('personal-card/<int:employee_id>/export-pdf/', siz_issued.export_personal_card_pdf, name='siz_personal_card_pdf'),
+
 ]
 
 # 🔐 URL-маршруты для аутентификации

@@ -4,7 +4,8 @@ from django.utils import timezone
 from django.forms import formset_factory
 from crispy_forms.helper import FormHelper
 from crispy_forms.layout import Layout, Div, Field, HTML, Submit, Button
-from directory.models import SIZIssued, SIZ, SIZNorm, Employee, Position
+from directory.models import SIZIssued, SIZ, Employee
+from directory.models.siz import SIZNorm
 
 
 class SIZIssueForm(forms.ModelForm):
