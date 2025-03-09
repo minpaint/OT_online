@@ -5,25 +5,12 @@
     <meta charset="UTF-8">
     <title>Личная карточка учета СИЗ</title>
     <style>
-        @font-face {
-            font-family: 'DejaVuSans';
-            src: url('{{ STATIC_URL }}fonts/DejaVuSans.ttf');
-            font-weight: normal;
-            font-style: normal;
-        }
-        
-        @page {
-            size: A4;
-            margin: 1cm;
-        }
+        /* Удаляем @font-face, так как шрифт уже зарегистрирован в ReportLab под именем "helvetica" */
         body {
-            font-family: DejaVuSans, sans-serif;
+            font-family: helvetica;  /* Используем зарегистрированный шрифт */
             font-size: 11pt;
             color: #000;
             line-height: 1.3;
-        }
-        h1, h2, h3 {
-            font-family: DejaVuSans, sans-serif;
         }
         table {
             width: 100%;
@@ -37,7 +24,6 @@
             padding: 5px;
             text-align: left;
             vertical-align: middle;
-            font-family: DejaVuSans, sans-serif;
         }
         th {
             background-color: #f2f2f2;
@@ -144,32 +130,6 @@
             </tbody>
         </table>
         {% endif %}
-        
-        {% for group in condition_groups %}
-        <h3>{{ group.name }}</h3>
-        <table>
-            <thead>
-                <tr>
-                    <th>Наименование СИЗ</th>
-                    <th>Классификация</th>
-                    <th>Ед. изм.</th>
-                    <th>Кол-во</th>
-                    <th>Срок носки</th>
-                </tr>
-            </thead>
-            <tbody>
-                {% for norm in group.norms %}
-                <tr>
-                    <td>{{ norm.siz.name }}</td>
-                    <td>{{ norm.siz.classification }}</td>
-                    <td>{{ norm.siz.unit }}</td>
-                    <td>{{ norm.quantity }}</td>
-                    <td>{% if norm.siz.wear_period == 0 %}До износа{% else %}{{ norm.siz.wear_period }} мес.{% endif %}</td>
-                </tr>
-                {% endfor %}
-            </tbody>
-        </table>
-        {% endfor %}
     </div>
     
     <div class="page-break"></div>
@@ -210,12 +170,8 @@
     
     <div class="signature-block">
         <p>Дата формирования: {{ today|date:"d.m.Y" }}</p>
-        <p>
-            <span>Сотрудник: _______________________ {{ employee.full_name_nominative }}</span>
-        </p>
-        <p>
-            <span>Ответственное лицо: _______________________</span>
-        </p>
+        <p>Сотрудник: _______________________ {{ employee.full_name_nominative }}</p>
+        <p>Ответственное лицо: _______________________</p>
     </div>
 </body>
 </html>
