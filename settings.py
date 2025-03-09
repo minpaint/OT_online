@@ -230,17 +230,33 @@ if DEBUG and not TESTING:
     ]
 
 # 📝 Логирование
+# Дополнение к существующим настройкам логирования
 LOGGING = {
     'version': 1,
     'disable_existing_loggers': False,
+    'formatters': {
+        'verbose': {
+            'format': '{levelname} {asctime} {module} {message}',
+            'style': '{',
+        },
+        'simple': {
+            'format': '[{levelname}] {message}',
+            'style': '{',
+        },
+    },
     'handlers': {
         'console': {
             'class': 'logging.StreamHandler',
+            'formatter': 'simple',
+            'level': 'INFO',
         },
         'file': {
             'class': 'logging.FileHandler',
+            # Исправляем эту строку - используем уже определенную BASE_DIR
             'filename': BASE_DIR / 'django.log',
+            'formatter': 'verbose',
             'level': 'DEBUG',
+            'encoding': 'utf-8',  # Явно указываем кодировку UTF-8
         },
     },
     'root': {
@@ -249,7 +265,7 @@ LOGGING = {
     },
     'loggers': {
         'directory': {
-            'handlers': ['file'],
+            'handlers': ['file', 'console'],
             'level': 'DEBUG',
             'propagate': True,
         },

@@ -8,7 +8,7 @@ from django.http import HttpResponse
 from xhtml2pdf import pisa
 from django.conf import settings
 
-# Настройка логирования
+# Настройка логирования - используем ASCII-совместимые строки вместо эмодзи
 logger = logging.getLogger(__name__)
 
 
@@ -30,6 +30,16 @@ def render_to_pdf(template_path, context, filename=None, as_attachment=True):
         if 'STATIC_URL' not in context:
             context['STATIC_URL'] = settings.STATIC_URL
 
+        # Путь к шрифтам
+        font_path = os.path.join(settings.BASE_DIR, 'static', 'fonts')
+
+        # Проверка наличия шрифтов
+        font_file = os.path.join(font_path, 'DejaVuSans.ttf')
+        if os.path.exists(font_file):
+            logger.info("[INFO] Шрифт найден: %s", font_file)
+        else:
+            logger.warning("[WARNING] Шрифт не найден: %s", font_file)
+
         # Рендеринг HTML-шаблона
         template = get_template(template_path)
         html_string = template.render(context)
@@ -37,29 +47,15 @@ def render_to_pdf(template_path, context, filename=None, as_attachment=True):
         # Создание объекта BytesIO для записи PDF
         result = BytesIO()
 
-        # Путь к шрифтам
-        font_path = os.path.join(settings.BASE_DIR, 'static', 'fonts')
-
-        # Проверка наличия шрифта
-        font_file = os.path.join(font_path, 'DejaVuSans.ttf')
-        if os.path.exists(font_file):
-            logger.info(f"✅ Шрифт найден: {font_file}")
-        else:
-            logger.warning(f"⚠️ Шрифт не найден: {font_file}")
-
-        # Настройки PDF с явным указанием встроенных шрифтов
+        # Настройки PDF
         pdf_options = {
-            'font_path': font_path,
-            'default_font': 'DejaVuSans',
-            # Включаем встроенные шрифты
-            'embed_fonts': True,
-            # Явно указываем шрифт с поддержкой кириллицы
-            'font_map': {
-                'sans-serif': 'DejaVuSans',
-                'serif': 'DejaVuSerif',
-                'monospace': 'DejaVuSansMono',
-            }
+            'encoding': 'UTF-8',  # Явно указываем кодировку UTF-8
+            'quiet': True,  # Отключаем вывод сообщений об ошибках в stdout
         }
+
+        # Добавляем путь к шрифтам, если директория существует
+        if os.path.exists(font_path):
+            pdf_options['font_path'] = font_path
 
         # Создание PDF
         pdf = pisa.CreatePDF(
@@ -70,7 +66,7 @@ def render_to_pdf(template_path, context, filename=None, as_attachment=True):
 
         # Проверка на ошибки
         if pdf.err:
-            logger.error(f"Ошибка при создании PDF: {pdf.err}")
+            logger.error("[ERROR] Ошибка при создании PDF: %s", pdf.err)
             return HttpResponse(f"Ошибка при создании PDF: {pdf.err}", status=500)
 
         # Формирование HTTP-ответа
@@ -79,13 +75,13 @@ def render_to_pdf(template_path, context, filename=None, as_attachment=True):
         # Настройка заголовка Content-Disposition
         if filename:
             disposition = 'attachment' if as_attachment else 'inline'
-            # Обеспечиваем корректное имя файла для разных браузеров
             response['Content-Disposition'] = f'{disposition}; filename="{filename}"'
 
+        logger.info("[INFO] PDF успешно создан: %s", filename or 'без имени')
         return response
 
     except Exception as e:
-        logger.exception(f"Непредвиденная ошибка при создании PDF: {str(e)}")
+        logger.exception("[ERROR] Непредвиденная ошибка при создании PDF: %s", str(e))
         return HttpResponse(
             f"Произошла ошибка при создании PDF: {str(e)}",
             status=500
