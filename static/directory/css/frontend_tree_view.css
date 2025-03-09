@@ -1,0 +1,185 @@
+/* 🎨 Стили для древовидной таблицы сотрудников */
+
+/* Основные стили таблицы */
+.tree-table {
+    width: 100%;
+    border-collapse: separate;
+    border-spacing: 0;
+}
+
+.tree-table th {
+    position: sticky;
+    top: 0;
+    background-color: #f8f9fa;
+    z-index: 10;
+    padding: 12px 8px;
+    text-align: left;
+    border-bottom: 2px solid #dee2e6;
+}
+
+.tree-row {
+    transition: background-color 0.2s;
+}
+
+.tree-row:hover {
+    background-color: rgba(0, 123, 255, 0.05);
+}
+
+/* Стили для иконок сворачивания/разворачивания */
+.tree-toggle {
+    cursor: pointer;
+    width: 24px;
+    height: 24px;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    background: #f1f1f1;
+    border-radius: 3px;
+    margin-right: 8px;
+    user-select: none;
+}
+
+/* Стили для отступов уровней */
+.tree-level {
+    margin-left: 24px;
+}
+
+.tree-level-2 {
+    margin-left: 48px;
+}
+
+.tree-level-3 {
+    margin-left: 72px;
+}
+
+/* Стили для разных уровней организационной структуры */
+.organization-row {
+    background-color: #f8f9fa;
+}
+
+.organization-row .field-name {
+    font-weight: bold;
+    color: #0d6efd;
+}
+
+.subdivision-row .field-name {
+    font-weight: bold;
+    color: #198754;
+}
+
+.department-row .field-name {
+    font-weight: bold;
+    color: #6c757d;
+}
+
+/* Стили для панели действий */
+.actions-bar {
+    position: sticky;
+    top: 0;
+    background-color: #fff;
+    padding: 8px 16px;
+    border-bottom: 1px solid #dee2e6;
+    display: flex;
+    align-items: center;
+    z-index: 100;
+    margin-bottom: 16px;
+    border-radius: 4px;
+}
+
+.actions-bar-fixed {
+    position: fixed;
+    top: 0;
+    left: 0;
+    right: 0;
+    box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+}
+
+.select-count {
+    margin-left: 16px;
+    font-weight: bold;
+}
+
+/* Стили для чекбоксов */
+.custom-checkbox {
+    width: 18px;
+    height: 18px;
+    cursor: pointer;
+}
+
+/* Скрытые элементы дерева */
+.tree-hidden {
+    display: none !important;
+}
+
+/* Стили для результатов поиска */
+.hidden-by-search {
+    display: none !important;
+}
+
+.highlight-search {
+    background-color: rgba(255, 243, 205, 0.5) !important;
+}
+
+.highlight-search td {
+    background-color: rgba(255, 243, 205, 0.5) !important;
+}
+
+/* Стили анимации для плавного сворачивания/разворачивания */
+.tree-animate {
+    transition: max-height 0.3s ease-out, opacity 0.2s ease-out;
+    overflow: hidden;
+}
+
+.tree-animate.tree-hidden {
+    max-height: 0;
+    opacity: 0;
+}
+
+/* Стили для индикатора выбора один элемент */
+.single-select-mode .custom-checkbox:checked {
+    background-color: #0d6efd;
+    border-color: #0d6efd;
+}
+
+.single-select-mode .employee-row.selected {
+    background-color: rgba(13, 110, 253, 0.1);
+}
+
+/* Стили для сообщения о результатах поиска */
+#no-search-results {
+    margin-top: 10px;
+    margin-bottom: 10px;
+    padding: 10px;
+    border-radius: 4px;
+    background-color: #fff3cd;
+    color: #856404;
+    border: 1px solid #ffeeba;
+}
+
+/* Стили для мобильных устройств */
+@media (max-width: 768px) {
+    .tree-level {
+        margin-left: 12px;
+    }
+
+    .tree-level-2 {
+        margin-left: 24px;
+    }
+
+    .tree-level-3 {
+        margin-left: 36px;
+    }
+
+    .tree-toggle {
+        width: 20px;
+        height: 20px;
+    }
+
+    .actions-bar {
+        flex-wrap: wrap;
+    }
+
+    .actions-bar .btn {
+        margin-bottom: 4px;
+    }
+}
