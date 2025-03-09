@@ -2,6 +2,7 @@
 <html>
 <head>
     <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>{{ title }}</title>
     <style>
         @page {
@@ -9,7 +10,8 @@
             margin: 1cm;
         }
         body {
-            font-family: Helvetica, Arial, sans-serif;
+            /* 🔍 Расширенный список шрифтов для лучшей поддержки кириллицы */
+            font-family: "DejaVu Sans", "Liberation Sans", Arial, Helvetica, sans-serif;
             font-size: 12px;
             line-height: 1.3;
             margin: 0;
@@ -41,16 +43,23 @@
         }
         .info-row {
             margin-bottom: 5px;
+            clear: both; /* 🔍 Предотвращает проблемы с обтеканием */
+            overflow: hidden; /* 🔍 Лучшая поддержка для блоков */
         }
         .info-label {
             font-weight: bold;
             width: 200px;
             display: inline-block;
+            float: left; /* 🔍 Для более стабильного выравнивания */
+        }
+        .info-value {
+            margin-left: 210px; /* 🔍 Добавлено для лучшего выравнивания */
         }
         table {
             width: 100%;
             border-collapse: collapse;
             margin-bottom: 20px;
+            table-layout: fixed; /* 🔍 Фиксированная ширина колонок */
         }
         table, th, td {
             border: 1px solid #000;
@@ -59,6 +68,7 @@
             padding: 5px;
             text-align: left;
             font-size: 10px;
+            word-wrap: break-word; /* 🔍 Перенос длинных слов */
         }
         th {
             background-color: #f2f2f2;
@@ -78,6 +88,12 @@
         }
         .signature-block {
             margin-top: 30px;
+            display: flex; /* 🔍 Улучшенный блок подписей */
+            justify-content: space-between;
+            width: 100%;
+        }
+        .signature-item {
+            margin-bottom: 15px; /* 🔍 Добавлены отступы между подписями */
         }
         .signature-line {
             border-bottom: 1px solid #000;
@@ -97,6 +113,28 @@
             margin-top: 30px;
             border-top: 1px solid #ccc;
             padding-top: 5px;
+        }
+        /* 🔍 Стили для таблицы выданных СИЗ - фиксированные ширины колонок */
+        .siz-name-col {
+            width: 25%;
+        }
+        .siz-class-col {
+            width: 15%;
+        }
+        .date-col {
+            width: 12%;
+        }
+        .qty-col {
+            width: 8%;
+        }
+        .status-col {
+            width: 15%;
+        }
+        .return-date-col {
+            width: 12%;
+        }
+        .notes-col {
+            width: 13%;
         }
     </style>
 </head>
@@ -175,6 +213,8 @@
             {% endfor %}
         </tbody>
     </table>
+    {% else %}
+    <p>Нет основных норм СИЗ</p>
     {% endif %}
     
     {% for group in condition_groups %}
@@ -222,13 +262,13 @@
     <table>
         <thead>
             <tr>
-                <th>Наименование СИЗ</th>
-                <th>Классификация</th>
-                <th>Дата выдачи</th>
-                <th>Кол-во</th>
-                <th>Статус</th>
-                <th>Дата возврата</th>
-                <th>Примечания</th>
+                <th class="siz-name-col">Наименование СИЗ</th>
+                <th class="siz-class-col">Классификация</th>
+                <th class="date-col">Дата выдачи</th>
+                <th class="qty-col">Кол-во</th>
+                <th class="status-col">Статус</th>
+                <th class="return-date-col">Дата возврата</th>
+                <th class="notes-col">Примечания</th>
             </tr>
         </thead>
         <tbody>
@@ -257,12 +297,12 @@
     </table>
     
     <div class="signature-block">
-        <div>
+        <div class="signature-item">
             <div>Сотрудник</div>
             <div class="signature-line"></div>
             <div>({{ employee.full_name_nominative }})</div>
         </div>
-        <div>
+        <div class="signature-item">
             <div>Ответственное лицо</div>
             <div class="signature-line"></div>
             <div>(_____________________)</div>

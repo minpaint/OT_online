@@ -1,8 +1,7 @@
 Django>=5.0,<5.1
-django-mptt>=0.15.0
 django-import-export>=3.3.1
 psycopg2-binary>=2.9.9
-WeasyPrint>=60.1
+pdfkit>=1.0.0
 python-docx>=1.0.1
 openpyxl>=3.1.2
 Pillow>=10.1.0

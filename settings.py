@@ -191,10 +191,6 @@ MESSAGE_TAGS = {
 # DAL_FORWARD_FIELDS = True
 # DAL_DELETE_ON_AJAX = True
 
-# 🎯 Настройки для MPTT
-MPTT_ADMIN_LEVEL_INDENT = 20
-MPTT_DEFAULT_LEVEL_INDICATOR = '---'
-
 # 📧 Email настройки
 EMAIL_BACKEND = os.getenv('EMAIL_BACKEND', 'django.core.mail.backends.console.EmailBackend')
 EMAIL_HOST = os.getenv('EMAIL_HOST', 'smtp.gmail.com')
@@ -267,3 +263,8 @@ CACHES = {
         'LOCATION': 'unique-snowflake',
     }
 }
+# Конфигурация для wkhtmltopdf
+# При хостинге под Apache укажите полный путь к wkhtmltopdf
+# Для Linux обычно это '/usr/bin/wkhtmltopdf'
+# Для Windows это может быть 'C:\\Program Files\\wkhtmltopdf\\bin\\wkhtmltopdf.exe'
+WKHTMLTOPDF_CMD = 'C:\\Program Files\\wkhtmltopdf\\bin\\wkhtmltopdf.exe'  # Измените на актуальный путь
