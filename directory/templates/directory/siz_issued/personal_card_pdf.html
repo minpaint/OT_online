@@ -5,18 +5,25 @@
     <meta charset="UTF-8">
     <title>Личная карточка учета СИЗ</title>
     <style>
+        @font-face {
+            font-family: 'DejaVuSans';
+            src: url('{{ STATIC_URL }}fonts/DejaVuSans.ttf');
+            font-weight: normal;
+            font-style: normal;
+        }
+        
         @page {
             size: A4;
             margin: 1cm;
         }
         body {
-            font-family: sans-serif;
+            font-family: DejaVuSans, sans-serif;
             font-size: 11pt;
             color: #000;
             line-height: 1.3;
         }
         h1, h2, h3 {
-            font-family: sans-serif;
+            font-family: DejaVuSans, sans-serif;
         }
         table {
             width: 100%;
@@ -30,7 +37,7 @@
             padding: 5px;
             text-align: left;
             vertical-align: middle;
-            font-family: sans-serif;
+            font-family: DejaVuSans, sans-serif;
         }
         th {
             background-color: #f2f2f2;

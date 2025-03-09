@@ -40,10 +40,25 @@ def render_to_pdf(template_path, context, filename=None, as_attachment=True):
         # Путь к шрифтам
         font_path = os.path.join(settings.BASE_DIR, 'static', 'fonts')
 
-        # Настройки PDF
+        # Проверка наличия шрифта
+        font_file = os.path.join(font_path, 'DejaVuSans.ttf')
+        if os.path.exists(font_file):
+            logger.info(f"✅ Шрифт найден: {font_file}")
+        else:
+            logger.warning(f"⚠️ Шрифт не найден: {font_file}")
+
+        # Настройки PDF с явным указанием встроенных шрифтов
         pdf_options = {
             'font_path': font_path,
             'default_font': 'DejaVuSans',
+            # Включаем встроенные шрифты
+            'embed_fonts': True,
+            # Явно указываем шрифт с поддержкой кириллицы
+            'font_map': {
+                'sans-serif': 'DejaVuSans',
+                'serif': 'DejaVuSerif',
+                'monospace': 'DejaVuSansMono',
+            }
         }
 
         # Создание PDF
