@@ -138,8 +138,14 @@ class SIZNormAdmin(admin.ModelAdmin):
             return FormWithPosition
         return Form
 
-    # Обновленный метод для группировки норм СИЗ по уникальным названиям профессий
     def changelist_view(self, request, extra_context=None):
+        """
+        📋 Представление списка норм СИЗ с группировкой по профессиям и условиям
+
+        Формирует структуру данных для шаблона, где нормы СИЗ группируются:
+        1. По названиям профессий/должностей
+        2. По условиям выдачи СИЗ внутри каждой профессии
+        """
         extra_context = extra_context or {}
 
         # Получаем уникальные названия профессий, у которых есть нормы СИЗ
@@ -166,16 +172,42 @@ class SIZNormAdmin(admin.ModelAdmin):
             # Базовые нормы (без условий)
             base_norms = all_norms.filter(condition='').order_by('order', 'siz__name')
 
-            # Получаем уникальные условия для этого названия профессии
-            conditions = all_norms.exclude(condition='').values_list('condition', flat=True).distinct()
+            # 🔄 ИСПРАВЛЕНИЕ: Получаем уникальные условия и группируем нормы более эффективно
+            # Используем словарь для хранения сгруппированных норм, чтобы избежать дублирования
+            grouped_norms = {}
 
-            # Группируем СИЗ по условиям
+            # Выбираем только нормы с условиями
+            condition_norms = all_norms.exclude(condition='')
+
+            # Группируем нормы по названию условия
+            for norm in condition_norms:
+                condition_name = norm.condition
+
+                # Инициализируем список для условия, если он еще не существует
+                if condition_name not in grouped_norms:
+                    grouped_norms[condition_name] = []
+
+                # Добавляем норму в группу, избегая дублирования
+                # Проверяем, нет ли уже такой комбинации СИЗ+условие
+                norm_key = f"{norm.siz_id}_{norm.condition}"
+                exists = False
+                for existing_norm in grouped_norms[condition_name]:
+                    existing_key = f"{existing_norm.siz_id}_{existing_norm.condition}"
+                    if existing_key == norm_key:
+                        exists = True
+                        break
+
+                if not exists:
+                    grouped_norms[condition_name].append(norm)
+
+            # Преобразуем словарь в список для шаблона
             group_norms = []
-            for condition_name in conditions:
-                condition_norms = all_norms.filter(condition=condition_name).order_by('order')
+            for condition_name, norms in grouped_norms.items():
+                # Сортируем нормы по порядку
+                sorted_norms = sorted(norms, key=lambda x: (x.order, x.siz.name))
                 group_norms.append({
                     'name': condition_name,
-                    'norms': condition_norms
+                    'norms': sorted_norms
                 })
 
             # Добавляем информацию о профессии

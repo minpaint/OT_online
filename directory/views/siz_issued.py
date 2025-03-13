@@ -250,25 +250,25 @@ def employee_siz_issued_list(request, employee_id):
 @login_required
 def export_personal_card_pdf(request, employee_id):
     """
-    📄 Экспорт личной карточки учета СИЗ в формате PDF
+    📄 Экспорт личной карточки учета СИЗ в формате PDF в ландшафтной ориентации.
+
+    Генерирует PDF-файл, содержащий лицевую сторону личной карточки учета СИЗ
+    сотрудника в ландшафтной ориентации. Все данные размещаются на одной странице,
+    в том числе блок подписей располагается горизонтально под таблицей.
 
     Args:
         request: HttpRequest объект
         employee_id: ID сотрудника
 
     Returns:
-        HttpResponse с вложенным PDF-файлом
+        HttpResponse: HTTP-ответ с PDF-файлом
     """
     from directory.utils.pdf import render_to_pdf
 
+    # Получаем данные о сотруднике
     employee = get_object_or_404(Employee, pk=employee_id)
 
-    # Получаем все выданные сотруднику СИЗ
-    issued_items = SIZIssued.objects.filter(
-        employee=employee
-    ).select_related('siz').order_by('-issue_date')
-
-    # Получаем нормы СИЗ для должности сотрудника
+    # Получаем базовые нормы СИЗ (без условий)
     base_norms = []
     condition_groups = []
 
@@ -295,34 +295,19 @@ def export_personal_card_pdf(request, employee_id):
     # Подготовка контекста для шаблона
     context = {
         'employee': employee,
-        'issued_items': issued_items,
         'base_norms': base_norms,
         'condition_groups': condition_groups,
         'today': timezone.now().date(),
     }
 
-    # Формирование имени файла для скачивания
+    # Формирование имени файла
     filename = f"personal_card_{employee.full_name_nominative.replace(' ', '_')}.pdf"
 
-    # Рендеринг PDF с использованием нашей утилиты
+    # Рендеринг PDF с использованием оптимизированного шаблона
     return render_to_pdf(
-        template_path='directory/siz_issued/personal_card_pdf.html',
+        template_path='directory/siz_issued/personal_card_pdf_landscape.html',
         context=context,
         filename=filename,
-        as_attachment=True
+        as_attachment=True,
+        landscape=True
     )
-
-
-@login_required
-def export_personal_card_excel(request, employee_id):
-    """
-    📄 Экспорт личной карточки учета СИЗ в формате Excel
-
-    Args:
-        request: HttpRequest объект
-        employee_id: ID сотрудника
-
-    Returns:
-        FileResponse с Excel-файлом или HttpResponseBadRequest в случае ошибки
-    """
-    return generate_card_excel(request, employee_id)

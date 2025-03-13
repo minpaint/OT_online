@@ -104,30 +104,29 @@
                                     {% endfor %}
 
                                     <!-- Нормы СИЗ по условиям -->
-                                    {% for group in profession.group_norms %}
-                                    <!-- Заголовок условия -->
-                                    <tr class="condition-header">
-                                        <td colspan="6" class="condition-name">
-                                            <span class="tree-icon">🔍</span>
-                                            <strong>{{ group.name }}</strong>
-                                        </td>
-                                    </tr>
-                                    <!-- Нормы для этого условия -->
-                                    {% for norm in group.norms %}
-                                    <tr>
-                                        <td>{{ norm.siz.name }}</td>
-                                        <td>{{ norm.siz.classification }}</td>
-                                        <td>{{ norm.siz.unit }}</td>
-                                        <td>{{ norm.quantity }}</td>
-                                        <td>{% if norm.siz.wear_period == 0 %}До износа{% else %}{{ norm.siz.wear_period }} мес.{% endif %}</td>
-                                        <td>
-                                            <a href="{% url 'admin:directory_siznorm_change' norm.id %}" class="edit-link">✏️</a>
-                                            <a href="{% url 'admin:directory_siznorm_delete' norm.id %}" class="delete-link">🗑️</a>
-                                        </td>
-                                    </tr>
-                                    {% endfor %}
-                                    {% endfor %}
-                                </tbody>
+{% for group in profession.group_norms %}
+  <!-- Заголовок условия -->
+  <tr class="condition-header">
+    <td colspan="6" class="condition-name">
+      <span class="tree-icon">🔍</span>
+      <strong>{{ group.name }}</strong>
+    </td>
+  </tr>
+  <!-- Нормы для этого условия -->
+  {% for norm in group.norms %}
+  <tr>
+    <td>{{ norm.siz.name }}</td>
+    <td>{{ norm.siz.classification }}</td>
+    <td>{{ norm.siz.unit }}</td>
+    <td>{{ norm.quantity }}</td>
+    <td>{% if norm.siz.wear_period == 0 %}До износа{% else %}{{ norm.siz.wear_period }} мес.{% endif %}</td>
+    <td>
+      <a href="{% url 'admin:directory_siznorm_change' norm.id %}" class="edit-link">✏️</a>
+      <a href="{% url 'admin:directory_siznorm_delete' norm.id %}" class="delete-link">🗑️</a>
+    </td>
+  </tr>
+  {% endfor %}
+{% endfor %}                          </tbody>
                             </table>
                         </td>
                     </tr>

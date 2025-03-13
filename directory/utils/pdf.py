@@ -58,15 +58,16 @@ def fetch_resources(uri, rel):
         return uri
 
 
-def render_to_pdf(template_path, context, filename=None, as_attachment=True):
+def render_to_pdf(template_path, context, filename=None, as_attachment=True, landscape=False):
     """
-    Функция для рендеринга HTML-шаблона в PDF-файл
+    🖨️ Функция для рендеринга HTML-шаблона в PDF-файл
 
     Args:
         template_path (str): Путь к HTML-шаблону
         context (dict): Контекст с данными для шаблона
         filename (str, optional): Имя файла для скачивания
         as_attachment (bool): Отправить как вложение (True) или отобразить в браузере (False)
+        landscape (bool): Ориентация страницы - альбомная (True) или книжная (False)
 
     Returns:
         HttpResponse: HTTP-ответ с PDF-файлом или сообщением об ошибке
@@ -80,11 +81,22 @@ def render_to_pdf(template_path, context, filename=None, as_attachment=True):
 
         result = BytesIO()
 
+        # Настройки для PDF
+        pdf_options = {
+            'encoding': 'UTF-8',
+            'link_callback': fetch_resources
+        }
+
+        # Настройка ориентации страницы
+        if landscape:
+            # В xhtml2pdf можно задать ориентацию через CSS @page или через параметр
+            # Используем параметр для совместимости
+            pdf_options['page_size'] = 'A4-L'  # A4 в ландшафтной ориентации
+
         pdf = pisa.pisaDocument(
             BytesIO(html_string.encode('UTF-8')),
             dest=result,
-            encoding='UTF-8',
-            link_callback=fetch_resources
+            **pdf_options
         )
 
         if pdf.err:
