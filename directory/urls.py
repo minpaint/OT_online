@@ -89,6 +89,7 @@ siz_patterns = [
     path('personal-card/<int:employee_id>/', siz_issued.SIZPersonalCardView.as_view(), name='siz_personal_card'),
     path('return/<int:siz_issued_id>/', siz_issued.SIZIssueReturnView.as_view(), name='siz_return'),
     path('personal-card/<int:employee_id>/export-pdf/', siz_issued.export_personal_card_pdf, name='siz_personal_card_pdf'),
+    path('personal-card/<int:employee_id>/export-excel/', siz_issued.export_personal_card_excel, name='siz_personal_card_excel'),
 
 ]
 

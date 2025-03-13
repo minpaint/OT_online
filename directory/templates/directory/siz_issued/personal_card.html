@@ -208,18 +208,22 @@
     <h1>{{ title }}</h1>
 
     <div class="row mb-3 no-print">
-        <div class="col-md-6">
-            <a href="{% url 'directory:siz:siz_issue_for_employee' employee.id %}" class="btn btn-primary">
-                <i class="fas fa-plus"></i> Выдать новые СИЗ
-            </a>
-            <button onclick="window.print()" class="btn btn-secondary ml-2">
-                <i class="fas fa-print"></i> Распечатать карточку
-            </button>
-            <a href="{% url 'directory:siz:siz_personal_card_pdf' employee.id %}" class="btn btn-danger ml-2">
+    <div class="col-md-6">
+        <a href="{% url 'directory:siz:siz_issue_for_employee' employee.id %}" class="btn btn-primary">
+            <i class="fas fa-plus"></i> Выдать новые СИЗ
+        </a>
+        <button onclick="window.print()" class="btn btn-secondary ml-2">
+            <i class="fas fa-print"></i> Распечатать карточку
+        </button>
+        <a href="{% url 'directory:siz:siz_personal_card_pdf' employee.id %}" class="btn btn-danger ml-2">
             <i class="fas fa-file-pdf"></i> Экспорт в PDF (A4)
         </a>
-        </div>
+        <!-- Новая кнопка для экспорта в Excel -->
+        <a href="{% url 'directory:siz:siz_personal_card_excel' employee.id %}" class="btn btn-success ml-2">
+            <i class="fas fa-file-excel"></i> Экспорт в Excel
+        </a>
     </div>
+</div>
 
     <!-- Навигация по вкладкам -->
     <ul class="nav nav-tabs mb-3 no-print" id="sizTabs" role="tablist">

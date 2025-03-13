@@ -12,6 +12,8 @@ from django.utils import timezone  # 🆕 Добавлен импорт timezone
 from django.template.loader import get_template  # 🆕 Добавлен импорт get_template
 from io import BytesIO  # 🆕 Добавлен импорт BytesIO
 from xhtml2pdf import pisa  # 🆕 Добавлен импорт pisa
+from directory.utils.excel_export import generate_card_excel
+from django.contrib.auth.decorators import login_required
 
 from directory.models import Employee, SIZIssued
 from directory.forms.siz_issued import SIZIssueForm, SIZIssueMassForm, SIZIssueReturnForm
@@ -309,3 +311,18 @@ def export_personal_card_pdf(request, employee_id):
         filename=filename,
         as_attachment=True
     )
+
+
+@login_required
+def export_personal_card_excel(request, employee_id):
+    """
+    📄 Экспорт личной карточки учета СИЗ в формате Excel
+
+    Args:
+        request: HttpRequest объект
+        employee_id: ID сотрудника
+
+    Returns:
+        FileResponse с Excel-файлом или HttpResponseBadRequest в случае ошибки
+    """
+    return generate_card_excel(request, employee_id)
