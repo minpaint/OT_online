@@ -1,22 +1,92 @@
 # 📁 directory/views/siz_issued.py
+import re
+import random
 from django.views.generic import CreateView, DetailView, FormView, UpdateView
 from django.contrib.auth.mixins import LoginRequiredMixin
 from django.urls import reverse_lazy, reverse
 from django.shortcuts import get_object_or_404, redirect
-from django.http import JsonResponse, HttpResponse  # 🆕 Добавлен HttpResponse
+from django.http import JsonResponse, HttpResponse
 from django.contrib import messages
 from django.utils.decorators import method_decorator
 from django.views.decorators.http import require_GET
 from django.contrib.auth.decorators import login_required
-from django.utils import timezone  # 🆕 Добавлен импорт timezone
-from django.template.loader import get_template  # 🆕 Добавлен импорт get_template
-from io import BytesIO  # 🆕 Добавлен импорт BytesIO
-from xhtml2pdf import pisa  # 🆕 Добавлен импорт pisa
-from directory.utils.excel_export import generate_card_excel
+from django.utils import timezone
+from django.template.loader import get_template
+from io import BytesIO
+from xhtml2pdf import pisa
 from django.contrib.auth.decorators import login_required
 
 from directory.models import Employee, SIZIssued
 from directory.forms.siz_issued import SIZIssueForm, SIZIssueMassForm, SIZIssueReturnForm
+from directory.utils.pdf import render_to_pdf
+
+
+def determine_gender_from_patronymic(full_name):
+    """
+    Определяет пол человека по отчеству в полном имени.
+
+    Args:
+        full_name (str): Полное имя в формате "Фамилия Имя Отчество"
+
+    Returns:
+        str: "Мужской" или "Женский"
+    """
+    # Разбиваем полное имя на части
+    name_parts = full_name.split()
+
+    # Если имя состоит из 3 и более частей, предполагаем, что отчество - третья часть
+    if len(name_parts) >= 3:
+        patronymic = name_parts[2]
+    else:
+        # Если частей меньше 3, вернем мужской пол по умолчанию
+        return "Мужской"
+
+    # Проверяем окончание отчества
+    # Русские отчества
+    if re.search(r'(ич|ыч)$', patronymic, re.IGNORECASE):
+        return "Мужской"
+    elif re.search(r'(на|вна|чна)$', patronymic, re.IGNORECASE):
+        return "Женский"
+    # Тюркские отчества
+    elif re.search(r'(оглы|улы|лы)$', patronymic, re.IGNORECASE):
+        return "Мужской"
+    elif re.search(r'(кызы|зы)$', patronymic, re.IGNORECASE):
+        return "Женский"
+    else:
+        # Если не удалось определить по отчеству, возвращаем мужской пол по умолчанию
+        return "Мужской"
+
+
+def get_random_siz_sizes(gender):
+    """
+    Генерирует случайные размеры СИЗ в зависимости от пола.
+
+    Args:
+        gender (str): Пол сотрудника ("Мужской" или "Женский")
+
+    Returns:
+        dict: Словарь с размерами СИЗ (головной убор, перчатки, респиратор, противогаз)
+    """
+    if gender == "Мужской":
+        # Мужские размеры
+        headgear = random.randint(55, 59)  # Головной убор от 55 до 59
+        gloves = random.randint(15, 19) / 2  # Перчатки от 7.5 до 9.5, кратные 0.5
+        respirator = random.choice(["1", "2", "3"])  # Респиратор размеры 1, 2, 3
+    else:
+        # Женские размеры
+        headgear = random.randint(53, 57)  # Головной убор от 53 до 57
+        gloves = random.randint(13, 17) / 2  # Перчатки от 6.5 до 8.5, кратные 0.5
+        respirator = random.choice(["1", "2", "3"])  # Респиратор размеры 1, 2, 3
+
+    # Противогаз такого же размера, как и респиратор
+    gas_mask = respirator
+
+    return {
+        'headgear': headgear,
+        'gloves': gloves,
+        'respirator': respirator,
+        'gas_mask': gas_mask
+    }
 
 
 class SIZIssueFormView(LoginRequiredMixin, CreateView):
@@ -151,6 +221,13 @@ class SIZPersonalCardView(LoginRequiredMixin, DetailView):
 
             context['condition_groups'] = condition_groups
 
+        # Определяем пол по отчеству и добавляем в контекст
+        gender = determine_gender_from_patronymic(self.object.full_name_nominative)
+        context['gender'] = gender
+
+        # Генерируем случайные размеры СИЗ и добавляем в контекст
+        context['siz_sizes'] = get_random_siz_sizes(gender)
+
         return context
 
 
@@ -250,25 +327,23 @@ def employee_siz_issued_list(request, employee_id):
 @login_required
 def export_personal_card_pdf(request, employee_id):
     """
-    📄 Экспорт личной карточки учета СИЗ в формате PDF в ландшафтной ориентации.
-
-    Генерирует PDF-файл, содержащий лицевую сторону личной карточки учета СИЗ
-    сотрудника в ландшафтной ориентации. Все данные размещаются на одной странице,
-    в том числе блок подписей располагается горизонтально под таблицей.
+    📄 Экспорт личной карточки учета СИЗ в формате PDF
 
     Args:
         request: HttpRequest объект
         employee_id: ID сотрудника
 
     Returns:
-        HttpResponse: HTTP-ответ с PDF-файлом
+        HttpResponse с вложенным PDF-файлом
     """
-    from directory.utils.pdf import render_to_pdf
-
-    # Получаем данные о сотруднике
     employee = get_object_or_404(Employee, pk=employee_id)
 
-    # Получаем базовые нормы СИЗ (без условий)
+    # Получаем все выданные сотруднику СИЗ
+    issued_items = SIZIssued.objects.filter(
+        employee=employee
+    ).select_related('siz').order_by('-issue_date')
+
+    # Получаем нормы СИЗ для должности сотрудника
     base_norms = []
     condition_groups = []
 
@@ -292,22 +367,48 @@ def export_personal_card_pdf(request, employee_id):
                     'norms': condition_norms
                 })
 
+    # Определяем пол по отчеству
+    gender = determine_gender_from_patronymic(employee.full_name_nominative)
+
+    # Генерируем случайные размеры СИЗ
+    siz_sizes = get_random_siz_sizes(gender)
+
     # Подготовка контекста для шаблона
     context = {
         'employee': employee,
+        'issued_items': issued_items,
         'base_norms': base_norms,
         'condition_groups': condition_groups,
         'today': timezone.now().date(),
+        'gender': gender,
+        'siz_sizes': siz_sizes
     }
 
-    # Формирование имени файла
+    # Формирование имени файла для скачивания
     filename = f"personal_card_{employee.full_name_nominative.replace(' ', '_')}.pdf"
 
-    # Рендеринг PDF с использованием оптимизированного шаблона
-    return render_to_pdf(
-        template_path='directory/siz_issued/personal_card_pdf_landscape.html',
-        context=context,
-        filename=filename,
-        as_attachment=True,
-        landscape=True
-    )
+    # Проверяем существование шаблонов
+    template_paths = [
+        'directory/siz_issued/personal_card_pdf_landscape.html',
+        'directory/siz_issued/personal_card_pdf.html',
+        'siz_issued/personal_card_pdf.html'
+    ]
+
+    # Пытаемся найти существующий шаблон
+    for template_path in template_paths:
+        try:
+            # Пробуем получить шаблон
+            get_template(template_path)
+            # Если удалось, используем его
+            return render_to_pdf(
+                template_path=template_path,
+                context=context,
+                filename=filename,
+                as_attachment=True
+            )
+        except:
+            continue
+
+    # Если ни один шаблон не найден
+    messages.error(request, "Шаблон PDF не найден. Обратитесь к администратору.")
+    return redirect('directory:siz:siz_personal_card', employee_id=employee_id)
