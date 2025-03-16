@@ -181,15 +181,15 @@ MESSAGE_TAGS = {
     messages.ERROR: 'alert-danger',
 }
 
-# # 🌐 Настройки для Select2
-# SELECT2_JS = 'vendor/select2/dist/js/select2.min.js'
-# SELECT2_CSS = 'vendor/select2/dist/css/select2.min.css'
-# SELECT2_I18N_PATH = 'vendor/select2/dist/js/i18n'
-#
-# # 🔍 Настройки для django-autocomplete-light
-# DAL_MAX_RESULTS = 10
-# DAL_FORWARD_FIELDS = True
-# DAL_DELETE_ON_AJAX = True
+# 🌐 Настройки для Select2
+SELECT2_JS = 'vendor/select2/dist/js/select2.min.js'
+SELECT2_CSS = 'vendor/select2/dist/css/select2.min.css'
+SELECT2_I18N_PATH = 'vendor/select2/dist/js/i18n'
+
+# 🔍 Настройки для django-autocomplete-light
+DAL_MAX_RESULTS = 10
+DAL_FORWARD_FIELDS = True
+DAL_DELETE_ON_AJAX = True
 
 # 📧 Email настройки
 EMAIL_BACKEND = os.getenv('EMAIL_BACKEND', 'django.core.mail.backends.console.EmailBackend')

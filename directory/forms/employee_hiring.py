@@ -11,6 +11,7 @@ from directory.forms.mixins import OrganizationRestrictionFormMixin
 # Если будет ошибка ImportError из-за циклического импорта, см. комментарии ниже.
 from directory.models.employee import Employee
 
+
 class EmployeeHiringForm(OrganizationRestrictionFormMixin, forms.ModelForm):
     """
     👥 Форма для найма сотрудника, использующая django-autocomplete-light (DAL).
@@ -20,18 +21,18 @@ class EmployeeHiringForm(OrganizationRestrictionFormMixin, forms.ModelForm):
     class Meta:
         model = Employee
         fields = [
-            'full_name_nominative',   # ФИО (именительный) 📝
-            'full_name_dative',       # ФИО (дательный) ✍️
-            'date_of_birth',          # Дата рождения 📅
-            'place_of_residence',     # Место проживания 🏠
-            'organization',           # Организация 🏢
-            'subdivision',            # Подразделение 🏭
-            'department',             # Отдел 📂
-            'position',               # Должность 👔
-            'height',                 # Рост 📏
-            'clothing_size',          # Размер одежды 👕
-            'shoe_size',              # Размер обуви 👞
-            'is_contractor'           # Договор подряда? 📄
+            'full_name_nominative',  # ФИО (именительный) 📝
+            'full_name_dative',  # ФИО (дательный) ✍️
+            'date_of_birth',  # Дата рождения 📅
+            'place_of_residence',  # Место проживания 🏠
+            'organization',  # Организация 🏢
+            'subdivision',  # Подразделение 🏭
+            'department',  # Отдел 📂
+            'position',  # Должность 👔
+            'height',  # Рост 📏
+            'clothing_size',  # Размер одежды 👕
+            'shoe_size',  # Размер обуви 👞
+            'is_contractor'  # Договор подряда? 📄
         ]
         widgets = {
             # Виджет для организации с автодополнением Select2
@@ -40,7 +41,8 @@ class EmployeeHiringForm(OrganizationRestrictionFormMixin, forms.ModelForm):
                 attrs={
                     'data-placeholder': '🏢 Выберите организацию...',
                     'class': 'select2 form-control',
-                    'data-theme': 'bootstrap4'
+                    'data-theme': 'bootstrap4',
+                    'style': 'width: 100%; text-align: left;'
                 }
             ),
             # Виджет для подразделения (зависит от организации)
@@ -50,7 +52,8 @@ class EmployeeHiringForm(OrganizationRestrictionFormMixin, forms.ModelForm):
                 attrs={
                     'data-placeholder': '🏭 Выберите подразделение...',
                     'class': 'select2 form-control',
-                    'data-theme': 'bootstrap4'
+                    'data-theme': 'bootstrap4',
+                    'style': 'width: 100%; text-align: left;'
                 }
             ),
             # Виджет для отдела (зависит от подразделения)
@@ -60,7 +63,8 @@ class EmployeeHiringForm(OrganizationRestrictionFormMixin, forms.ModelForm):
                 attrs={
                     'data-placeholder': '📂 Выберите отдел...',
                     'class': 'select2 form-control',
-                    'data-theme': 'bootstrap4'
+                    'data-theme': 'bootstrap4',
+                    'style': 'width: 100%; text-align: left;'
                 }
             ),
             # Виджет для должности (зависит от организации, подразделения, отдела)
@@ -70,7 +74,8 @@ class EmployeeHiringForm(OrganizationRestrictionFormMixin, forms.ModelForm):
                 attrs={
                     'data-placeholder': '👔 Выберите должность...',
                     'class': 'select2 form-control',
-                    'data-theme': 'bootstrap4'
+                    'data-theme': 'bootstrap4',
+                    'style': 'width: 100%; text-align: left;'
                 }
             ),
             # Виджет для даты рождения
@@ -116,3 +121,12 @@ class EmployeeHiringForm(OrganizationRestrictionFormMixin, forms.ModelForm):
             user_orgs = self.user.profile.organizations.all()
             if user_orgs.count() == 1:
                 self.initial['organization'] = user_orgs.first().id
+
+        # 🆕 Дополнительные стили для Select2 полей
+        for field_name in ['organization', 'subdivision', 'department', 'position']:
+            if field_name in self.fields:
+                # Обновляем атрибуты для корректного отображения
+                self.fields[field_name].widget.attrs.update({
+                    'class': 'select2 form-control',
+                    'style': 'width: 100%; text-align: left;'
+                })
