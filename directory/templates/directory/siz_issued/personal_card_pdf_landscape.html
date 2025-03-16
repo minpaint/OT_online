@@ -327,7 +327,64 @@
             <span style="position: absolute; right: 0; top: 0; color: #c00; font-weight: bold;">✓</span>
         </div>
     </div>
+    <!-- Оборотная сторона карточки, добавляется только при экспорте в PDF -->
+<div style="page-break-before: always;">
+    <h1><strong>Личная карточка учета СИЗ (оборотная сторона)</strong></h1>
     
+    <table class="norms-table">
+        <thead>
+            <tr>
+                <th>Наименование средств индивидуальной защиты</th>
+                <th>Классификация (маркировка) средств индивидуальной защиты по защитным свойствам или конструктивным особенностям</th>
+                <th>дата</th>
+                <th>количество</th>
+                <th>% износа</th>
+                <th>стоимость</th>
+                <th>расписка в получении</th>
+                <th>дата</th>
+                <th>количество</th>
+                <th>% износа</th>
+                <th>стоимость</th>
+                <th>расписка сдавшего</th>
+                <th>расписка кладовщика в приемке</th>
+            </tr>
+            <tr>
+                <th>1</th>
+                <th>2</th>
+                <th>3</th>
+                <th>4</th>
+                <th>5</th>
+                <th>6</th>
+                <th>7</th>
+                <th>8</th>
+                <th>9</th>
+                <th>10</th>
+                <th>11</th>
+                <th>12</th>
+                <th>13</th>
+            </tr>
+        </thead>
+        <tbody>
+            {% for item in selected_items %}
+            <tr>
+                <td class="name">{{ item.siz.name }}</td>
+                <td>{{ item.siz.classification }}</td>
+                <td>{{ today|date:"d.m.Y" }}</td>
+                <td>1</td>
+                <td></td>
+                <td></td>
+                <td>v</td>
+                <td></td>
+                <td></td>
+                <td></td>
+                <td></td>
+                <td></td>
+                <td></td>
+            </tr>
+            {% endfor %}
+        </tbody>
+    </table>
+</div>
     <!-- JavaScript для управления чекбоксами -->
     <script>
         // При загрузке документа
@@ -345,3 +402,4 @@
     </script>
 </body>
 </html>
+

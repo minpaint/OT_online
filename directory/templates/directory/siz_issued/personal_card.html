@@ -49,7 +49,7 @@
     table-layout: fixed;
 }
 
-.siz-table th, 
+.siz-table th,
 .siz-table td {
     border: 1px solid #000;
     padding: 5px;
@@ -239,10 +239,10 @@
             <button onclick="window.print()" class="btn btn-secondary ml-2">
                 <i class="fas fa-print"></i> Распечатать карточку
             </button>
-            <a href="{% url 'directory:siz:siz_personal_card_pdf' employee.id %}" class="btn btn-danger ml-2">
-                <i class="fas fa-file-pdf"></i> Экспорт в PDF (A4)
-            </a> 
-            
+            <button id="export-pdf-button" class="btn btn-danger ml-2">
+    <i class="fas fa-file-pdf"></i> Экспорт в PDF
+</button>
+
         </div>
     </div>
 
@@ -273,7 +273,7 @@
                     <!-- Сведения о работнике -->
                     <div class="employee-info-section">
                         <h4 class="section-header">Сведения о работнике</h4>
-                        
+
                         <div class="row employee-info-row">
                             <div class="col-md-8 col-sm-7">
                                 <div class="row">
@@ -294,7 +294,7 @@
                                 </div>
                             </div>
                         </div>
-                        
+
                         <div class="row employee-info-row">
                             <div class="col-md-8 col-sm-7">
                                 <div class="row">
@@ -317,7 +317,7 @@
                                 </div>
                             </div>
                         </div>
-                        
+
                         <div class="row employee-info-row">
                             <div class="col-md-8 col-sm-7">
                                 <div class="row">
@@ -332,7 +332,7 @@
                                 </div>
                             </div>
                         </div>
-                        
+
                         <div class="row employee-info-row">
                             <div class="col-md-8 col-sm-7">
                                 <div class="row">
@@ -347,7 +347,7 @@
                                 </div>
                             </div>
                         </div>
-                        
+
                         <div class="row employee-info-row">
                             <div class="col-md-8 col-sm-7">
                                 <!-- Здесь была строка "Дата изменения профессии (должности)" - удалена -->
@@ -359,7 +359,7 @@
                                 </div>
                             </div>
                         </div>
-                        
+
                         <div class="row employee-info-row">
                             <div class="col-md-8 col-sm-7">
                                 <!-- Дополнительная пустая строка для сохранения симметрии -->
@@ -376,19 +376,19 @@
                     <!-- Предусмотрено по установленным нормам -->
                     <div class="norms-section">
                         <h4 class="section-header mt-3 mb-3">Предусмотрено по установленным нормам</h4>
-                        
+
                         <!-- Форма для выбора СИЗ к выдаче -->
                         <form id="issue-siz-form" method="post" action="{% url 'directory:siz:siz_issue_for_employee' employee.id %}">
                             {% csrf_token %}
                             <input type="hidden" name="issue_selected_siz" value="1">
-                            
+
                             <!-- 🆕 Кнопка "Выбрать все/Снять выделение" -->
                             <div class="select-all-wrapper no-print">
                                 <button type="button" id="select-all-btn" class="select-all-btn">
                                     <i class="fas fa-check-square"></i> Снять выделение
                                 </button>
                             </div>
-                            
+
                             <table class="table table-bordered siz-table">
                                 <thead>
                                     <tr>
@@ -446,7 +446,7 @@
                                     {% endfor %}
                                 </tbody>
                             </table>
-                            
+
                             <div class="text-center mt-3 no-print">
                                 <button type="submit" class="btn btn-success issue-siz-button">
                                     <i class="fas fa-check-circle"></i> Выдать выбранные СИЗ
@@ -483,7 +483,7 @@
                 tab.click();
             }
         }
-        
+
         // Валидация формы выдачи СИЗ
         const form = document.getElementById('issue-siz-form');
         if (form) {
@@ -495,21 +495,49 @@
                 }
             });
         }
-        
+
+        // Добавляем обработчик для кнопки экспорта в PDF
+        const exportPdfBtn = document.getElementById('export-pdf-button');
+        if (exportPdfBtn) {
+            exportPdfBtn.addEventListener('click', function(e) {
+                e.preventDefault();
+
+                // Получаем все выбранные чекбоксы
+                const checkboxes = document.querySelectorAll('input[name="selected_norms"]:checked');
+
+                // Формируем URL с параметрами
+                let url = '{% url "directory:siz:siz_personal_card_pdf" employee.id %}';
+
+                // Добавляем параметры выбранных элементов
+                if (checkboxes.length > 0) {
+                    url += '?';
+                    checkboxes.forEach(function(checkbox, index) {
+                        url += `selected_norms=${checkbox.value}`;
+                        if (index < checkboxes.length - 1) {
+                            url += '&';
+                        }
+                    });
+                }
+
+                // Переходим на страницу с PDF
+                window.location.href = url;
+            });
+        }
+
         // 🆕 Функция для выбора всех/снятия выделения с чекбоксов
         const selectAllBtn = document.getElementById('select-all-btn');
         if (selectAllBtn) {
             selectAllBtn.addEventListener('click', function() {
                 const checkboxes = document.querySelectorAll('.siz-checkbox');
                 const allChecked = areAllCheckboxesChecked(checkboxes);
-                
+
                 checkboxes.forEach(checkbox => {
                     checkbox.checked = !allChecked;
                 });
-                
+
                 updateSelectAllButtonText(!allChecked);
             });
-            
+
             // 🆕 Функция обновления текста кнопки в зависимости от состояния чекбоксов
             function updateSelectAllButtonText(allChecked) {
                 if (allChecked) {
@@ -518,7 +546,7 @@
                     selectAllBtn.innerHTML = '<i class="fas fa-square"></i> Выбрать все';
                 }
             }
-            
+
             // 🆕 Проверка, все ли чекбоксы выбраны
             function areAllCheckboxesChecked(checkboxes) {
                 for (const checkbox of checkboxes) {
@@ -526,7 +554,7 @@
                 }
                 return true;
             }
-            
+
             // 🆕 Слушатель изменений для чекбоксов
             document.querySelectorAll('.siz-checkbox').forEach(checkbox => {
                 checkbox.addEventListener('change', function() {
@@ -535,7 +563,7 @@
                     updateSelectAllButtonText(allChecked);
                 });
             });
-            
+
             // 🆕 Обработка клика на строку для переключения чекбокса
             document.querySelectorAll('.siz-item-row').forEach(row => {
                 row.addEventListener('click', function(e) {
@@ -543,7 +571,7 @@
                     if (e.target.type !== 'checkbox' && e.target.tagName !== 'BUTTON' && e.target.tagName !== 'A') {
                         const checkbox = this.querySelector('.siz-checkbox');
                         checkbox.checked = !checkbox.checked;
-                        
+
                         // Вызываем событие change вручную, чтобы сработал обработчик
                         const event = new Event('change');
                         checkbox.dispatchEvent(event);

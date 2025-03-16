@@ -169,6 +169,66 @@ class SIZIssueFormView(LoginRequiredMixin, CreateView):
         return response
 
 
+@login_required
+def issue_selected_siz(request, employee_id):
+    """
+    📝 Представление для массовой выдачи выбранных СИЗ сотруднику
+
+    Args:
+        request: HttpRequest объект
+        employee_id: ID сотрудника
+
+    Returns:
+        Перенаправление на личную карточку сотрудника
+    """
+    if request.method == 'POST':
+        employee = get_object_or_404(Employee, id=employee_id)
+        selected_norm_ids = request.POST.getlist('selected_norms')
+
+        if not selected_norm_ids:
+            messages.warning(request, "Не выбрано ни одного СИЗ для выдачи")
+            return redirect('directory:siz:siz_personal_card', employee_id=employee_id)
+
+        from directory.models.siz import SIZNorm
+        # Получаем выбранные нормы
+        norms = SIZNorm.objects.filter(id__in=selected_norm_ids).select_related('siz')
+
+        # Создаем записи о выдаче для каждого выбранного СИЗ
+        issued_count = 0
+        for norm in norms:
+            # Проверка, что такое СИЗ еще не выдано и не находится в использовании
+            existing_issued = SIZIssued.objects.filter(
+                employee=employee,
+                siz=norm.siz,
+                is_returned=False
+            ).exists()
+
+            if not existing_issued:
+                # Создаем запись о выдаче
+                SIZIssued.objects.create(
+                    employee=employee,
+                    siz=norm.siz,
+                    quantity=norm.quantity,
+                    issue_date=timezone.now().date(),
+                    condition=norm.condition,
+                    received_signature=True
+                )
+                issued_count += 1
+
+        if issued_count > 0:
+            messages.success(
+                request,
+                f"✅ Успешно выдано {issued_count} наименований СИЗ сотруднику {employee.full_name_nominative}"
+            )
+        else:
+            messages.info(
+                request,
+                "ℹ️ Ни одно СИЗ не было выдано. Возможно, выбранные СИЗ уже находятся в использовании."
+            )
+
+    return redirect('directory:siz:siz_personal_card', employee_id=employee_id)
+
+
 class SIZPersonalCardView(LoginRequiredMixin, DetailView):
     """
     👤 Представление для отображения личной карточки учета СИЗ сотрудника
@@ -327,7 +387,7 @@ def employee_siz_issued_list(request, employee_id):
 @login_required
 def export_personal_card_pdf(request, employee_id):
     """
-    📄 Экспорт личной карточки учета СИЗ в формате PDF
+    📄 Экспорт личной карточки учета СИЗ в формате PDF с оборотной стороной
 
     Args:
         request: HttpRequest объект
@@ -343,7 +403,39 @@ def export_personal_card_pdf(request, employee_id):
         employee=employee
     ).select_related('siz').order_by('-issue_date')
 
-    # Получаем нормы СИЗ для должности сотрудника
+    # Для оборотной стороны получаем выбранные элементы из запроса
+    selected_norm_ids = request.GET.getlist('selected_norms')
+    selected_items = []
+
+    # Если есть выбранные элементы, получаем информацию о них
+    if selected_norm_ids:
+        from directory.models.siz import SIZNorm
+        selected_norms = SIZNorm.objects.filter(id__in=selected_norm_ids).select_related('siz')
+
+        # Создаем список элементов для оборотной стороны
+        for norm in selected_norms:
+            selected_items.append({
+                'siz': norm.siz,
+                'classification': norm.siz.classification,
+                'quantity': norm.quantity,
+            })
+    else:
+        # Если выбранных элементов нет, используем базовые нормы
+        if employee.position:
+            from directory.models.siz import SIZNorm
+            base_norms = SIZNorm.objects.filter(
+                position=employee.position,
+                condition=''  # Только базовые нормы без условий
+            ).select_related('siz')
+
+            for norm in base_norms:
+                selected_items.append({
+                    'siz': norm.siz,
+                    'classification': norm.siz.classification,
+                    'quantity': norm.quantity,
+                })
+
+    # Получаем нормы СИЗ для лицевой стороны
     base_norms = []
     condition_groups = []
 
@@ -381,34 +473,36 @@ def export_personal_card_pdf(request, employee_id):
         'condition_groups': condition_groups,
         'today': timezone.now().date(),
         'gender': gender,
-        'siz_sizes': siz_sizes
+        'siz_sizes': siz_sizes,
+        'selected_items': selected_items,  # Выбранные элементы для оборотной стороны
+        # Дополнительно добавляем абсолютный URL для формы, чтобы избежать ошибки при генерации PDF
+        'issue_selected_url': request.build_absolute_uri(
+            reverse('directory:siz:issue_selected_siz', kwargs={'employee_id': employee_id})
+        ),
     }
 
     # Формирование имени файла для скачивания
     filename = f"personal_card_{employee.full_name_nominative.replace(' ', '_')}.pdf"
 
-    # Проверяем существование шаблонов
-    template_paths = [
-        'directory/siz_issued/personal_card_pdf_landscape.html',
-        'directory/siz_issued/personal_card_pdf.html',
-        'siz_issued/personal_card_pdf.html'
-    ]
+    # Используем шаблон для PDF
+    template_path = 'directory/siz_issued/personal_card_pdf_landscape.html'
 
-    # Пытаемся найти существующий шаблон
-    for template_path in template_paths:
-        try:
-            # Пробуем получить шаблон
-            get_template(template_path)
-            # Если удалось, используем его
-            return render_to_pdf(
-                template_path=template_path,
-                context=context,
-                filename=filename,
-                as_attachment=True
-            )
-        except:
-            continue
+    try:
+        # Проверяем существование шаблона
+        get_template(template_path)
 
-    # Если ни один шаблон не найден
-    messages.error(request, "Шаблон PDF не найден. Обратитесь к администратору.")
-    return redirect('directory:siz:siz_personal_card', employee_id=employee_id)
+        # Генерируем PDF
+        return render_to_pdf(
+            template_path=template_path,
+            context=context,
+            filename=filename,
+            as_attachment=True
+        )
+    except Exception as e:
+        # Логирование ошибки
+        import logging
+        logger = logging.getLogger(__name__)
+        logger.error(f"Ошибка при создании PDF: {e}")
+
+        messages.error(request, f"Ошибка при создании PDF: {e}")
+        return redirect('directory:siz:siz_personal_card', employee_id=employee_id)

@@ -83,13 +83,12 @@ siz_patterns = [
     path('norms/api/', siz.siz_by_position_api, name='siz_api'),
     # 🆕 Добавляем новые маршруты для выдачи СИЗ
     path('personal-card/<int:employee_id>/pdf/', siz_issued.export_personal_card_pdf, name='siz_personal_card_pdf'),
-
+    path('issue-selected/<int:employee_id>/', siz_issued.issue_selected_siz, name='issue_selected_siz'),
+    # Добавляем этот маршрут
     path('issue/', siz_issued.SIZIssueFormView.as_view(), name='siz_issue'),
     path('issue/employee/<int:employee_id>/', siz_issued.SIZIssueFormView.as_view(), name='siz_issue_for_employee'),
     path('personal-card/<int:employee_id>/', siz_issued.SIZPersonalCardView.as_view(), name='siz_personal_card'),
     path('return/<int:siz_issued_id>/', siz_issued.SIZIssueReturnView.as_view(), name='siz_return'),
-    path('personal-card/<int:employee_id>/export-pdf/', siz_issued.export_personal_card_pdf, name='siz_personal_card_pdf'),
-
 
 ]
 
