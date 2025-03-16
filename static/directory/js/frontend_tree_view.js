@@ -63,6 +63,7 @@ class TreeCore {
                 // Обработка кликов по переключателям
                 const toggle = e.target.closest('.tree-toggle');
                 if (toggle) {
+                    e.preventDefault(); // Предотвращаем действие по умолчанию
                     this._handleToggleClick(toggle);
                 }
             });
@@ -110,7 +111,10 @@ class TreeCore {
         if (!this.tree) return;
 
         const toggle = this.tree.querySelector(`.tree-toggle[data-node="${nodeId}"]`);
-        if (!toggle) return;
+        if (!toggle) {
+            console.log(`❌ Не найден переключатель для узла ${nodeId}`);
+            return;
+        }
 
         // Меняем текст переключателя
         toggle.textContent = expand ? '-' : '+';
@@ -118,9 +122,17 @@ class TreeCore {
         // Находим все дочерние элементы
         const children = this.tree.querySelectorAll(`[data-parent="${nodeId}"]`);
 
+        if (children.length === 0) {
+            console.log(`⚠️ Не найдено дочерних элементов для узла ${nodeId}`);
+        }
+
         // Переключаем их видимость
         children.forEach(child => {
-            child.classList.toggle('tree-hidden', !expand);
+            if (expand) {
+                child.classList.remove('tree-hidden');
+            } else {
+                child.classList.add('tree-hidden');
+            }
 
             // Если сворачиваем родителя, сворачиваем и дочерние узлы
             if (!expand) {
@@ -478,11 +490,18 @@ class TreeCore {
 window.initEmployeeTree = function() {
     console.log('🔄 Функция initEmployeeTree переопределена');
     // Инициализируем наш класс
-    window.treeCore = new TreeCore();
+    if (!window.treeCore) {
+        window.treeCore = new TreeCore();
+    }
 };
 
 // Автоинициализация при загрузке страницы
 document.addEventListener('DOMContentLoaded', () => {
-    console.log('🔄 DOM загружен, инициализируем TreeCore');
-    window.treeCore = new TreeCore();
+    console.log('🔄 DOM загружен, проверяем инициализацию TreeCore');
+
+    // Проверяем, был ли уже создан treeCore
+    if (!window.treeCore) {
+        console.log('🔄 Инициализируем TreeCore');
+        window.treeCore = new TreeCore();
+    }
 });
