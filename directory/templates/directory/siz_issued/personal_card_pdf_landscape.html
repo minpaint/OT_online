@@ -1,3 +1,4 @@
+<!-- directory/templates/directory/siz_issued/personal_card_pdf_landscape.html -->
 <!DOCTYPE html>
 <html>
 <head>
@@ -69,12 +70,13 @@
             text-align: center;
         }
         
-        /* Таблица норм СИЗ */
+        /* 🔄 ИСПРАВЛЕНИЕ: Улучшенные стили для таблицы норм СИЗ */
         .norms-table {
             width: 100%;
             border-collapse: collapse;
             margin-bottom: 10px;
             table-layout: fixed;
+            font-size: 8pt;
         }
         
         .norms-table th, .norms-table td {
@@ -100,34 +102,69 @@
             font-style: italic;
         }
         
-        /* Оптимизированные размеры колонок таблицы норм */
-        .norms-table th:nth-child(1), .norms-table td:nth-child(1) {
-            width: 30%;
+        /* 🔄 ИСПРАВЛЕНИЕ: Улучшенные стили для оборотной таблицы */
+        .reverse-table {
+            width: 100%;
+            border-collapse: collapse;
+            table-layout: fixed;
+            font-size: 8pt;
         }
         
-        .norms-table th:nth-child(2), .norms-table td:nth-child(2) {
-            width: 25%;
+        .reverse-table th, .reverse-table td {
+            border: 1px solid #000;
+            padding: 2px 3px;
+            text-align: center;
+            vertical-align: middle;
         }
         
-        .norms-table th:nth-child(3), .norms-table td:nth-child(3) {
-            width: 10%;
+        .reverse-table th {
+            background-color: #f2f2f2;
+            font-weight: bold;
+            font-size: 7pt;
         }
         
-        .norms-table th:nth-child(4), .norms-table td:nth-child(4) {
-            width: 10%;
+        .reverse-table td.name {
+            text-align: left;
+            width: 20%;
         }
         
-        .norms-table th:nth-child(5), .norms-table td:nth-child(5) {
+        .reverse-table td.classification {
+            text-align: left;
             width: 15%;
         }
         
-        .norms-table th:nth-child(6), .norms-table td:nth-child(6) {
-            width: 10%;
+        .reverse-table th.col-num {
+            width: 3%;
         }
-
+        
+        .reverse-table th.col-date, 
+        .reverse-table td.col-date {
+            width: 8%;
+        }
+        
+        .reverse-table th.col-quantity, 
+        .reverse-table td.col-quantity {
+            width: 6%;
+        }
+        
+        .reverse-table th.col-wear, 
+        .reverse-table td.col-wear {
+            width: 6%;
+        }
+        
+        .reverse-table th.col-cost, 
+        .reverse-table td.col-cost {
+            width: 8%;
+        }
+        
+        .reverse-table th.col-sign, 
+        .reverse-table td.col-sign {
+            width: 8%;
+        }
+        
         /* Отступ для блока подписей */
         .signatures {
-            margin-top: 25px;  /* Увеличенный отступ от таблицы */
+            margin-top: 25px;
         }
         
         /* Стили для столбца с галочками */
@@ -135,61 +172,10 @@
             text-align: center;
         }
         
-        /* Стиль для чекбоксов */
-        .siz-checkbox {
-            transform: scale(1.5);
-            cursor: pointer;
-        }
-        
         /* При печати скрываем столбец с галочками */
         @media print {
-            .norms-table th.checkbox-column, 
-            .norms-table td.checkbox-column {
+            .checkbox-column {
                 display: none;
-            }
-            
-            /* Возвращаем ширину столбцов для печати */
-            .norms-table th:nth-child(1), .norms-table td:nth-child(1) {
-                width: 35%;
-            }
-            
-            .norms-table th:nth-child(2), .norms-table td:nth-child(2) {
-                width: 25%;
-            }
-            
-            .norms-table th:nth-child(3), .norms-table td:nth-child(3) {
-                width: 10%;
-            }
-            
-            .norms-table th:nth-child(4), .norms-table td:nth-child(4) {
-                width: 10%;
-            }
-            
-            .norms-table th:nth-child(5), .norms-table td:nth-child(5) {
-                width: 20%;
-            }
-        }
-        
-        /* Кнопка выдачи СИЗ */
-        .issue-button {
-            margin-top: 10px;
-            padding: 8px 15px;
-            background-color: #4CAF50;
-            color: white;
-            border: none;
-            border-radius: 4px;
-            cursor: pointer;
-            font-size: 14px;
-        }
-        
-        .issue-button:hover {
-            background-color: #45a049;
-        }
-        
-        /* Не показываем кнопку при печати */
-        @media print {
-            .issue-button, .no-print {
-                display: none !important;
             }
         }
     </style>
@@ -199,6 +185,7 @@
     
     <h2>Сведения о работнике</h2>
 
+    <!-- 🔄 ИСПРАВЛЕНИЕ: Убедимся, что таблица сведений о работнике отображается правильно -->
     <table class="employee-table">
         <tr>
             <td class="label">Фамилия, собственное имя, отчество (если таковое имеется):</td>
@@ -216,7 +203,7 @@
                 {% elif employee.subdivision %}
                     {{ employee.subdivision.name }}
                 {% else %}
-                    Бухгалтерия
+                    {{ employee.organization.full_name_ru }}
                 {% endif %}
             </td>
             <td class="small-label">Размер одежды:</td>
@@ -242,25 +229,41 @@
         </tr>
     </table>
 
+    <!-- 🔄 ИСПРАВЛЕНИЕ: Таблица с базовыми нормами СИЗ -->
     <h2><strong>Предусмотрено по установленным нормам</strong></h2>
     
-    <!-- Добавляем форму для выбора СИЗ к выдаче -->
-    <form id="issue-siz-form" method="post" action="{% url 'directory:siz:issue_selected_siz' employee.id %}" class="no-print">
-        {% csrf_token %}
-        
-        <table class="norms-table">
-            <thead>
-                <tr>
-                    <th>Наименование средств индивидуальной защиты</th>
-                    <th>Классификация (маркировка) средства индивидуальной защиты по защитным свойствам</th>
-                    <th>Единица измерения</th>
-                    <th>Количество</th>
-                    <th>Срок носки в месяцах</th>
-                    <th class="checkbox-column">Выдать</th>
-                </tr>
-            </thead>
-            <tbody>
-                {% for norm in base_norms %}
+    <table class="norms-table">
+        <thead>
+            <tr>
+                <th>Наименование средств индивидуальной защиты</th>
+                <th>Классификация (маркировка) средства индивидуальной защиты по защитным свойствам</th>
+                <th>Единица измерения</th>
+                <th>Количество</th>
+                <th>Срок носки в месяцах</th>
+            </tr>
+        </thead>
+        <tbody>
+            {% for norm in base_norms %}
+            <tr>
+                <td class="name">{{ norm.siz.name }}</td>
+                <td>{{ norm.siz.classification }}</td>
+                <td>{{ norm.siz.unit }}</td>
+                <td>{{ norm.quantity }}</td>
+                <td>
+                    {% if norm.siz.wear_period == 0 %}
+                        До износа
+                    {% else %}
+                        {{ norm.siz.wear_period }}
+                    {% endif %}
+                </td>
+            </tr>
+            {% endfor %}
+            
+            {% for group in condition_groups %}
+            <tr class="condition">
+                <td colspan="5">{{ group.name }}:</td>
+            </tr>
+                {% for norm in group.norms %}
                 <tr>
                     <td class="name">{{ norm.siz.name }}</td>
                     <td>{{ norm.siz.classification }}</td>
@@ -273,44 +276,11 @@
                             {{ norm.siz.wear_period }}
                         {% endif %}
                     </td>
-                    <td class="checkbox-column">
-                        <input type="checkbox" name="selected_norms" value="{{ norm.id }}" class="siz-checkbox" checked>
-                    </td>
                 </tr>
                 {% endfor %}
-                
-                {% for group in condition_groups %}
-                <tr class="condition">
-                    <td colspan="5">{{ group.name }}:</td>
-                    <td class="checkbox-column"></td>
-                </tr>
-                    {% for norm in group.norms %}
-                    <tr>
-                        <td class="name">{{ norm.siz.name }}</td>
-                        <td>{{ norm.siz.classification }}</td>
-                        <td>{{ norm.siz.unit }}</td>
-                        <td>{{ norm.quantity }}</td>
-                        <td>
-                            {% if norm.siz.wear_period == 0 %}
-                                До износа
-                            {% else %}
-                                {{ norm.siz.wear_period }}
-                            {% endif %}
-                        </td>
-                        <td class="checkbox-column">
-                            <input type="checkbox" name="selected_norms" value="{{ norm.id }}" class="siz-checkbox" checked>
-                        </td>
-                    </tr>
-                    {% endfor %}
-                {% endfor %}
-            </tbody>
-        </table>
-        
-        <!-- Кнопка для выдачи выбранных СИЗ -->
-        <div class="no-print" style="text-align: center; margin-top: 10px;">
-            <button type="submit" class="issue-button">Выдать выбранные СИЗ</button>
-        </div>
-    </form>
+            {% endfor %}
+        </tbody>
+    </table>
 
     <!-- Блок подписей по строкам с увеличенным отступом -->
     <div class="signatures" style="width: 100%; font-size: 9pt;">
@@ -327,79 +297,49 @@
             <span style="position: absolute; right: 0; top: 0; color: #c00; font-weight: bold;">✓</span>
         </div>
     </div>
-    <!-- Оборотная сторона карточки, добавляется только при экспорте в PDF -->
-<div style="page-break-before: always;">
-    <h1><strong>Личная карточка учета СИЗ (оборотная сторона)</strong></h1>
     
-    <table class="norms-table">
-        <thead>
-            <tr>
-                <th>Наименование средств индивидуальной защиты</th>
-                <th>Классификация (маркировка) средств индивидуальной защиты по защитным свойствам или конструктивным особенностям</th>
-                <th>дата</th>
-                <th>количество</th>
-                <th>% износа</th>
-                <th>стоимость</th>
-                <th>расписка в получении</th>
-                <th>дата</th>
-                <th>количество</th>
-                <th>% износа</th>
-                <th>стоимость</th>
-                <th>расписка сдавшего</th>
-                <th>расписка кладовщика в приемке</th>
-            </tr>
-            <tr>
-                <th>1</th>
-                <th>2</th>
-                <th>3</th>
-                <th>4</th>
-                <th>5</th>
-                <th>6</th>
-                <th>7</th>
-                <th>8</th>
-                <th>9</th>
-                <th>10</th>
-                <th>11</th>
-                <th>12</th>
-                <th>13</th>
-            </tr>
-        </thead>
-        <tbody>
-            {% for item in selected_items %}
-            <tr>
-                <td class="name">{{ item.siz.name }}</td>
-                <td>{{ item.siz.classification }}</td>
-                <td>{{ today|date:"d.m.Y" }}</td>
-                <td>1</td>
-                <td></td>
-                <td></td>
-                <td>v</td>
-                <td></td>
-                <td></td>
-                <td></td>
-                <td></td>
-                <td></td>
-                <td></td>
-            </tr>
-            {% endfor %}
-        </tbody>
-    </table>
-</div>
-    <!-- JavaScript для управления чекбоксами -->
-    <script>
-        // При загрузке документа
-        document.addEventListener('DOMContentLoaded', function() {
-            // Обработка отправки формы
-            document.getElementById('issue-siz-form').addEventListener('submit', function(e) {
-                // Проверяем, выбран ли хотя бы один СИЗ
-                const checkboxes = document.querySelectorAll('.siz-checkbox:checked');
-                if (checkboxes.length === 0) {
-                    e.preventDefault();
-                    alert('Выберите хотя бы один СИЗ для выдачи');
-                }
-            });
-        });
-    </script>
+    <!-- 🔄 ИСПРАВЛЕНИЕ: Оборотная сторона карточки, добавляется только при экспорте в PDF -->
+    <div style="page-break-before: always;">
+        <h1><strong>Личная карточка учета СИЗ (оборотная сторона)</strong></h1>
+        
+        <table class="reverse-table">
+            <thead>
+                <tr>
+                    <th class="col-num">№</th>
+                    <th>Наименование СИЗ</th>
+                    <th>Классификация</th>
+                    <th class="col-date">дата</th>
+                    <th class="col-quantity">кол-во</th>
+                    <th class="col-wear">% износа</th>
+                    <th class="col-cost">стоимость</th>
+                    <th class="col-sign">расписка</th>
+                    <th class="col-date">дата</th>
+                    <th class="col-quantity">кол-во</th>
+                    <th class="col-wear">% износа</th>
+                    <th class="col-cost">стоимость</th>
+                    <th class="col-sign">расписка</th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for item in selected_items %}
+                <tr>
+                    <td>{{ forloop.counter }}</td>
+                    <td class="name">{{ item.siz.name }}</td>
+                    <td class="classification">{{ item.siz.classification }}</td>
+                    <td class="col-date">{{ today|date:"d.m.Y" }}</td>
+                    <td class="col-quantity">1</td>
+                    <td class="col-wear"></td>
+                    <td class="col-cost"></td>
+                    <td class="col-sign">✓</td>
+                    <td class="col-date"></td>
+                    <td class="col-quantity"></td>
+                    <td class="col-wear"></td>
+                    <td class="col-cost"></td>
+                    <td class="col-sign"></td>
+                </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+    </div>
 </body>
 </html>
-

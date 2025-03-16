@@ -58,7 +58,7 @@ def fetch_resources(uri, rel):
         return uri
 
 
-def render_to_pdf(template_path, context, filename=None, as_attachment=True, landscape=False):
+def render_to_pdf(template_path, context, filename=None, as_attachment=True, landscape=False, pdf_options=None):
     """
     🖨️ Функция для рендеринга HTML-шаблона в PDF-файл
 
@@ -68,6 +68,7 @@ def render_to_pdf(template_path, context, filename=None, as_attachment=True, lan
         filename (str, optional): Имя файла для скачивания
         as_attachment (bool): Отправить как вложение (True) или отобразить в браузере (False)
         landscape (bool): Ориентация страницы - альбомная (True) или книжная (False)
+        pdf_options (dict, optional): Дополнительные опции для PDF генерации
 
     Returns:
         HttpResponse: HTTP-ответ с PDF-файлом или сообщением об ошибке
@@ -82,7 +83,7 @@ def render_to_pdf(template_path, context, filename=None, as_attachment=True, lan
         result = BytesIO()
 
         # Настройки для PDF
-        pdf_options = {
+        options = {
             'encoding': 'UTF-8',
             'link_callback': fetch_resources
         }
@@ -91,17 +92,47 @@ def render_to_pdf(template_path, context, filename=None, as_attachment=True, lan
         if landscape:
             # В xhtml2pdf можно задать ориентацию через CSS @page или через параметр
             # Используем параметр для совместимости
-            pdf_options['page_size'] = 'A4-L'  # A4 в ландшафтной ориентации
+            options['page_size'] = 'A4-L'  # A4 в ландшафтной ориентации
+
+        # Добавляем дополнительные опции, если они переданы
+        if pdf_options:
+            options.update(pdf_options)
+
+        # 🔄 Улучшаем опции для отображения таблиц
+        if 'table_header_font_name' not in options:
+            options['table_header_font_name'] = 'helvetica'
+
+        if 'table_header_font_size' not in options:
+            options['table_header_font_size'] = 9
+
+        # Добавляем опции для улучшения отображения таблиц
+        options.setdefault('margin-top', '0.5cm')
+        options.setdefault('margin-right', '0.5cm')
+        options.setdefault('margin-bottom', '0.5cm')
+        options.setdefault('margin-left', '0.5cm')
+
+        # Установим низкий уровень логирования для pisa, чтобы видеть больше деталей
+        import logging
+        pisa_logger = logging.getLogger('xhtml2pdf')
+        original_level = pisa_logger.level
+        pisa_logger.setLevel(logging.DEBUG)
+
+        logger.debug(f"📊 Генерация PDF с опциями: {options}")
 
         pdf = pisa.pisaDocument(
             BytesIO(html_string.encode('UTF-8')),
             dest=result,
-            **pdf_options
+            **options
         )
 
+        # Возвращаем уровень логирования
+        pisa_logger.setLevel(original_level)
+
         if pdf.err:
-            logger.error(f"Ошибка при создании PDF: {pdf.err}")
-            return HttpResponse(f"Ошибка при создании PDF: {pdf.err}", status=500)
+            errors = [f"Ошибка {i}: {err}" for i, err in enumerate(pdf.err) if err]
+            error_msg = "\n".join(errors) if errors else str(pdf.err)
+            logger.error(f"Ошибка при создании PDF: {error_msg}")
+            return HttpResponse(f"Ошибка при создании PDF: {error_msg}", status=500)
 
         response = HttpResponse(result.getvalue(), content_type='application/pdf')
 

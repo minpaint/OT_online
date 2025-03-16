@@ -384,17 +384,11 @@ def employee_siz_issued_list(request, employee_id):
     return JsonResponse(result)
 
 
-@login_required
+# directory/views/siz_issued.py
+
 def export_personal_card_pdf(request, employee_id):
     """
     📄 Экспорт личной карточки учета СИЗ в формате PDF с оборотной стороной
-
-    Args:
-        request: HttpRequest объект
-        employee_id: ID сотрудника
-
-    Returns:
-        HttpResponse с вложенным PDF-файлом
     """
     employee = get_object_or_404(Employee, pk=employee_id)
 
@@ -403,8 +397,18 @@ def export_personal_card_pdf(request, employee_id):
         employee=employee
     ).select_related('siz').order_by('-issue_date')
 
-    # Для оборотной стороны получаем выбранные элементы из запроса
+    # Получаем список выбранных норм СИЗ
     selected_norm_ids = request.GET.getlist('selected_norms')
+
+    # 🔄 ИСПРАВЛЕНИЕ: Если нет выбранных норм, используем все нормы для должности
+    if not selected_norm_ids and employee.position:
+        from directory.models.siz import SIZNorm
+        # Получаем все нормы для должности сотрудника
+        all_norms = SIZNorm.objects.filter(
+            position=employee.position
+        ).values_list('id', flat=True)
+        selected_norm_ids = list(map(str, all_norms))
+
     selected_items = []
 
     # Если есть выбранные элементы, получаем информацию о них
@@ -419,21 +423,6 @@ def export_personal_card_pdf(request, employee_id):
                 'classification': norm.siz.classification,
                 'quantity': norm.quantity,
             })
-    else:
-        # Если выбранных элементов нет, используем базовые нормы
-        if employee.position:
-            from directory.models.siz import SIZNorm
-            base_norms = SIZNorm.objects.filter(
-                position=employee.position,
-                condition=''  # Только базовые нормы без условий
-            ).select_related('siz')
-
-            for norm in base_norms:
-                selected_items.append({
-                    'siz': norm.siz,
-                    'classification': norm.siz.classification,
-                    'quantity': norm.quantity,
-                })
 
     # Получаем нормы СИЗ для лицевой стороны
     base_norms = []
@@ -445,10 +434,10 @@ def export_personal_card_pdf(request, employee_id):
             position=employee.position
         ).select_related('siz')
 
-        # Базовые нормы (без условий)
+        # 🔄 ИСПРАВЛЕНИЕ: Убедимся, что базовые нормы загружены корректно
         base_norms = list(norms.filter(condition=''))
 
-        # Нормы по условиям
+        # Группируем нормы по условиям
         conditions = list(set(norm.condition for norm in norms if norm.condition))
 
         for condition in conditions:
@@ -459,12 +448,6 @@ def export_personal_card_pdf(request, employee_id):
                     'norms': condition_norms
                 })
 
-    # Определяем пол по отчеству
-    gender = determine_gender_from_patronymic(employee.full_name_nominative)
-
-    # Генерируем случайные размеры СИЗ
-    siz_sizes = get_random_siz_sizes(gender)
-
     # Подготовка контекста для шаблона
     context = {
         'employee': employee,
@@ -472,13 +455,9 @@ def export_personal_card_pdf(request, employee_id):
         'base_norms': base_norms,
         'condition_groups': condition_groups,
         'today': timezone.now().date(),
-        'gender': gender,
-        'siz_sizes': siz_sizes,
-        'selected_items': selected_items,  # Выбранные элементы для оборотной стороны
-        # Дополнительно добавляем абсолютный URL для формы, чтобы избежать ошибки при генерации PDF
-        'issue_selected_url': request.build_absolute_uri(
-            reverse('directory:siz:issue_selected_siz', kwargs={'employee_id': employee_id})
-        ),
+        'gender': determine_gender_from_patronymic(employee.full_name_nominative),
+        'siz_sizes': get_random_siz_sizes(determine_gender_from_patronymic(employee.full_name_nominative)),
+        'selected_items': selected_items,
     }
 
     # Формирование имени файла для скачивания
@@ -488,15 +467,23 @@ def export_personal_card_pdf(request, employee_id):
     template_path = 'directory/siz_issued/personal_card_pdf_landscape.html'
 
     try:
-        # Проверяем существование шаблона
-        get_template(template_path)
+        # 🔄 ИСПРАВЛЕНИЕ: Проверяем дополнительные настройки для PDF
+        pdf_options = {
+            'page-size': 'A4',
+            'margin-top': '0.5cm',
+            'margin-right': '0.5cm',
+            'margin-bottom': '0.5cm',
+            'margin-left': '0.5cm',
+            'encoding': "UTF-8",
+        }
 
-        # Генерируем PDF
+        # Генерируем PDF с дополнительными опциями
         return render_to_pdf(
             template_path=template_path,
             context=context,
             filename=filename,
-            as_attachment=True
+            as_attachment=True,
+            pdf_options=pdf_options
         )
     except Exception as e:
         # Логирование ошибки
