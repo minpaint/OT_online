@@ -9,152 +9,181 @@
             margin: 1cm;
         }
         
+        /* Общие стили для всей страницы */
         body {
-            font-family: helvetica;
+            margin: 0;
+            padding: 0;
+            font-family: Helvetica, Arial, sans-serif;
             font-size: 9pt;
             color: #000;
             line-height: 1.2;
-            margin: 0;
-            padding: 0;
         }
         
+        /* Заголовки h1 и h2 */
         h1 {
             text-align: center;
             font-size: 12pt;
             font-weight: bold;
             margin: 0 0 5px 0;
-            padding: 0;
         }
-        
         h2 {
             text-align: center;
             font-size: 10pt;
             font-weight: bold;
             margin: 10px 0 5px 0;
-            padding: 0;
         }
         
-        /* Общие стили для всех таблиц */
+        /* Общие стили таблиц */
         table {
             width: 100%;
             border-collapse: collapse;
-            table-layout: fixed;
-            font-size: 9pt; /* Унифицированный размер шрифта */
+            margin-bottom: 10px;
         }
         
         th, td {
             border: 1px solid #000;
             padding: 3px 5px;
             vertical-align: middle;
+            word-wrap: break-word;
+            overflow-wrap: anywhere;
+            text-align: center; /* Центрирование во всех ячейках по умолчанию */
         }
         
+        /* Заголовки по центру с переносами */
         th {
             background-color: #f2f2f2;
             font-weight: bold;
+            text-align: center;
+            word-wrap: break-word;
+            overflow-wrap: break-word;
+            hyphens: auto;
         }
         
-        /* Таблица сведений о сотруднике */
-        .employee-table {
-            margin-bottom: 10px;
+        /* Специальный класс для жирного текста в ячейке */
+        .bold-text {
+            font-weight: bold;
         }
         
+        /* Таблица сведений о сотруднике - сохраняем выравнивание */
         .employee-table td.label {
             width: 25%;
             font-weight: normal;
-            text-align: left;
+            text-align: left; /* Только для меток слева */
         }
-        
         .employee-table td.value {
             width: 25%;
-            text-align: center;
         }
-        
         .employee-table td.small-label {
             width: 13%;
-            text-align: center;
         }
-        
         .employee-table td.small-value {
             width: 12%;
-            text-align: center;
         }
         
         /* Таблица норм СИЗ */
-        .norms-table {
-            margin-bottom: 10px;
-        }
-        
-        .norms-table td.name {
-            text-align: left;
-        }
-        
         .norms-table tr.condition td {
-            text-align: left;
             background-color: #f2f2f2;
             font-style: italic;
+            text-align: left; /* Для условий слева */
+        }
+        .norms-table td.name {
+            text-align: left; /* Для названий слева */
         }
         
-        /* Отступ для блока подписей */
+        /* Блок подписей */
         .signatures {
-            margin-top: 25px;  /* Увеличенный отступ от таблицы */
+            margin-top: 25px;
         }
-        
-        /* Стили для оборотной таблицы */
-        .reverse-table th, 
-        .reverse-table td {
-            padding: 3px 5px;
+        .signature-line {
+            display: inline-block;
             text-align: center;
-            height: 22px; /* Стандартная высота строк */
         }
         
-        /* Левое выравнивание для названий СИЗ и классификации */
-        .reverse-table td.text-left {
+        /* Разрыв страницы */
+        .page-break {
+            page-break-before: always;
+        }
+        
+        /* Таблица оборотной стороны */
+        .reverse-table {
+            margin-top: 10px;
+        }
+        
+        /* Ширины для таблицы оборотной стороны: */
+        .reverse-table .col1 {
+            width: 15%;
             text-align: left;
         }
         
-        /* Размеры колонок для оборотной таблицы */
-        .reverse-table .col1 {
-            width: 18%;
-        }
-        
+        /* Уменьшаем колонку с классификацией */
         .reverse-table .col2 {
-            width: 12%;
+            width: 15%;
+            text-align: center;
+            font-size: 8pt;
         }
         
+        /* Колонка с кодами (Бм, Тн) */
+        .reverse-table .code-col {
+            width: 3%;
+            text-align: center;
+        }
+        
+        /* Увеличиваем ширину столбца с датой */
         .reverse-table .date-col {
             width: 7%;
+            text-align: center;
         }
         
         .reverse-table .qty-col {
             width: 5%;
+            text-align: center;
         }
         
         .reverse-table .pct-col {
             width: 5%;
+            text-align: center;
         }
         
         .reverse-table .cost-col {
-            width: 6%;
+            width: 7%;
+            text-align: center;
         }
         
         .reverse-table .sign-col {
-            width: 6%;
+            width: 7%;
+            text-align: center;
         }
         
+        /* Увеличиваем последнюю колонку */
         .reverse-table .sign-resp-col {
-            width: 9%;
+            width: 11%;
+            text-align: center;
+        }
+        
+        /* Для галочек и пр. */
+        .check-mark {
+            font-family: Arial, sans-serif;
+        }
+        
+        /* Заголовки с переносами для обеих таблиц */
+        .norms-table th, .reverse-table th {
+            word-wrap: break-word;
+            overflow-wrap: break-word;
+            hyphens: auto;
+            font-size: 9pt; /* Унифицируем размер */
         }
     </style>
 </head>
 <body>
-    <h1><strong>Личная карточка учета средств индивидуальной защиты №{{ employee.id }}</strong></h1>
+    <h1>Личная карточка учета средств индивидуальной защиты №{{ employee.id }}</h1>
     
     <h2>Сведения о работнике</h2>
 
     <table class="employee-table">
         <tr>
             <td class="label">Фамилия, собственное имя, отчество (если таковое имеется):</td>
-            <td class="value">{{ employee.full_name_nominative }}</td>
+            <!-- Имя делаем жирным -->
+            <td class="value bold-text">{{ employee.full_name_nominative }}</td>
             <td class="small-label">Рост</td>
             <td class="small-value">{{ employee.height|default:"" }}</td>
             <td class="small-label">Пол</td>
@@ -178,7 +207,8 @@
         </tr>
         <tr>
             <td class="label">Профессия (должность):</td>
-            <td class="value">{{ employee.position.position_name }}</td>
+            <!-- Должность делаем жирным -->
+            <td class="value bold-text">{{ employee.position.position_name }}</td>
             <td class="small-label">Размер обуви</td>
             <td class="small-value">{{ employee.shoe_size|default:"" }}</td>
             <td class="small-label">Размер СИЗ рук</td>
@@ -194,7 +224,7 @@
         </tr>
     </table>
 
-    <h2><strong>Предусмотрено по установленным нормам</strong></h2>
+    <h2>Предусмотрено по установленным нормам</h2>
     
     <table class="norms-table">
         <thead>
@@ -246,64 +276,74 @@
         </tbody>
     </table>
 
-    <!-- Блок подписей по строкам с увеличенным отступом -->
-    <div class="signatures" style="width: 100%; font-size: 9pt;">
+    <!-- Блок подписей -->
+    <div class="signatures">
         <div style="width: 100%; margin-bottom: 5px;">
-            <span style="display: inline-block; width: 32%;">Главный бухгалтер (бухгалтер)______________</span>
-            <span style="display: inline-block; width: 32%;">специалист отдела кадров______________</span>
-            <span style="display: inline-block; width: 35%;">руководитель структурного подразделения______________</span>
+            <span class="signature-line" style="width: 32%;">Главный бухгалтер (бухгалтер)______________</span>
+            <span class="signature-line" style="width: 32%;">специалист отдела кадров______________</span>
+            <span class="signature-line" style="width: 35%;">руководитель структурного подразделения______________</span>
         </div>
         
         <div style="width: 100%; position: relative;">
-            <span style="display: inline-block; width: 32%;">специалист по охране труда______________</span>
-            <span style="display: inline-block; width: 32%;">ответственное лицо за выдачу СИЗ______________</span>
-            <span style="display: inline-block; width: 32%;">Ознакомлен работник___________________</span>
+            <span class="signature-line" style="width: 32%;">специалист по охране труда______________</span>
+            <span class="signature-line" style="width: 32%;">ответственное лицо за выдачу СИЗ______________</span>
+            <span class="signature-line" style="width: 32%;">Ознакомлен работник___________________</span>
             <span style="position: absolute; right: 0; top: 0; color: #c00; font-weight: bold;">✓</span>
         </div>
     </div>
     
     <!-- Оборотная сторона карточки -->
-    <div style="page-break-before: always;">
-        <h1><strong>Личная карточка учета СИЗ (оборотная сторона)</strong></h1>
+    <div class="page-break">
+        <h1>Личная карточка учета СИЗ (оборотная сторона)</h1>
         
         <table class="reverse-table">
-            <tr>
-                <th class="col1" rowspan="2">Наименование средств индивидуальной защиты</th>
-                <th class="col2" rowspan="2">Классификация (маркировка) средств индивидуальной защиты по защитным свойствам или конструктивным особенностям</th>
-                <th colspan="5">Выдано</th>
-                <th colspan="6">Возвращено</th>
-            </tr>
-            <tr>
-                <th class="date-col">дата</th>
-                <th class="qty-col">кол-во</th>
-                <th class="pct-col">% износа</th>
-                <th class="cost-col">стоимость</th>
-                <th class="sign-col">расписка в получении</th>
-                <th class="date-col">дата</th>
-                <th class="qty-col">кол-во</th>
-                <th class="pct-col">% износа</th>
-                <th class="cost-col">стоимость</th>
-                <th class="sign-col">расписка сдавшего</th>
-                <th class="sign-resp-col">расписка ответственного лица о приемке</th>
-            </tr>
-            
-            {% for item in selected_items %}
-            <tr>
-                <td class="col1 text-left">{{ item.siz.name }}</td>
-                <td class="col2 text-left">{{ item.siz.classification }}</td>
-                <td class="date-col">{{ today|date:"d.m.Y" }}</td>
-                <td class="qty-col">1</td>
-                <td class="pct-col"></td>
-                <td class="cost-col"></td>
-                <td class="sign-col">✓</td>
-                <td class="date-col"></td>
-                <td class="qty-col"></td>
-                <td class="pct-col"></td>
-                <td class="cost-col"></td>
-                <td class="sign-col"></td>
-                <td class="sign-resp-col"></td>
-            </tr>
-            {% endfor %}
+            <thead>
+                <tr>
+                    <th class="col1" rowspan="2">Наименование средств индивидуальной защиты</th>
+                    <th class="col2" rowspan="2">
+                        Классификация (маркировка) средств индивидуальной защиты по защитным свойствам или конструктивным особенностям
+                    </th>
+                    <th colspan="5">Выдано</th>
+                    <th colspan="6">Возвращено</th>
+                </tr>
+                <tr>
+                    <th class="date-col">дата</th>
+                    <th class="qty-col">кол-во</th>
+                    <th class="pct-col">% износа</th>
+                    <th class="cost-col">стоимость</th>
+                    <th class="sign-col">расписка в получении</th>
+                    
+                    <th class="date-col">дата</th>
+                    <th class="qty-col">кол-во</th>
+                    <th class="pct-col">% износа</th>
+                    <th class="cost-col">стоимость</th>
+                    <th class="sign-col">расписка сдавшего</th>
+                    <th class="sign-resp-col">расписка ответственного лица о приемке</th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for item in selected_items %}
+                <tr>
+                    <td class="col1">{{ item.siz.name }}</td>
+                    <td class="col2">{{ item.siz.classification }}</td>
+                    
+                    <!-- Выдано -->
+                    <td class="date-col">{{ today|date:"d.m.Y" }}</td>
+                    <td class="qty-col">1</td>
+                    <td class="pct-col"></td>
+                    <td class="cost-col"></td>
+                    <td class="sign-col check-mark">✓</td>
+                    
+                    <!-- Возвращено -->
+                    <td class="date-col"></td>
+                    <td class="qty-col"></td>
+                    <td class="pct-col"></td>
+                    <td class="cost-col"></td>
+                    <td class="sign-col"></td>
+                    <td class="sign-resp-col"></td>
+                </tr>
+                {% endfor %}
+            </tbody>
         </table>
     </div>
 </body>
