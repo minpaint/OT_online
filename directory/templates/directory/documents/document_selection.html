@@ -1,0 +1,40 @@
+{% extends 'base.html' %}
+{% load static %}
+{% load crispy_forms_tags %}
+
+{% block title %}{{ title }}{% endblock %}
+
+{% block content %}
+<div class="container">
+    <div class="row">
+        <div class="col-md-8 offset-md-2">
+            <div class="card">
+                <div class="card-header bg-primary text-white">
+                    <h4 class="mb-0">{{ title }}</h4>
+                </div>
+                <div class="card-body">
+                    {% if employee %}
+                    <div class="alert alert-info mb-4">
+                        <h5>📋 Информация о сотруднике</h5>
+                        <p><strong>ФИО:</strong> {{ employee.full_name_nominative }}</p>
+                        <p><strong>Должность:</strong> {{ employee.position.position_name }}</p>
+                        {% if employee.department %}
+                        <p><strong>Отдел:</strong> {{ employee.department.name }}</p>
+                        {% endif %}
+                        {% if employee.subdivision %}
+                        <p><strong>Подразделение:</strong> {{ employee.subdivision.name }}</p>
+                        {% endif %}
+                        <p><strong>Организация:</strong> {{ employee.organization.short_name_ru }}</p>
+                    </div>
+                    {% endif %}
+                    
+                    <form method="post" action="">
+                        {% csrf_token %}
+                        {% crispy form %}
+                    </form>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}

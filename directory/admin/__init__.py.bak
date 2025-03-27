@@ -1,5 +1,5 @@
-from directory.admin.document_admin import DocumentTemplateAdmin, GeneratedDocumentAdmin
 from django.contrib import admin  # noqa: F401
+
 # Импорт админ-классов (они регистрируются через декораторы @admin.register)
 from .department import DepartmentAdmin
 from .document import DocumentAdmin

@@ -1,12 +1,10 @@
 {% extends "admin/base_site.html" %}
-{% load i18n %}
+{% load i18n static %}
 
 {% block extrahead %}
     {{ block.super }}
     <script src="{% static 'directory/js/employee_tree_documents.js' %}"></script>
 {% endblock %}
-
-
 
 {% block object-tools %}
   <!-- Кнопка для добавления нового сотрудника -->
@@ -14,6 +12,9 @@
     <ul class="object-tools">
       <li>
         <a href="{% url 'admin:directory_employee_add' %}" class="addlink">➕ Добавить сотрудника</a>
+      </li>
+      <li>
+        <a href="#" id="generate-documents-btn" class="btn" style="display: none;">📄 Сгенерировать документы</a>
       </li>
     </ul>
   </div>
@@ -44,6 +45,7 @@
                     <ul>
                       {% for employee in employees %}
                         <li>
+                          <input type="checkbox" class="action-select" value="{{ employee.id }}">
                           👤 {{ employee.full_name_nominative }} – {{ employee.position.position_name }}
                         </li>
                       {% endfor %}

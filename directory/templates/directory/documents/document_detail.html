@@ -1,0 +1,112 @@
+{% extends 'base.html' %}
+{% load static %}
+
+{% block title %}{{ title }}{% endblock %}
+
+{% block content %}
+<div class="container">
+    <div class="row mb-4">
+        <div class="col-12">
+            <nav aria-label="breadcrumb">
+                <ol class="breadcrumb">
+                    <li class="breadcrumb-item"><a href="{% url 'directory:home' %}">Главная</a></li>
+                    <li class="breadcrumb-item"><a href="{% url 'directory:documents:document_list' %}">Документы</a></li>
+                    <li class="breadcrumb-item active" aria-current="page">{{ document }}</li>
+                </ol>
+            </nav>
+        </div>
+    </div>
+    
+    <div class="row">
+        <div class="col-md-8">
+            <div class="card">
+                <div class="card-header">
+                    <h4 class="mb-0">{{ document.template.get_document_type_display }}</h4>
+                </div>
+                <div class="card-body">
+                    <div class="alert alert-success">
+                        <h5 class="alert-heading">✅ Документ успешно сгенерирован</h5>
+                        <p>Документ был успешно сгенерирован и готов к скачиванию.</p>
+                    </div>
+                    
+                    <table class="table table-bordered">
+                        <tr>
+                            <th style="width: 30%;">Сотрудник</th>
+                            <td>{{ document.employee.full_name_nominative }}</td>
+                        </tr>
+                        <tr>
+                            <th>Должность</th>
+                            <td>{{ document.employee.position.position_name }}</td>
+                        </tr>
+                        <tr>
+                            <th>Отдел</th>
+                            <td>{{ document.employee.department.name|default:"-" }}</td>
+                        </tr>
+                        <tr>
+                            <th>Организация</th>
+                            <td>{{ document.employee.organization.short_name_ru|default:"-" }}</td>
+                        </tr>
+                        <tr>
+                            <th>Тип документа</th>
+                            <td>{{ document.template.get_document_type_display }}</td>
+                        </tr>
+                        <tr>
+                            <th>Дата создания</th>
+                            <td>{{ document.created_at|date:"d.m.Y H:i" }}</td>
+                        </tr>
+                        <tr>
+                            <th>Создан пользователем</th>
+                            <td>{{ document.created_by.get_full_name|default:document.created_by.username }}</td>
+                        </tr>
+                    </table>
+                    
+                    <div class="d-grid gap-2 mt-4">
+                        <a href="{% url 'directory:documents:document_download' document.id %}" class="btn btn-primary">
+                            <i class="fas fa-file-download"></i> Скачать документ
+                        </a>
+                        <a href="{% url 'directory:documents:document_list' %}" class="btn btn-secondary">
+                            <i class="fas fa-list"></i> К списку документов
+                        </a>
+                    </div>
+                </div>
+            </div>
+        </div>
+        
+        <div class="col-md-4">
+            <div class="card">
+                <div class="card-header">
+                    <h5 class="mb-0">Информация о документе</h5>
+                </div>
+                <div class="card-body">
+                    <ul class="list-group">
+                        <li class="list-group-item">
+                            <strong>Название шаблона:</strong><br>
+                            {{ document.template.name }}
+                        </li>
+                        <li class="list-group-item">
+                            <strong>Описание:</strong><br>
+                            {{ document.template.description|default:"Нет описания" }}
+                        </li>
+                        <li class="list-group-item">
+                            <strong>Формат файла:</strong><br>
+                            DOCX (Microsoft Word)
+                        </li>
+                    </ul>
+                    
+                    <div class="mt-4">
+                        <h6>Дополнительные действия</h6>
+                        <div class="list-group">
+                            <a href="{% url 'directory:documents:document_selection' document.employee.id %}" class="list-group-item list-group-item-action">
+                                <i class="fas fa-file-alt"></i> Создать другой документ для этого сотрудника
+                            </a>
+                            <a href="{% url 'directory:employees:employee_detail' document.employee.id %}" class="list-group-item list-group-item-action">
+                                <i class="fas fa-user"></i> Просмотреть информацию о сотруднике
+                            </a>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}

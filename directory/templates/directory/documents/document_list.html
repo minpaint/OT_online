@@ -1,0 +1,212 @@
+{% extends 'base.html' %}
+{% load static %}
+
+{% block title %}{{ title }}{% endblock %}
+
+{% block extra_css %}
+<style>
+    .filter-card {
+        margin-bottom: 1.5rem;
+    }
+    
+    .document-icon {
+        font-size: 1.5rem;
+        margin-right: 0.5rem;
+    }
+    
+    .document-actions {
+        white-space: nowrap;
+    }
+    
+    .document-row:hover {
+        background-color: #f8f9fa;
+    }
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="container">
+    <div class="row mb-4">
+        <div class="col-12">
+            <nav aria-label="breadcrumb">
+                <ol class="breadcrumb">
+                    <li class="breadcrumb-item"><a href="{% url 'directory:home' %}">Главная</a></li>
+                    <li class="breadcrumb-item active" aria-current="page">{{ title }}</li>
+                </ol>
+            </nav>
+        </div>
+    </div>
+    
+    <div class="row">
+        <div class="col-md-3">
+            <!-- Боковая панель с фильтрами -->
+            <div class="card filter-card">
+                <div class="card-header">
+                    <h5 class="mb-0">Фильтры</h5>
+                </div>
+                <div class="card-body">
+                    <form method="get" action="">
+                        <div class="mb-3">
+                            <label for="filter-employee" class="form-label">Сотрудник</label>
+                            <select id="filter-employee" name="employee" class="form-select">
+                                <option value="">Все сотрудники</option>
+                                {% for emp in employees %}
+                                <option value="{{ emp.id }}" {% if selected_employee == emp.id|stringformat:"i" %}selected{% endif %}>
+                                    {{ emp.full_name_nominative }}
+                                </option>
+                                {% endfor %}
+                            </select>
+                        </div>
+                        
+                        <div class="mb-3">
+                            <label for="filter-type" class="form-label">Тип документа</label>
+                            <select id="filter-type" name="type" class="form-select">
+                                <option value="all">Все типы</option>
+                                {% for type_code, type_name in document_types %}
+                                <option value="{{ type_code }}" {% if selected_type == type_code %}selected{% endif %}>
+                                    {{ type_name }}
+                                </option>
+                                {% endfor %}
+                            </select>
+                        </div>
+                        
+                        <div class="d-grid">
+                            <button type="submit" class="btn btn-primary">Применить фильтры</button>
+                        </div>
+                    </form>
+                </div>
+            </div>
+            
+            <div class="card">
+                <div class="card-header">
+                    <h5 class="mb-0">Действия</h5>
+                </div>
+                <div class="card-body">
+                    <div class="d-grid gap-2">
+                        <a href="{% url 'directory:home' %}" class="btn btn-outline-primary">
+                            <i class="fas fa-users"></i> Выбрать сотрудника
+                        </a>
+                    </div>
+                </div>
+            </div>
+        </div>
+        
+        <div class="col-md-9">
+            <!-- Список документов -->
+            <div class="card">
+                <div class="card-header">
+                    <h4 class="mb-0">{{ title }}</h4>
+                </div>
+                <div class="card-body">
+                    {% if documents %}
+                    <div class="table-responsive">
+                        <table class="table table-hover">
+                            <thead>
+                                <tr>
+                                    <th>Тип документа</th>
+                                    <th>Сотрудник</th>
+                                    <th>Дата создания</th>
+                                    <th>Действия</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                {% for doc in documents %}
+                                <tr class="document-row">
+                                    <td>
+                                        {% if doc.template.document_type == 'internship_order' %}
+                                        <i class="fas fa-file-alt document-icon text-primary"></i>
+                                        {% elif doc.template.document_type == 'admission_order' %}
+                                        <i class="fas fa-file-alt document-icon text-success"></i>
+                                        {% elif doc.template.document_type == 'knowledge_protocol' %}
+                                        <i class="fas fa-file-alt document-icon text-warning"></i>
+                                        {% elif doc.template.document_type == 'doc_familiarization' %}
+                                        <i class="fas fa-file-alt document-icon text-info"></i>
+                                        {% else %}
+                                        <i class="fas fa-file document-icon"></i>
+                                        {% endif %}
+                                        {{ doc.template.get_document_type_display }}
+                                    </td>
+                                    <td>{{ doc.employee.full_name_nominative }}</td>
+                                    <td>{{ doc.created_at|date:"d.m.Y H:i" }}</td>
+                                    <td class="document-actions">
+                                        <a href="{% url 'directory:documents:document_detail' doc.id %}" class="btn btn-sm btn-outline-primary" title="Просмотр">
+                                            <i class="fas fa-eye"></i>
+                                        </a>
+                                        <a href="{% url 'directory:documents:document_download' doc.id %}" class="btn btn-sm btn-outline-success" title="Скачать">
+                                            <i class="fas fa-download"></i>
+                                        </a>
+                                    </td>
+                                </tr>
+                                {% endfor %}
+                            </tbody>
+                        </table>
+                    </div>
+                    
+                    <!-- Пагинация -->
+                    {% if is_paginated %}
+                    <nav aria-label="Pagination" class="mt-4">
+                        <ul class="pagination justify-content-center">
+                            {% if page_obj.has_previous %}
+                            <li class="page-item">
+                                <a class="page-link" href="?page=1{% if request.GET.employee %}&employee={{ request.GET.employee }}{% endif %}{% if request.GET.type %}&type={{ request.GET.type }}{% endif %}" aria-label="First">
+                                    <span aria-hidden="true">&laquo;&laquo;</span>
+                                </a>
+                            </li>
+                            <li class="page-item">
+                                <a class="page-link" href="?page={{ page_obj.previous_page_number }}{% if request.GET.employee %}&employee={{ request.GET.employee }}{% endif %}{% if request.GET.type %}&type={{ request.GET.type }}{% endif %}" aria-label="Previous">
+                                    <span aria-hidden="true">&laquo;</span>
+                                </a>
+                            </li>
+                            {% endif %}
+                            
+                            {% for num in page_obj.paginator.page_range %}
+                            {% if page_obj.number == num %}
+                            <li class="page-item active"><a class="page-link" href="#">{{ num }}</a></li>
+                            {% elif num > page_obj.number|add:'-3' and num < page_obj.number|add:'3' %}
+                            <li class="page-item">
+                                <a class="page-link" href="?page={{ num }}{% if request.GET.employee %}&employee={{ request.GET.employee }}{% endif %}{% if request.GET.type %}&type={{ request.GET.type }}{% endif %}">{{ num }}</a>
+                            </li>
+                            {% endif %}
+                            {% endfor %}
+                            
+                            {% if page_obj.has_next %}
+                            <li class="page-item">
+                                <a class="page-link" href="?page={{ page_obj.next_page_number }}{% if request.GET.employee %}&employee={{ request.GET.employee }}{% endif %}{% if request.GET.type %}&type={{ request.GET.type }}{% endif %}" aria-label="Next">
+                                    <span aria-hidden="true">&raquo;</span>
+                                </a>
+                            </li>
+                            <li class="page-item">
+                                <a class="page-link" href="?page={{ page_obj.paginator.num_pages }}{% if request.GET.employee %}&employee={{ request.GET.employee }}{% endif %}{% if request.GET.type %}&type={{ request.GET.type }}{% endif %}" aria-label="Last">
+                                    <span aria-hidden="true">&raquo;&raquo;</span>
+                                </a>
+                            </li>
+                            {% endif %}
+                        </ul>
+                    </nav>
+                    {% endif %}
+                    
+                    {% else %}
+                    <div class="alert alert-info">
+                        <p class="mb-0">Нет сгенерированных документов.</p>
+                    </div>
+                    {% endif %}
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+    document.addEventListener('DOMContentLoaded', function() {
+        // Автоматическая отправка формы при изменении фильтров
+        const filterSelects = document.querySelectorAll('.filter-card select');
+        filterSelects.forEach(select => {
+            select.addEventListener('change', function() {
+                this.form.submit();
+            });
+        });
+    });
+</script>
+{% endblock %}
