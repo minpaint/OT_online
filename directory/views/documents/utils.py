@@ -4,81 +4,147 @@
 Содержит утилиты и вспомогательные функции для работы с документами.
 """
 from directory.utils.declension import get_initials_from_name
+from directory.models import Employee
+
+
+def get_internship_leader(employee):
+    """
+    Выполняет иерархический поиск руководителя стажировки для сотрудника
+    Args:
+        employee: Объект сотрудника Employee
+    Returns:
+        tuple: (leader, level, success)
+        где level: "department", "subdivision", "organization"
+    """
+    # 1. Сначала ищем в отделе
+    if employee.department:
+        leader = employee.department.employees.filter(
+            position__can_be_internship_leader=True
+        ).first()
+        if leader:
+            return leader, "department", True
+
+    # 2. Если не нашли, ищем в подразделении
+    if employee.subdivision:
+        # Используем прямой запрос к модели Employee
+        leader = Employee.objects.filter(
+            subdivision=employee.subdivision,
+            position__can_be_internship_leader=True,
+            department__isnull=True  # Сотрудники напрямую в подразделении
+        ).first()
+        if leader:
+            return leader, "subdivision", True
+
+    # 3. Если не нашли, ищем в организации
+    if employee.organization:
+        # Используем прямой запрос к модели Employee
+        leader = Employee.objects.filter(
+            organization=employee.organization,
+            position__can_be_internship_leader=True,
+            subdivision__isnull=True,  # Сотрудники напрямую в организации
+            department__isnull=True
+        ).first()
+        if leader:
+            return leader, "organization", True
+
+    # Если нигде не нашли
+    return None, None, False
+
+
+def get_document_signer(employee):
+    """
+    Получает подписанта документов для сотрудника с учетом иерархии
+    Args:
+        employee: Объект сотрудника Employee
+    Returns:
+        tuple: (signer, level, success)
+        где level: "department", "subdivision", "organization"
+    """
+    # 1. Сначала ищем в отделе
+    if employee.department:
+        signer = employee.department.employees.filter(
+            position__can_sign_orders=True
+        ).first()
+        if signer:
+            return signer, "department", True
+
+    # 2. Если не нашли, ищем в подразделении
+    if employee.subdivision:
+        # Используем прямой запрос к модели Employee
+        signer = Employee.objects.filter(
+            subdivision=employee.subdivision,
+            position__can_sign_orders=True,
+            department__isnull=True  # Сотрудники напрямую в подразделении
+        ).first()
+        if signer:
+            return signer, "subdivision", True
+
+    # 3. Если не нашли, ищем в организации
+    if employee.organization:
+        # Используем прямой запрос к модели Employee
+        signer = Employee.objects.filter(
+            organization=employee.organization,
+            position__can_sign_orders=True,
+            subdivision__isnull=True,  # Сотрудники напрямую в организации
+            department__isnull=True
+        ).first()
+        if signer:
+            return signer, "organization", True
+
+    # Если нигде не нашли
+    return None, None, False
 
 
 def get_internship_leader_position(employee):
     """
     Получает должность руководителя стажировки для сотрудника
-
     Args:
         employee: Объект сотрудника Employee
-
     Returns:
         tuple: (position_name, success)
     """
-    # Если есть отдел, ищем руководителя стажировки в отделе
-    if employee.department:
-        leader = employee.department.employees.filter(
-            position__can_be_internship_leader=True
-        ).first()
-        if leader and leader.position:
-            return leader.position.position_name, True
+    leader, _, success = get_internship_leader(employee)
+    if success and leader and leader.position:
+        return leader.position.position_name, True
 
-    # Не найдено
     return "Необходимо указать должность руководителя стажировки", False
 
 
 def get_internship_leader_name(employee):
     """
     Получает ФИО руководителя стажировки для сотрудника
-
     Args:
         employee: Объект сотрудника Employee
-
     Returns:
         tuple: (name, success)
     """
-    # Если есть отдел, ищем руководителя стажировки в отделе
-    if employee.department:
-        leader = employee.department.employees.filter(
-            position__can_be_internship_leader=True
-        ).first()
-        if leader:
-            return leader.full_name_nominative, True
+    leader, _, success = get_internship_leader(employee)
+    if success and leader:
+        return leader.full_name_nominative, True
 
-    # Не найдено
     return "Необходимо указать ФИО руководителя стажировки", False
 
 
 def get_internship_leader_initials(employee):
     """
     Получает инициалы руководителя стажировки для сотрудника
-
     Args:
         employee: Объект сотрудника Employee
-
     Returns:
         tuple: (initials, success)
     """
-    # Если есть отдел, ищем руководителя стажировки в отделе
-    if employee.department:
-        leader = employee.department.employees.filter(
-            position__can_be_internship_leader=True
-        ).first()
-        if leader:
-            return get_initials_from_name(leader.full_name_nominative), True
+    leader, _, success = get_internship_leader(employee)
+    if success and leader:
+        return get_initials_from_name(leader.full_name_nominative), True
 
-    # Не найдено
     return "Необходимо указать инициалы руководителя стажировки", False
 
 
 def get_director_info(organization):
     """
     Получает информацию о директоре организации
-
     Args:
         organization: Объект организации Organization
-
     Returns:
         tuple: ({'position': position, 'name': name}, success)
     """
@@ -102,10 +168,8 @@ def get_director_info(organization):
 def get_commission_members(employee):
     """
     Получает список членов комиссии для протокола проверки знаний
-
     Args:
         employee: Объект сотрудника Employee
-
     Returns:
         tuple: (members_list, success)
     """
@@ -126,10 +190,8 @@ def get_commission_members(employee):
 def get_safety_instructions(employee):
     """
     Получает список инструкций по охране труда для сотрудника
-
     Args:
         employee: Объект сотрудника Employee
-
     Returns:
         tuple: (instructions_list, success)
     """
@@ -148,10 +210,8 @@ def get_safety_instructions(employee):
 def get_employee_documents(employee):
     """
     Получает список документов, с которыми должен ознакомиться сотрудник
-
     Args:
         employee: Объект сотрудника Employee
-
     Returns:
         tuple: (documents_list, success)
     """

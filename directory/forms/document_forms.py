@@ -153,6 +153,17 @@ class InternshipOrderForm(forms.Form):
         widget=forms.TextInput(attrs={'class': 'form-control'})
     )
 
+    # Добавляем скрытые поля для отслеживания иерархического уровня
+    director_level = forms.CharField(
+        widget=forms.HiddenInput(),
+        required=False
+    )
+
+    internship_leader_level = forms.CharField(
+        widget=forms.HiddenInput(),
+        required=False
+    )
+
     def __init__(self, *args, **kwargs):
         initial_data = kwargs.get('initial', {})
         self.employee = kwargs.pop('employee', None)
@@ -212,6 +223,8 @@ class InternshipOrderForm(forms.Form):
                     Div('head_of_internship_name_initials', css_class='col-md-6'),
                     css_class='row'
                 ),
+                'director_level',
+                'internship_leader_level',
             ),
             ButtonHolder(
                 Submit('preview', _('Предпросмотр'), css_class='btn-primary'),
@@ -304,6 +317,17 @@ class AdmissionOrderForm(forms.Form):
         widget=forms.TextInput(attrs={'class': 'form-control'})
     )
 
+    # Добавляем скрытые поля для отслеживания иерархического уровня
+    director_level = forms.CharField(
+        widget=forms.HiddenInput(),
+        required=False
+    )
+
+    internship_leader_level = forms.CharField(
+        widget=forms.HiddenInput(),
+        required=False
+    )
+
     def __init__(self, *args, **kwargs):
         initial_data = kwargs.get('initial', {})
         self.employee = kwargs.pop('employee', None)
@@ -354,6 +378,8 @@ class AdmissionOrderForm(forms.Form):
                     Div('head_of_internship_name_initials', css_class='col-md-6'),
                     css_class='row'
                 ),
+                'director_level',
+                'internship_leader_level',
             ),
             ButtonHolder(
                 Submit('preview', _('Предпросмотр'), css_class='btn-primary'),

@@ -84,6 +84,7 @@ class PositionAdmin(TreeViewMixin, admin.ModelAdmin):
                 'commission_role',
                 'is_responsible_for_safety',
                 'can_be_internship_leader',
+                'can_sign_orders',
                 'is_electrical_personnel',
             )
         }),

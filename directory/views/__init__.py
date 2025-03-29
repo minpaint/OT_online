@@ -1,4 +1,4 @@
-# 📁 directory/views/__init__.py
+# D:\YandexDisk\OT_online\directory\views\__init__.py
 from django.views.generic import TemplateView
 from django.contrib.auth.mixins import LoginRequiredMixin
 from django.shortcuts import render, redirect
@@ -46,7 +46,7 @@ from directory.views.documents import (
     GeneratedDocumentListView,
     GeneratedDocumentDetailView,
     document_download,
-    update_preview_data,
+    update_document_data,  # Исправлено с update_preview_data на update_document_data
 )
 
 # Импортируем представления для выдачи СИЗ
@@ -173,7 +173,7 @@ __all__ = [
     'GeneratedDocumentListView',
     'GeneratedDocumentDetailView',
     'document_download',
-    'update_preview_data',
+    'update_document_data',  # Исправлено с update_preview_data на update_document_data
     'SIZIssueFormView',
     'SIZPersonalCardView',
     'SIZIssueReturnView',

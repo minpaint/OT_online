@@ -98,6 +98,12 @@ class Position(models.Model):
         verbose_name="Может быть руководителем стажировки"
     )
 
+    can_sign_orders = models.BooleanField(
+        default=False,
+        verbose_name="Может подписывать распоряжения",
+        help_text="Указывает, может ли сотрудник с этой должностью подписывать распоряжения"
+    )
+
     documents = models.ManyToManyField(
         'directory.Document',
         blank=True,
