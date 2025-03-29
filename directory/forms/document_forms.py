@@ -22,7 +22,9 @@ class DocumentSelectionForm(forms.Form):
         choices=DocumentTemplate.DOCUMENT_TYPES,
         widget=forms.CheckboxSelectMultiple,
         required=True,
-        help_text=_("Выберите один или несколько типов документов для генерации")
+        help_text=_("Выберите один или несколько типов документов для генерации"),
+        # Устанавливаем все типы документов по умолчанию
+        initial=[doc_type[0] for doc_type in DocumentTemplate.DOCUMENT_TYPES]
     )
 
     employee_id = forms.IntegerField(
@@ -48,7 +50,6 @@ class DocumentSelectionForm(forms.Form):
                        onclick="window.history.back();")
             )
         )
-
 
 class InternshipOrderForm(forms.Form):
     """

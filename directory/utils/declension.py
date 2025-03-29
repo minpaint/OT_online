@@ -77,9 +77,15 @@ def decline_word_to_case(word: str, target_case: str, gender: str = 'masc') -> s
     # Для фамилий проверяем, нужно ли сначала создать женскую форму
     if gender == 'femn' and any(tag in parse.tag for tag in ['Surn', 'NOUN']):
         # Пытаемся получить женскую форму фамилии
-        femn_form = parse.feminize()
-        if femn_form:
-            parse = femn_form
+        try:
+            # Проверяем наличие метода feminize
+            if hasattr(parse, 'feminize'):
+                femn_form = parse.feminize()
+                if femn_form:
+                    parse = femn_form
+        except AttributeError:
+            # Если метода нет или произошла ошибка, продолжаем без изменений
+            pass
 
     # Приводим к нужному падежу
     form = parse.inflect({target_case, gender})
@@ -112,7 +118,12 @@ def decline_full_name(full_name: str, target_case: str) -> str:
     # Склоняем каждую часть с учетом пола
     declined_parts = []
     for i, part in enumerate(parts):
-        declined_parts.append(decline_word_to_case(part, target_case, gender))
+        # Склоняем слово и приводим первую букву к верхнему регистру
+        declined_word = decline_word_to_case(part, target_case, gender)
+        # Приводим первую букву к верхнему регистру
+        if declined_word:
+            declined_word = declined_word[0].upper() + declined_word[1:]
+        declined_parts.append(declined_word)
 
     # Собираем обратно в строку
     return " ".join(declined_parts)
@@ -182,11 +193,16 @@ def get_initials_from_name(full_name: str) -> str:
     if len(parts) < 2:
         return full_name
 
+    # Обеспечиваем правильный регистр для фамилии
     surname = parts[0]
+    if surname and len(surname) > 0:
+        surname = surname[0].upper() + surname[1:].lower()
+
     initials = ""
 
     for part in parts[1:]:
-        if part:
-            initials += part[0] + "."
+        if part and len(part) > 0:
+            # Убеждаемся, что инициалы заглавные
+            initials += part[0].upper() + "."
 
     return f"{surname} {initials}"
