@@ -5,7 +5,19 @@ from django.contrib.auth import logout
 
 from .views import siz
 from .views import siz_issued  # 👈 Добавляем импорт модуля siz_issued
-from .views import documents  # 👈 Добавляем импорт модуля documents для работы с документами
+
+# Импортируем представления из новой модульной структуры документов
+from directory.views.documents import (
+    DocumentSelectionView,
+    InternshipOrderFormView,
+    AdmissionOrderFormView,
+    DocumentPreviewView,
+    # DocumentsPreviewView, # Временно закомментировано, пока не реализованы все функции
+    update_document_data,
+    GeneratedDocumentListView,
+    GeneratedDocumentDetailView,
+    document_download
+)
 
 from directory.views import (
     HomePageView,  # 🏠 Главная страница
@@ -67,16 +79,17 @@ position_patterns = [
     path('<int:pk>/delete/', PositionDeleteView.as_view(), name='position_delete'),
 ]
 
-# 📄 URL-маршруты для документов
+# 📄 URL-маршруты для документов - обновлены для новой модульной структуры
 document_patterns = [
-    path('', documents.GeneratedDocumentListView.as_view(), name='document_list'),
-    path('<int:pk>/', documents.GeneratedDocumentDetailView.as_view(), name='document_detail'),
-    path('<int:pk>/download/', documents.document_download, name='document_download'),
-    path('selection/<int:employee_id>/', documents.DocumentSelectionView.as_view(), name='document_selection'),
-    path('internship-order/<int:employee_id>/', documents.InternshipOrderFormView.as_view(), name='internship_order_form'),
-    path('admission-order/<int:employee_id>/', documents.AdmissionOrderFormView.as_view(), name='admission_order_form'),
-    path('preview/', documents.DocumentPreviewView.as_view(), name='document_preview'),
-    path('api/update-preview-data/', documents.update_preview_data, name='update_preview_data'),
+    path('', GeneratedDocumentListView.as_view(), name='document_list'),
+    path('<int:pk>/', GeneratedDocumentDetailView.as_view(), name='document_detail'),
+    path('<int:pk>/download/', document_download, name='document_download'),
+    path('selection/<int:employee_id>/', DocumentSelectionView.as_view(), name='document_selection'),
+    path('internship-order/<int:employee_id>/', InternshipOrderFormView.as_view(), name='internship_order_form'),
+    path('admission-order/<int:employee_id>/', AdmissionOrderFormView.as_view(), name='admission_order_form'),
+    path('preview/', DocumentPreviewView.as_view(), name='document_preview'),
+    # path('documents-preview/', DocumentsPreviewView.as_view(), name='documents_preview'),  # Временно закомментировано
+    path('api/update-preview-data/', update_document_data, name='update_preview_data'),
 ]
 
 # ⚙️ URL-маршруты для оборудования (если появится соответствующий ListView)

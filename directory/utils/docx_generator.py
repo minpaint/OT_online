@@ -244,3 +244,52 @@ def generate_admission_order(employee, user=None, custom_context=None):
 
     # Генерируем документ
     return generate_docx_from_template(template.id, context, employee, user)
+
+
+def get_document_template(document_type):
+    """
+    Получает шаблон документа определенного типа.
+
+    Args:
+        document_type (str): Тип документа ('internship_order', 'admission_order', 'knowledge_protocol', etc.)
+
+    Returns:
+        DocumentTemplate: Объект шаблона документа или None, если шаблон не найден
+
+    Example:
+        template = get_document_template('internship_order')
+    """
+    try:
+        return DocumentTemplate.objects.get(document_type=document_type, is_active=True)
+    except DocumentTemplate.DoesNotExist:
+        import logging
+        logger = logging.getLogger(__name__)
+        logger.error(f"Шаблон документа типа '{document_type}' не найден")
+        return None
+
+
+def generate_document_from_template(template, employee, user=None, context=None):
+    """
+    Генерирует документ из шаблона и контекста.
+
+    Args:
+        template: Объект модели DocumentTemplate
+        employee: Объект модели Employee
+        user: Пользователь, создающий документ (опционально)
+        context: Словарь с данными для заполнения шаблона (опционально)
+
+    Returns:
+        Optional[GeneratedDocument]: Объект сгенерированного документа или None при ошибке
+    """
+    if not template:
+        return None
+
+    # Подготавливаем базовый контекст
+    base_context = prepare_employee_context(employee)
+
+    # Если есть дополнительный контекст, обновляем основной контекст
+    if context:
+        base_context.update(context)
+
+    # Генерируем документ
+    return generate_docx_from_template(template.id, base_context, employee, user)

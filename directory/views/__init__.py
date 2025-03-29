@@ -35,6 +35,20 @@ from .positions import (
     get_departments
 )
 
+# Импортируем представления из новой модульной структуры документов
+# Используем абсолютный импорт, чтобы избежать конфликтов
+from directory.views.documents import (
+    DocumentSelectionView,
+    InternshipOrderFormView,
+    AdmissionOrderFormView,
+    DocumentPreviewView,
+    # DocumentsPreviewView,  # Временно закомментировано
+    GeneratedDocumentListView,
+    GeneratedDocumentDetailView,
+    document_download,
+    update_preview_data,
+)
+
 # Импортируем представления для выдачи СИЗ
 from .siz_issued import (
     SIZIssueFormView,
@@ -151,6 +165,15 @@ __all__ = [
     'get_positions',
     'get_departments',
     'UserRegistrationView',
+    'DocumentSelectionView',
+    'InternshipOrderFormView',
+    'AdmissionOrderFormView',
+    'DocumentPreviewView',
+    # 'DocumentsPreviewView',  # Временно закомментировано
+    'GeneratedDocumentListView',
+    'GeneratedDocumentDetailView',
+    'document_download',
+    'update_preview_data',
     'SIZIssueFormView',
     'SIZPersonalCardView',
     'SIZIssueReturnView',

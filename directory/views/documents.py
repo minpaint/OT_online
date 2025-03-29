@@ -1,8 +1,9 @@
+# directory/views/documents.py
 """
 📄 Представления для работы с документами
 
 Этот модуль содержит представления для выбора, настройки, предпросмотра
-и генерации различных документов.
+и генерации различных типов документов.
 """
 import json
 import datetime
@@ -15,6 +16,8 @@ from django.contrib import messages
 from django.utils.translation import gettext as _
 from django.views.decorators.http import require_POST
 from django.utils import timezone
+from django.utils.decorators import method_decorator
+from django.contrib.auth.decorators import login_required
 
 from directory.models import Employee
 from directory.models.document_template import DocumentTemplate, GeneratedDocument
@@ -23,11 +26,49 @@ from directory.forms.document_forms import (
 )
 from directory.utils.docx_generator import (
     prepare_employee_context, generate_docx_from_template,
-    generate_internship_order, generate_admission_order
+    generate_internship_order, generate_admission_order,
+    get_document_template, generate_document_from_template
 )
 from directory.utils.declension import (
     decline_full_name, decline_phrase, get_initials_from_name
 )
+from directory.views import documents
+
+def generate_knowledge_protocol(employee, user, context):
+    """
+    Генерирует протокол проверки знаний по охране труда
+    """
+    # Получаем шаблон для протокола проверки знаний
+    template = get_document_template('knowledge_protocol')
+    
+    if not template:
+        return None
+    
+    # Объединяем базовый контекст с переданным
+    base_context = prepare_employee_context(employee)
+    document_context = {**base_context, **context}
+    
+    # Генерируем документ
+    return generate_document_from_template(template, employee, user, document_context)
+
+
+def generate_doc_familiarization(employee, user, context):
+    """
+    Генерирует лист ознакомления с документами
+    """
+    # Получаем шаблон для листа ознакомления
+    template = get_document_template('doc_familiarization')
+    
+    if not template:
+        return None
+    
+    # Объединяем базовый контекст с переданным
+    base_context = prepare_employee_context(employee)
+    document_context = {**base_context, **context}
+    
+    # Генерируем документ
+    return generate_document_from_template(template, employee, user, document_context)
+
 
 class DocumentSelectionView(LoginRequiredMixin, FormView):
     """
@@ -55,7 +96,7 @@ class DocumentSelectionView(LoginRequiredMixin, FormView):
         try:
             employee_id = form.cleaned_data['employee_id']
             document_types = form.cleaned_data.get('document_types', [])
-
+            
             # Проверяем, пришли ли типы документов
             if not document_types:
                 # Проверяем альтернативные имена полей, которые могут прийти из формы
@@ -65,43 +106,297 @@ class DocumentSelectionView(LoginRequiredMixin, FormView):
                         if not isinstance(document_types, list):
                             document_types = [document_types]
                         break
-
+                
                 # Если все еще нет типов документов, смотрим в request.POST
                 if not document_types:
                     document_types = self.request.POST.getlist('document_types')
-
+            
             # Если все еще нет типов документов, выдаем ошибку
             if not document_types:
                 messages.error(self.request, _("Необходимо выбрать хотя бы один тип документа"))
                 return self.form_invalid(form)
-
+            
             employee = get_object_or_404(Employee, id=employee_id)
-
+            
             # Подготавливаем базовый контекст на основе данных сотрудника
             base_context = prepare_employee_context(employee)
-
+            
             # Создаем предпросмотры для всех выбранных типов документов
             preview_data = []
-
+            
             for doc_type in document_types:
                 # Создаем контекст для каждого типа документа
                 context = self._prepare_document_context(doc_type, employee, base_context)
-
+                
                 # Добавляем информацию о типе документа и данные для предпросмотра
                 preview_data.append({
                     'document_type': doc_type,
                     'document_data': context,
                     'employee_id': employee_id
                 })
-
+            
             # Сохраняем данные предпросмотра в сессию для использования на странице предпросмотра
             self.request.session['preview_data'] = json.dumps(preview_data, default=str)
-
+            
             # Перенаправляем на страницу предпросмотра
             return HttpResponseRedirect(reverse('directory:documents:documents_preview'))
         except Exception as e:
             messages.error(self.request, f"Ошибка при обработке формы: {str(e)}")
             return self.form_invalid(form)
+
+    def _prepare_document_context(self, document_type, employee, base_context):
+        """
+        Подготавливает контекст для определенного типа документа
+        """
+        context = base_context.copy()
+        missing_data = []
+        
+        # Добавляем дополнительные данные в зависимости от типа документа
+        if document_type == 'internship_order':
+            # Данные для распоряжения о стажировке
+            internship_data = {
+                'order_number': '',  # Номер распоряжения (пользователь должен ввести)
+            }
+            
+            # Период стажировки
+            if hasattr(employee.position, 'internship_period_days') and employee.position.internship_period_days:
+                internship_data['internship_duration'] = employee.position.internship_period_days
+            else:
+                internship_data['internship_duration'] = 2
+                missing_data.append('Период стажировки не указан в должности')
+            
+            # Информация о руководителе стажировки
+            leader_position, position_success = self._get_internship_leader_position(employee)
+            if not position_success:
+                missing_data.append('Не найден руководитель стажировки')
+            
+            leader_name, name_success = self._get_internship_leader_name(employee)
+            if not name_success:
+                missing_data.append('Не найдено ФИО руководителя стажировки')
+            
+            leader_initials, initials_success = self._get_internship_leader_initials(employee)
+            if not initials_success:
+                missing_data.append('Не найдены инициалы руководителя стажировки')
+            
+            internship_data.update({
+                'head_of_internship_position': leader_position,
+                'head_of_internship_name': leader_name,
+                'head_of_internship_name_initials': leader_initials,
+            })
+            
+            # Информация о директоре (должна храниться в организации)
+            director_info, director_success = self._get_director_info(employee.organization)
+            if not director_success:
+                missing_data.append('Не найдена информация о директоре')
+            
+            internship_data.update({
+                'director_position': director_info['position'],
+                'director_name': director_info['name'],
+            })
+            
+            context.update(internship_data)
+            
+        elif document_type == 'admission_order':
+            # Данные для распоряжения о допуске к самостоятельной работе
+            admission_data = {
+                'order_number': '',  # Номер распоряжения (пользователь должен ввести)
+            }
+            
+            # Информация о директоре
+            director_info, director_success = self._get_director_info(employee.organization)
+            if not director_success:
+                missing_data.append('Не найдена информация о директоре')
+            
+            admission_data.update({
+                'director_position': director_info['position'],
+                'director_name': director_info['name'],
+            })
+            
+            # Используем того же руководителя, что и для стажировки
+            leader_initials, initials_success = self._get_internship_leader_initials(employee)
+            if not initials_success:
+                missing_data.append('Не найдены инициалы руководителя')
+            
+            admission_data['head_of_internship_name_initials'] = leader_initials
+            
+            context.update(admission_data)
+            
+        elif document_type == 'knowledge_protocol':
+            # Данные для протокола проверки знаний
+            protocol_data = {
+                'protocol_number': '',  # Номер протокола (пользователь должен ввести)
+                'knowledge_result': 'удовлетворительные',
+            }
+            
+            # Члены комиссии
+            commission_members, commission_success = self._get_commission_members(employee)
+            if not commission_success:
+                missing_data.append('Не найдены члены комиссии')
+            
+            protocol_data['commission_members'] = commission_members
+            
+            # Инструкции по охране труда
+            safety_instructions, instructions_success = self._get_safety_instructions(employee)
+            if not instructions_success:
+                missing_data.append('Не найдены инструкции по охране труда')
+            
+            protocol_data['safety_instructions'] = safety_instructions
+            
+            context.update(protocol_data)
+            
+        elif document_type == 'doc_familiarization':
+            # Данные для листа ознакомления с документами
+            familiarization_data = {
+                'familiarization_date': base_context.get('order_date', ''),
+            }
+            
+            # Документы для ознакомления
+            documents_list, documents_success = self._get_employee_documents(employee)
+            if not documents_success:
+                missing_data.append('Не найдены документы для ознакомления')
+            
+            familiarization_data['documents_list'] = documents_list
+            
+            context.update(familiarization_data)
+        
+        # Добавляем информацию о недостающих данных в контекст
+        context['missing_data'] = missing_data
+        context['has_missing_data'] = len(missing_data) > 0
+        
+        return context
+
+    def _get_internship_leader_position(self, employee):
+        """
+        Получает должность руководителя стажировки для сотрудника
+        
+        Returns:
+            tuple: (position_name, success)
+        """
+        # Если есть отдел, ищем руководителя стажировки в отделе
+        if employee.department:
+            leader = employee.department.employees.filter(
+                position__can_be_internship_leader=True
+            ).first()
+            if leader and leader.position:
+                return leader.position.position_name, True
+        
+        # Не найдено
+        return "Необходимо указать должность руководителя стажировки", False
+
+    def _get_internship_leader_name(self, employee):
+        """
+        Получает ФИО руководителя стажировки для сотрудника
+        
+        Returns:
+            tuple: (name, success)
+        """
+        # Если есть отдел, ищем руководителя стажировки в отделе
+        if employee.department:
+            leader = employee.department.employees.filter(
+                position__can_be_internship_leader=True
+            ).first()
+            if leader:
+                return leader.full_name_nominative, True
+        
+        # Не найдено
+        return "Необходимо указать ФИО руководителя стажировки", False
+
+    def _get_internship_leader_initials(self, employee):
+        """
+        Получает инициалы руководителя стажировки для сотрудника
+        
+        Returns:
+            tuple: (initials, success)
+        """
+        # Если есть отдел, ищем руководителя стажировки в отделе
+        if employee.department:
+            leader = employee.department.employees.filter(
+                position__can_be_internship_leader=True
+            ).first()
+            if leader:
+                return get_initials_from_name(leader.full_name_nominative), True
+        
+        # Не найдено
+        return "Необходимо указать инициалы руководителя стажировки", False
+
+    def _get_director_info(self, organization):
+        """
+        Получает информацию о директоре организации
+        
+        Returns:
+            tuple: ({'position': position, 'name': name}, success)
+        """
+        # Здесь должна быть реальная логика получения информации о директоре из организации
+        # В реальной системе эта информация должна храниться в модели организации
+        
+        # Проверка наличия информации о директоре в организации
+        if organization and hasattr(organization, 'director_name') and organization.director_name:
+            return {
+                'position': getattr(organization, 'director_position', 'Директор'),
+                'name': organization.director_name
+            }, True
+        
+        # Не найдено
+        return {
+            'position': "Директор",
+            'name': "Необходимо указать ФИО директора"
+        }, False
+
+    def _get_commission_members(self, employee):
+        """
+        Получает список членов комиссии для протокола проверки знаний
+        
+        Returns:
+            tuple: (members_list, success)
+        """
+        # Проверяем наличие информации о комиссии
+        if hasattr(employee.organization, 'commission_members'):
+            commission = getattr(employee.organization, 'commission_members', None)
+            if commission and len(commission) > 0:
+                return commission, True
+        
+        # Не найдено - возвращаем шаблон, который пользователь должен заполнить
+        return [
+            {"role": "Председатель комиссии", "name": "Необходимо указать"},
+            {"role": "Член комиссии", "name": "Необходимо указать"},
+            {"role": "Член комиссии", "name": "Необходимо указать"},
+        ], False
+
+    def _get_safety_instructions(self, employee):
+        """
+        Получает список инструкций по охране труда для сотрудника
+        
+        Returns:
+            tuple: (instructions_list, success)
+        """
+        # Если у сотрудника есть должность с указанными инструкциями
+        if employee.position and hasattr(employee.position, 'safety_instructions_numbers'):
+            instructions = employee.position.safety_instructions_numbers
+            if instructions:
+                # Разбиваем строку с номерами инструкций на список
+                instructions_list = [instr.strip() for instr in instructions.split(',')]
+                return instructions_list, True
+        
+        # Не найдено
+        return ["Необходимо указать инструкции"], False
+
+    def _get_employee_documents(self, employee):
+        """
+        Получает список документов, с которыми должен ознакомиться сотрудник
+        
+        Returns:
+            tuple: (documents_list, success)
+        """
+        # Если у сотрудника есть должность с привязанными документами
+        if employee.position and hasattr(employee.position, 'documents'):
+            documents = employee.position.documents.all()
+            if documents.exists():
+                documents_list = [doc.name for doc in documents]
+                return documents_list, True
+        
+        # Не найдено
+        return ["Необходимо указать список документов"], False
+
 
 class InternshipOrderFormView(LoginRequiredMixin, FormView):
     """
@@ -400,81 +695,210 @@ class DocumentPreviewView(LoginRequiredMixin, FormView):
             return self.form_invalid(form)
 
 
-class GeneratedDocumentListView(LoginRequiredMixin, ListView):
+class DocumentsPreviewView(LoginRequiredMixin, TemplateView):
     """
-    Представление для списка сгенерированных документов
+    Представление для предпросмотра всех выбранных документов перед генерацией
     """
-    model = GeneratedDocument
-    template_name = 'directory/documents/document_list.html'
-    context_object_name = 'documents'
-    paginate_by = 20
-
-    def get_queryset(self):
-        qs = super().get_queryset()
-
-        # Применяем фильтры, если они есть
-        employee_id = self.request.GET.get('employee')
-        if employee_id:
-            qs = qs.filter(employee_id=employee_id)
-
-        doc_type = self.request.GET.get('type')
-        if doc_type and doc_type != 'all':
-            qs = qs.filter(template__document_type=doc_type)
-
-        # Сортировка по дате создания (сначала новые)
-        return qs.order_by('-created_at')
+    template_name = 'directory/documents/documents_preview.html'
 
     def get_context_data(self, **kwargs):
         context = super().get_context_data(**kwargs)
-        context['title'] = _('Сгенерированные документы')
-
-        # Добавляем фильтры
-        context['employees'] = Employee.objects.all().order_by('full_name_nominative')
-        context['document_types'] = DocumentTemplate.DOCUMENT_TYPES
-
-        # Текущие значения фильтров
-        context['selected_employee'] = self.request.GET.get('employee', '')
-        context['selected_type'] = self.request.GET.get('type', 'all')
-
+        
+        # Получаем данные предпросмотра из сессии
+        preview_data_json = self.request.session.get('preview_data')
+        if not preview_data_json:
+            messages.error(self.request, _('Не найдены данные для предпросмотра документов'))
+            return context
+        
+        preview_data = json.loads(preview_data_json)
+        context['preview_data'] = preview_data
+        
+        # Если есть данные о сотруднике, добавляем их в контекст
+        if preview_data and len(preview_data) > 0:
+            employee_id = preview_data[0].get('employee_id')
+            if employee_id:
+                context['employee'] = get_object_or_404(Employee, id=employee_id)
+        
+        # Получаем словарь соответствия типов документов их названиям
+        document_types_dict = dict(DocumentTemplate.DOCUMENT_TYPES)
+        context['document_types_dict'] = document_types_dict
+        
+        context['title'] = _('Предпросмотр документов')
         return context
 
+        def post(self, request, *args, **kwargs):
+            """
+            Обработка POST-запроса для генерации документов
+            """
+            # Получаем данные предпросмотра из сессии
+            preview_data_json = request.session.get('preview_data')
+            if not preview_data_json:
+                messages.error(request, _('Не найдены данные для генерации документов'))
+                return redirect('directory:home')
 
-class GeneratedDocumentDetailView(LoginRequiredMixin, DetailView):
-    """
-    Представление для просмотра деталей сгенерированного документа
-    """
-    model = GeneratedDocument
-    template_name = 'directory/documents/document_detail.html'
-    context_object_name = 'document'
+            preview_data = json.loads(preview_data_json)
 
-    def get_context_data(self, **kwargs):
-        context = super().get_context_data(**kwargs)
-        context['title'] = _('Просмотр документа')
-        return context
+            # Получаем обновленные данные документов из формы
+            updated_data = {}
+            for key, value in request.POST.items():
+                if key.startswith('document_data_'):
+                    parts = key.replace('document_data_', '').split('_', 1)
+                    index = int(parts[0])
+                    field = parts[1]
 
+                    if index not in updated_data:
+                        updated_data[index] = preview_data[index].copy()
 
-def document_download(request, pk):
-    """
-    Функция для скачивания сгенерированного документа
-    """
-    document = get_object_or_404(GeneratedDocument, pk=pk)
+                    if 'document_data' not in updated_data[index]:
+                        updated_data[index]['document_data'] = {}
 
-    # Открываем файл для чтения
-    file_path = document.document_file.path
+                    updated_data[index]['document_data'][field] = value
 
-    # Возвращаем файл для скачивания
-    response = FileResponse(open(file_path, 'rb'))
-    response['Content-Disposition'] = f'attachment; filename="{document.document_file.name.split("/")[-1]}"'
-    return response
+            # Если нет обновленных данных, используем оригинальные
+            if not updated_data:
+                updated_data = {i: data for i, data in enumerate(preview_data)}
 
+            # Генерируем все документы
+            generated_docs = []
+            for index, doc_data in updated_data.items():
+                document_type = doc_data.get('document_type')
+                employee_id = doc_data.get('employee_id')
+                document_data = doc_data.get('document_data', {})
 
-@require_POST
-def update_preview_data(request):
-    """
-    Обработчик AJAX-запроса для обновления данных предпросмотра
-    """
-    try:
-        data = json.loads(request.body)
-        return JsonResponse({'success': True, 'data': data})
-    except Exception as e:
-        return JsonResponse({'success': False, 'error': str(e)}, status=400)
+                employee = get_object_or_404(Employee, id=employee_id)
+
+                generated_doc = None
+                try:
+                    if document_type == 'internship_order':
+                        generated_doc = generate_internship_order(employee, request.user, document_data)
+                    elif document_type == 'admission_order':
+                        generated_doc = generate_admission_order(employee, request.user, document_data)
+                    elif document_type == 'knowledge_protocol':
+                        generated_doc = generate_knowledge_protocol(employee, request.user, document_data)
+                    elif document_type == 'doc_familiarization':
+                        generated_doc = generate_doc_familiarization(employee, request.user, document_data)
+
+                    if generated_doc:
+                        generated_docs.append(generated_doc)
+                except Exception as e:
+                    messages.error(request, f"Ошибка при генерации документа '{document_type}': {str(e)}")
+
+            # Очищаем данные из сессии
+            if 'preview_data' in request.session:
+                del request.session['preview_data']
+
+            # Если все документы успешно сгенерированы
+            if generated_docs:
+                messages.success(
+                    request,
+                    _('Успешно сгенерировано документов: {}').format(len(generated_docs))
+                )
+
+                # Если сгенерирован только один документ, перенаправляем на его детали
+                if len(generated_docs) == 1:
+                    return redirect('directory:documents:document_detail', pk=generated_docs[0].id)
+
+                # Иначе перенаправляем на список всех документов
+                return redirect('directory:documents:document_list')
+            else:
+                messages.warning(request, _('Не удалось сгенерировать ни один документ'))
+                return self.get(request, *args, **kwargs)
+
+    @require_POST
+    @login_required
+    def update_preview_data(request):
+        """
+        Обработчик AJAX-запроса для обновления данных предпросмотра
+        """
+        try:
+            data = json.loads(request.body)
+            # Обновляем данные в сессии
+            preview_data_json = request.session.get('preview_data')
+            if preview_data_json:
+                preview_data = json.loads(preview_data_json)
+                index = data.get('index')
+                field = data.get('field')
+                value = data.get('value')
+
+                if index is not None and field and index < len(preview_data):
+                    if 'document_data' not in preview_data[index]:
+                        preview_data[index]['document_data'] = {}
+
+                    preview_data[index]['document_data'][field] = value
+                    request.session['preview_data'] = json.dumps(preview_data, default=str)
+
+            return JsonResponse({'success': True})
+        except Exception as e:
+            return JsonResponse({'success': False, 'error': str(e)}, status=400)
+
+    class GeneratedDocumentListView(LoginRequiredMixin, ListView):
+        """
+        Представление для списка сгенерированных документов
+        """
+        model = GeneratedDocument
+        template_name = 'directory/documents/document_list.html'
+        context_object_name = 'documents'
+        paginate_by = 20
+
+        def get_queryset(self):
+            qs = super().get_queryset()
+
+            # Применяем фильтры, если они есть
+            employee_id = self.request.GET.get('employee')
+            if employee_id:
+                qs = qs.filter(employee_id=employee_id)
+
+            doc_type = self.request.GET.get('type')
+            if doc_type and doc_type != 'all':
+                qs = qs.filter(template__document_type=doc_type)
+
+            # Сортировка по дате создания (сначала новые)
+            return qs.order_by('-created_at')
+
+        def get_context_data(self, **kwargs):
+            context = super().get_context_data(**kwargs)
+            context['title'] = _('Сгенерированные документы')
+
+            # Добавляем фильтры
+            context['employees'] = Employee.objects.all().order_by('full_name_nominative')
+            context['document_types'] = DocumentTemplate.DOCUMENT_TYPES
+
+            # Текущие значения фильтров
+            context['selected_employee'] = self.request.GET.get('employee', '')
+            context['selected_type'] = self.request.GET.get('type', 'all')
+
+            return context
+
+    class GeneratedDocumentDetailView(LoginRequiredMixin, DetailView):
+        """
+        Представление для просмотра деталей сгенерированного документа
+        """
+        model = GeneratedDocument
+        template_name = 'directory/documents/document_detail.html'
+        context_object_name = 'document'
+
+        def get_context_data(self, **kwargs):
+            context = super().get_context_data(**kwargs)
+            context['title'] = _('Просмотр документа')
+            return context
+
+    @login_required
+    def document_download(request, pk):
+        """
+        Функция для скачивания сгенерированного документа
+        """
+        document = get_object_or_404(GeneratedDocument, pk=pk)
+
+        # Открываем файл для чтения
+        try:
+            file_path = document.document_file.path
+            response = FileResponse(open(file_path, 'rb'))
+
+            # Формируем правильное имя файла для скачивания
+            filename = document.document_file.name.split('/')[-1]
+            response['Content-Disposition'] = f'attachment; filename="{filename}"'
+
+            return response
+        except Exception as e:
+            messages.error(request, f"Ошибка при скачивании документа: {str(e)}")
+            return redirect('directory:documents:document_detail', pk=pk)
