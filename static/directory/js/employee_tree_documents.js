@@ -54,8 +54,8 @@ document.addEventListener('DOMContentLoaded', function() {
             return;
         }
         
-        // Переходим на страницу генерации документов для выбранного сотрудника
-        window.location.href = `/directory/documents/generate/${selectedEmployees[0]}/`;
+        // Используем правильный URL для страницы выбора типа документа
+        window.location.href = `/directory/documents/selection/${selectedEmployees[0]}/`;
     });
     
     // Обработчик для выбора всех сотрудников

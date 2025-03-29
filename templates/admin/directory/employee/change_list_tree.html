@@ -7,6 +7,9 @@
         <a href="{% url 'admin:directory_employee_add' %}" class="addlink">
             Добавить
         </a>
+        <a href="#" id="generate-documents-btn" class="btn">
+            📄 Сгенерировать документы
+        </a>
     </div>
     <form id="changelist-form" method="post"
           {% if cl.formset and cl.formset.is_multipart %} enctype="multipart/form-data"{% endif %}
@@ -149,4 +152,5 @@
     <link rel="stylesheet" href="{% static 'admin/css/tree_view.css' %}">
     <script src="{% static 'admin/js/tree_view.js' %}"></script>
     <script src="{% static 'admin/js/tree_search.js' %}"></script>
+    <script src="{% static 'directory/js/employee_tree_documents.js' %}"></script>
 {% endblock %}

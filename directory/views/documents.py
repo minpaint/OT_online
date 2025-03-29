@@ -9,7 +9,7 @@ import datetime
 from django.views.generic import FormView, DetailView, ListView, TemplateView
 from django.contrib.auth.mixins import LoginRequiredMixin
 from django.shortcuts import get_object_or_404, redirect, render
-from django.http import HttpResponse, JsonResponse, FileResponse
+from django.http import HttpResponse, JsonResponse, FileResponse, HttpResponseRedirect
 from django.urls import reverse, reverse_lazy
 from django.contrib import messages
 from django.utils.translation import gettext as _
@@ -29,10 +29,9 @@ from directory.utils.declension import (
     decline_full_name, decline_phrase, get_initials_from_name
 )
 
-
 class DocumentSelectionView(LoginRequiredMixin, FormView):
     """
-    Представление для выбора типа документа для генерации
+    Представление для выбора типов документов для генерации
     """
     template_name = 'directory/documents/document_selection.html'
     form_class = DocumentSelectionForm
@@ -49,27 +48,60 @@ class DocumentSelectionView(LoginRequiredMixin, FormView):
         employee_id = self.kwargs.get('employee_id')
         if employee_id:
             context['employee'] = get_object_or_404(Employee, id=employee_id)
-        context['title'] = _('Выбор типа документа')
+        context['title'] = _('Выбор типов документов')
         return context
 
     def form_valid(self, form):
-        employee_id = form.cleaned_data['employee_id']
-        document_type = form.cleaned_data['document_type']
+        try:
+            employee_id = form.cleaned_data['employee_id']
+            document_types = form.cleaned_data.get('document_types', [])
 
-        # Перенаправляем на соответствующую форму в зависимости от типа документа
-        if document_type == 'internship_order':
-            return redirect('directory:documents:internship_order_form', employee_id=employee_id)
-        elif document_type == 'admission_order':
-            return redirect('directory:documents:admission_order_form', employee_id=employee_id)
-        elif document_type == 'knowledge_protocol':
-            return redirect('directory:documents:knowledge_protocol_form', employee_id=employee_id)
-        elif document_type == 'doc_familiarization':
-            return redirect('directory:documents:doc_familiarization_form', employee_id=employee_id)
+            # Проверяем, пришли ли типы документов
+            if not document_types:
+                # Проверяем альтернативные имена полей, которые могут прийти из формы
+                for field_name in ['document_type', 'document-types']:
+                    if field_name in form.cleaned_data:
+                        document_types = form.cleaned_data[field_name]
+                        if not isinstance(document_types, list):
+                            document_types = [document_types]
+                        break
 
-        # Если тип документа неизвестен, возвращаемся на форму выбора
-        messages.error(self.request, _('Неизвестный тип документа'))
-        return redirect('directory:documents:document_selection', employee_id=employee_id)
+                # Если все еще нет типов документов, смотрим в request.POST
+                if not document_types:
+                    document_types = self.request.POST.getlist('document_types')
 
+            # Если все еще нет типов документов, выдаем ошибку
+            if not document_types:
+                messages.error(self.request, _("Необходимо выбрать хотя бы один тип документа"))
+                return self.form_invalid(form)
+
+            employee = get_object_or_404(Employee, id=employee_id)
+
+            # Подготавливаем базовый контекст на основе данных сотрудника
+            base_context = prepare_employee_context(employee)
+
+            # Создаем предпросмотры для всех выбранных типов документов
+            preview_data = []
+
+            for doc_type in document_types:
+                # Создаем контекст для каждого типа документа
+                context = self._prepare_document_context(doc_type, employee, base_context)
+
+                # Добавляем информацию о типе документа и данные для предпросмотра
+                preview_data.append({
+                    'document_type': doc_type,
+                    'document_data': context,
+                    'employee_id': employee_id
+                })
+
+            # Сохраняем данные предпросмотра в сессию для использования на странице предпросмотра
+            self.request.session['preview_data'] = json.dumps(preview_data, default=str)
+
+            # Перенаправляем на страницу предпросмотра
+            return HttpResponseRedirect(reverse('directory:documents:documents_preview'))
+        except Exception as e:
+            messages.error(self.request, f"Ошибка при обработке формы: {str(e)}")
+            return self.form_invalid(form)
 
 class InternshipOrderFormView(LoginRequiredMixin, FormView):
     """

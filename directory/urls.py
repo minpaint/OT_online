@@ -5,6 +5,7 @@ from django.contrib.auth import logout
 
 from .views import siz
 from .views import siz_issued  # 👈 Добавляем импорт модуля siz_issued
+from .views import documents  # 👈 Добавляем импорт модуля documents для работы с документами
 
 from directory.views import (
     HomePageView,  # 🏠 Главная страница
@@ -66,9 +67,16 @@ position_patterns = [
     path('<int:pk>/delete/', PositionDeleteView.as_view(), name='position_delete'),
 ]
 
-# 📄 URL-маршруты для документов (если появится соответствующий ListView)
+# 📄 URL-маршруты для документов
 document_patterns = [
-    # path('', DocumentListView.as_view(), name='document_list'),
+    path('', documents.GeneratedDocumentListView.as_view(), name='document_list'),
+    path('<int:pk>/', documents.GeneratedDocumentDetailView.as_view(), name='document_detail'),
+    path('<int:pk>/download/', documents.document_download, name='document_download'),
+    path('selection/<int:employee_id>/', documents.DocumentSelectionView.as_view(), name='document_selection'),
+    path('internship-order/<int:employee_id>/', documents.InternshipOrderFormView.as_view(), name='internship_order_form'),
+    path('admission-order/<int:employee_id>/', documents.AdmissionOrderFormView.as_view(), name='admission_order_form'),
+    path('preview/', documents.DocumentPreviewView.as_view(), name='document_preview'),
+    path('api/update-preview-data/', documents.update_preview_data, name='update_preview_data'),
 ]
 
 # ⚙️ URL-маршруты для оборудования (если появится соответствующий ListView)
@@ -89,7 +97,6 @@ siz_patterns = [
     path('issue/employee/<int:employee_id>/', siz_issued.SIZIssueFormView.as_view(), name='siz_issue_for_employee'),
     path('personal-card/<int:employee_id>/', siz_issued.SIZPersonalCardView.as_view(), name='siz_personal_card'),
     path('return/<int:siz_issued_id>/', siz_issued.SIZIssueReturnView.as_view(), name='siz_return'),
-
 ]
 
 # 🔐 URL-маршруты для аутентификации
