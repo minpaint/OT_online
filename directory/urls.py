@@ -11,7 +11,6 @@ from directory.views.documents import (
     DocumentSelectionView,
     InternshipOrderFormView,
     AdmissionOrderFormView,
-    DocumentPreviewView,
     DocumentsPreviewView, # Временно закомментировано, пока не реализованы все функции
     update_document_data,
     GeneratedDocumentListView,
@@ -87,8 +86,7 @@ document_patterns = [
     path('selection/<int:employee_id>/', DocumentSelectionView.as_view(), name='document_selection'),
     path('internship-order/<int:employee_id>/', InternshipOrderFormView.as_view(), name='internship_order_form'),
     path('admission-order/<int:employee_id>/', AdmissionOrderFormView.as_view(), name='admission_order_form'),
-    path('preview/', DocumentPreviewView.as_view(), name='document_preview'),
-    path('documents-preview/', DocumentsPreviewView.as_view(), name='documents_preview'),  # Временно закомментировано
+    path('documents-preview/', DocumentsPreviewView.as_view(), name='documents_preview'),
     path('api/update-preview-data/', update_document_data, name='update_preview_data'),
 ]
 

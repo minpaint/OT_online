@@ -37,4 +37,23 @@
         </div>
     </div>
 </div>
+
+{% block extra_js %}
+<script>
+    document.addEventListener('DOMContentLoaded', function() {
+        // Проверка на наличие хотя бы одного выбранного типа документа
+        const form = document.getElementById('document-selection-form');
+        if (form) {
+            form.addEventListener('submit', function(e) {
+                const checkboxes = document.querySelectorAll('input[name="document_types"]:checked');
+                if (checkboxes.length === 0) {
+                    e.preventDefault();
+                    alert('Пожалуйста, выберите хотя бы один тип документа.');
+                }
+            });
+        }
+    });
+</script>
+{% endblock %}
+
 {% endblock %}

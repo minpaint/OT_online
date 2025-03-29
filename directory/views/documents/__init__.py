@@ -11,8 +11,7 @@ from .forms import (
     AdmissionOrderFormView
 )
 from .preview import (
-    DocumentPreviewView,
-    DocumentsPreviewView,
+    DocumentsPreviewView,  # Исправлено: раньше было DocumentPreviewView
     update_document_data
 )
 from .management import (
@@ -25,8 +24,7 @@ __all__ = [
     'DocumentSelectionView',
     'InternshipOrderFormView',
     'AdmissionOrderFormView',
-    'DocumentPreviewView',
-    'DocumentsPreviewView',
+    'DocumentsPreviewView',  # Исправлено: раньше было DocumentPreviewView
     'update_document_data',
     'GeneratedDocumentListView',
     'GeneratedDocumentDetailView',

@@ -24,81 +24,6 @@ from directory.utils.docx_generator import (
 )
 
 
-class DocumentPreviewView(LoginRequiredMixin, FormView):
-    """
-    Представление для предпросмотра и редактирования документа перед генерацией
-    """
-    template_name = 'directory/documents/document_preview.html'
-    form_class = DocumentPreviewForm
-
-    def get_context_data(self, **kwargs):
-        context = super().get_context_data(**kwargs)
-
-        document_data = json.loads(self.request.POST.get('document_data', '{}'))
-        document_type = self.request.POST.get('document_type')
-        employee_id = document_data.get('employee_id')
-
-        if employee_id:
-            employee = get_object_or_404(Employee, id=employee_id)
-            context['employee'] = employee
-
-        context['document_data'] = document_data
-        context['document_type'] = document_type
-
-        if document_type == 'internship_order':
-            context['title'] = _('Предпросмотр распоряжения о стажировке')
-        elif document_type == 'admission_order':
-            context['title'] = _('Предпросмотр распоряжения о допуске к самостоятельной работе')
-
-        return context
-
-    def form_valid(self, form):
-        document_data = json.loads(form.cleaned_data['document_data'])
-        document_type = form.cleaned_data['document_type']
-        employee_id = form.cleaned_data['employee_id']
-
-        employee = get_object_or_404(Employee, id=employee_id)
-
-        # Генерируем соответствующий документ
-        generated_doc = None
-        if document_type == 'internship_order':
-            generated_doc = generate_internship_order(
-                employee,
-                self.request.user,
-                document_data
-            )
-            success_message = _('Распоряжение о стажировке успешно сгенерировано')
-        elif document_type == 'admission_order':
-            generated_doc = generate_admission_order(
-                employee,
-                self.request.user,
-                document_data
-            )
-            success_message = _('Распоряжение о допуске к самостоятельной работе успешно сгенерировано')
-        # Закомментируем пока неиспользуемые типы документов
-        # elif document_type == 'knowledge_protocol':
-        #     generated_doc = generate_knowledge_protocol(
-        #         employee,
-        #         self.request.user,
-        #         document_data
-        #     )
-        #     success_message = _('Протокол проверки знаний успешно сгенерирован')
-        # elif document_type == 'doc_familiarization':
-        #     generated_doc = generate_doc_familiarization(
-        #         employee,
-        #         self.request.user,
-        #         document_data
-        #     )
-        #     success_message = _('Лист ознакомления с документами успешно сгенерирован')
-
-        if generated_doc:
-            messages.success(self.request, success_message)
-            return redirect('directory:documents:document_detail', pk=generated_doc.id)
-        else:
-            messages.error(self.request, _('Ошибка при генерации документа'))
-            return self.form_invalid(form)
-
-
 class DocumentsPreviewView(LoginRequiredMixin, TemplateView):
     """
     Представление для предпросмотра всех выбранных документов перед генерацией
@@ -112,16 +37,25 @@ class DocumentsPreviewView(LoginRequiredMixin, TemplateView):
         preview_data_json = self.request.session.get('preview_data')
         if not preview_data_json:
             messages.error(self.request, _('Не найдены данные для предпросмотра документов'))
+            context['no_data'] = True
             return context
 
-        preview_data = json.loads(preview_data_json)
-        context['preview_data'] = preview_data
+        try:
+            preview_data = json.loads(preview_data_json)
+            context['preview_data'] = preview_data
+        except json.JSONDecodeError:
+            messages.error(self.request, _('Ошибка при чтении данных предпросмотра'))
+            context['no_data'] = True
+            return context
 
         # Если есть данные о сотруднике, добавляем их в контекст
         if preview_data and len(preview_data) > 0:
             employee_id = preview_data[0].get('employee_id')
             if employee_id:
-                context['employee'] = get_object_or_404(Employee, id=employee_id)
+                try:
+                    context['employee'] = get_object_or_404(Employee, id=employee_id)
+                except:
+                    messages.warning(self.request, _('Не удалось получить информацию о сотруднике'))
 
         # Получаем словарь соответствия типов документов их названиям
         document_types_dict = dict(DocumentTemplate.DOCUMENT_TYPES)
@@ -140,7 +74,11 @@ class DocumentsPreviewView(LoginRequiredMixin, TemplateView):
             messages.error(request, _('Не найдены данные для генерации документов'))
             return redirect('directory:home')
 
-        preview_data = json.loads(preview_data_json)
+        try:
+            preview_data = json.loads(preview_data_json)
+        except json.JSONDecodeError:
+            messages.error(request, _('Ошибка при чтении данных для генерации документов'))
+            return redirect('directory:home')
 
         # Получаем обновленные данные документов из формы
         updated_data = {}
@@ -164,7 +102,11 @@ class DocumentsPreviewView(LoginRequiredMixin, TemplateView):
                 document_data.update(updated_data[doc_type])
 
             # Получаем сотрудника
-            employee = get_object_or_404(Employee, id=employee_id)
+            try:
+                employee = get_object_or_404(Employee, id=employee_id)
+            except:
+                messages.error(request, _('Не удалось найти сотрудника'))
+                continue
 
             # Генерируем документ в зависимости от типа
             generated_doc = None
@@ -181,19 +123,7 @@ class DocumentsPreviewView(LoginRequiredMixin, TemplateView):
                     request.user,
                     document_data
                 )
-            # Закомментируем пока неиспользуемые типы документов
-            # elif doc_type == 'knowledge_protocol':
-            #     generated_doc = generate_knowledge_protocol(
-            #         employee,
-            #         request.user,
-            #         document_data
-            #     )
-            # elif doc_type == 'doc_familiarization':
-            #     generated_doc = generate_doc_familiarization(
-            #         employee,
-            #         request.user,
-            #         document_data
-            #     )
+            # Здесь можно добавить обработку других типов документов
 
             if generated_doc:
                 generated_documents.append(generated_doc)

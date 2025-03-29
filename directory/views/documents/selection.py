@@ -1,3 +1,4 @@
+# D:\YandexDisk\OT_online\directory\views\documents\selection.py
 """
 🔍 Представления для выбора типов документов
 
@@ -6,7 +7,7 @@
 import json
 from django.views.generic import FormView
 from django.contrib.auth.mixins import LoginRequiredMixin
-from django.shortcuts import get_object_or_404
+from django.shortcuts import get_object_or_404, redirect
 from django.http import HttpResponseRedirect
 from django.urls import reverse
 from django.contrib import messages
@@ -47,26 +48,18 @@ class DocumentSelectionView(LoginRequiredMixin, FormView):
 
     def form_valid(self, form):
         try:
-            employee_id = form.cleaned_data['employee_id']
+            employee_id = form.cleaned_data.get('employee_id')
+            if not employee_id and 'employee_id' in self.kwargs:
+                employee_id = self.kwargs['employee_id']
+
+            if not employee_id:
+                messages.error(self.request, _("Не указан сотрудник"))
+                return self.form_invalid(form)
+
             document_types = form.cleaned_data.get('document_types', [])
 
-            # Проверяем, пришли ли типы документов
             if not document_types:
-                # Проверяем альтернативные имена полей, которые могут прийти из формы
-                for field_name in ['document_type', 'document-types']:
-                    if field_name in form.cleaned_data:
-                        document_types = form.cleaned_data[field_name]
-                        if not isinstance(document_types, list):
-                            document_types = [document_types]
-                        break
-
-                # Если все еще нет типов документов, смотрим в request.POST
-                if not document_types:
-                    document_types = self.request.POST.getlist('document_types')
-
-            # Если все еще нет типов документов, выдаем ошибку
-            if not document_types:
-                messages.error(self.request, _("Необходимо выбрать хотя бы один тип документа"))
+                messages.error(self.request, _("Не выбран ни один тип документа"))
                 return self.form_invalid(form)
 
             employee = get_object_or_404(Employee, id=employee_id)
@@ -74,12 +67,13 @@ class DocumentSelectionView(LoginRequiredMixin, FormView):
             # Подготавливаем базовый контекст на основе данных сотрудника
             base_context = prepare_employee_context(employee)
 
-            # Создаем предпросмотры для всех выбранных типов документов
+            # Создаем предпросмотры для выбранных типов документов
             preview_data = []
 
             for doc_type in document_types:
-                # Создаем контекст для каждого типа документа
+                # Создаем контекст для типа документа
                 context = self._prepare_document_context(doc_type, employee, base_context)
+                context['employee_id'] = employee_id  # Добавляем ID сотрудника в контекст
 
                 # Добавляем информацию о типе документа и данные для предпросмотра
                 preview_data.append({
@@ -88,11 +82,24 @@ class DocumentSelectionView(LoginRequiredMixin, FormView):
                     'employee_id': employee_id
                 })
 
-            # Сохраняем данные предпросмотра в сессию для использования на странице предпросмотра
+            # Проверяем, есть ли данные для предпросмотра
+            if not preview_data:
+                messages.error(self.request, _("Не удалось подготовить данные для предпросмотра"))
+                return self.form_invalid(form)
+
+            # Сохраняем данные предпросмотра в сессию
             self.request.session['preview_data'] = json.dumps(preview_data, default=str)
 
+            # Отладочная информация в сессию
+            self.request.session['debug_info'] = {
+                'employee_id': employee_id,
+                'document_types': document_types,
+                'preview_data_length': len(preview_data)
+            }
+
             # Перенаправляем на страницу предпросмотра
-            return HttpResponseRedirect(reverse('directory:documents:documents_preview'))
+            return redirect('directory:documents:documents_preview')
+
         except Exception as e:
             messages.error(self.request, f"Ошибка при обработке формы: {str(e)}")
             return self.form_invalid(form)

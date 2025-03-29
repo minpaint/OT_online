@@ -5,6 +5,7 @@
 в различные падежи с использованием библиотеки pymorphy2.
 """
 import pymorphy2
+import re
 
 # Создаем анализатор морфологии один раз при импорте модуля
 morph = pymorphy2.MorphAnalyzer()
@@ -19,22 +20,69 @@ CASE_CODES = {
     'loct': 'предложный'     # О ком? О чем? (думаю об Иванове)
 }
 
-def decline_word_to_case(word: str, target_case: str) -> str:
+
+def get_gender_from_name(full_name: str) -> str:
     """
-    Склоняет одно слово в нужный падеж.
+    Определяет пол по имени (в основном по отчеству)
+
+    Args:
+        full_name (str): ФИО в именительном падеже
+
+    Returns:
+        str: 'masc' или 'femn'
+    """
+    parts = full_name.split()
+    if len(parts) >= 3:  # Есть отчество
+        patronymic = parts[2].lower()
+        if patronymic.endswith('вич') or patronymic.endswith('ич'):
+            return 'masc'
+        elif patronymic.endswith('вна') or patronymic.endswith('чна') or patronymic.endswith('шна'):
+            return 'femn'
+
+    # Если не удалось определить по отчеству, пробуем по имени
+    if len(parts) >= 2:
+        first_name = parts[1].lower()
+        male_endings = ['й', 'н', 'р', 'т', 'м', 'к', 'п', 'с', 'л', 'в', 'д', 'б']
+        female_endings = ['а', 'я', 'ь']
+
+        if any(first_name.endswith(ending) for ending in male_endings) and not any(first_name.endswith(ending) for ending in female_endings):
+            return 'masc'
+        elif any(first_name.endswith(ending) for ending in female_endings):
+            return 'femn'
+
+    # По умолчанию - мужской род
+    return 'masc'
+
+
+def decline_word_to_case(word: str, target_case: str, gender: str = 'masc') -> str:
+    """
+    Склоняет одно слово в нужный падеж с учетом рода.
 
     Args:
         word (str): Исходное слово в именительном падеже
         target_case (str): Код падежа ('nomn', 'gent', 'datv', 'accs', 'ablt', 'loct')
+        gender (str): Грамматический род ('masc' - мужской, 'femn' - женский)
 
     Returns:
         str: Склоненное слово
     """
     # Парсим слово
-    parse = morph.parse(word)[0]
+    parse_results = morph.parse(word)
+    if not parse_results:
+        return word
+
+    # Выбираем наиболее вероятный вариант
+    parse = parse_results[0]
+
+    # Для фамилий проверяем, нужно ли сначала создать женскую форму
+    if gender == 'femn' and any(tag in parse.tag for tag in ['Surn', 'NOUN']):
+        # Пытаемся получить женскую форму фамилии
+        femn_form = parse.feminize()
+        if femn_form:
+            parse = femn_form
 
     # Приводим к нужному падежу
-    form = parse.inflect({target_case})
+    form = parse.inflect({target_case, gender})
 
     # Если форма найдена, возвращаем её, иначе - исходное слово
     return form.word if form else word
@@ -42,7 +90,7 @@ def decline_word_to_case(word: str, target_case: str) -> str:
 
 def decline_full_name(full_name: str, target_case: str) -> str:
     """
-    Склоняет ФИО в нужный падеж.
+    Склоняет ФИО в нужный падеж с учетом пола.
 
     Args:
         full_name (str): ФИО в именительном падеже (например, 'Иванов Иван Иванович')
@@ -51,13 +99,20 @@ def decline_full_name(full_name: str, target_case: str) -> str:
     Returns:
         str: Склоненное ФИО
     """
+    # Если падеж именительный, возвращаем исходное ФИО
+    if target_case == 'nomn':
+        return full_name
+
+    # Определяем пол
+    gender = get_gender_from_name(full_name)
+
     # Разбиваем ФИО на части
     parts = full_name.split()
 
-    # Склоняем каждую часть
+    # Склоняем каждую часть с учетом пола
     declined_parts = []
-    for part in parts:
-        declined_parts.append(decline_word_to_case(part, target_case))
+    for i, part in enumerate(parts):
+        declined_parts.append(decline_word_to_case(part, target_case, gender))
 
     # Собираем обратно в строку
     return " ".join(declined_parts)
@@ -74,6 +129,10 @@ def decline_phrase(phrase: str, target_case: str) -> str:
     Returns:
         str: Склоненная фраза
     """
+    # Если падеж именительный, возвращаем исходную фразу
+    if target_case == 'nomn':
+        return phrase
+
     # Разбиваем фразу на слова
     parts = phrase.split()
 

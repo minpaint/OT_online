@@ -41,12 +41,11 @@ from directory.views.documents import (
     DocumentSelectionView,
     InternshipOrderFormView,
     AdmissionOrderFormView,
-    DocumentPreviewView,
-    # DocumentsPreviewView,  # Временно закомментировано
+    DocumentsPreviewView,  # Исправлено: раньше было DocumentPreviewView
     GeneratedDocumentListView,
     GeneratedDocumentDetailView,
     document_download,
-    update_document_data,  # Исправлено с update_preview_data на update_document_data
+    update_document_data
 )
 
 # Импортируем представления для выдачи СИЗ
@@ -168,12 +167,11 @@ __all__ = [
     'DocumentSelectionView',
     'InternshipOrderFormView',
     'AdmissionOrderFormView',
-    'DocumentPreviewView',
-    # 'DocumentsPreviewView',  # Временно закомментировано
+    'DocumentsPreviewView',  # Исправлено: раньше было DocumentPreviewView
     'GeneratedDocumentListView',
     'GeneratedDocumentDetailView',
     'document_download',
-    'update_document_data',  # Исправлено с update_preview_data на update_document_data
+    'update_document_data',
     'SIZIssueFormView',
     'SIZPersonalCardView',
     'SIZIssueReturnView',

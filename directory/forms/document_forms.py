@@ -15,13 +15,14 @@ from directory.models import Employee
 
 class DocumentSelectionForm(forms.Form):
     """
-    Форма для выбора типа документа для генерации
+    Форма для выбора типов документов для генерации
     """
-    document_type = forms.ChoiceField(
-        label=_("Тип документа"),
+    document_types = forms.MultipleChoiceField(
+        label=_("Типы документов"),
         choices=DocumentTemplate.DOCUMENT_TYPES,
-        widget=forms.RadioSelect,
-        required=True
+        widget=forms.CheckboxSelectMultiple,
+        required=True,
+        help_text=_("Выберите один или несколько типов документов для генерации")
     )
 
     employee_id = forms.IntegerField(
@@ -37,8 +38,8 @@ class DocumentSelectionForm(forms.Form):
         self.helper.layout = Layout(
             'employee_id',
             Fieldset(
-                _('Выберите тип документа для генерации'),
-                Field('document_type'),
+                _('Выберите типы документов для генерации'),
+                Field('document_types'),
                 css_class='mb-3'
             ),
             ButtonHolder(

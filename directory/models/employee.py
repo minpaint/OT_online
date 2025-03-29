@@ -43,14 +43,16 @@ class Employee(models.Model):
         on_delete=models.PROTECT,
         verbose_name="Структурное подразделение",
         null=True,
-        blank=True
+        blank=True,
+        related_name='employees'
     )
     department = models.ForeignKey(
         'directory.Department',
         on_delete=models.PROTECT,
         null=True,
         blank=True,
-        verbose_name="Отдел"
+        verbose_name="Отдел",
+        related_name='employees'
     )
     position = models.ForeignKey(
         'directory.Position',
