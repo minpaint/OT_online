@@ -6,11 +6,11 @@ morph = pymorphy2.MorphAnalyzer()
 
 CASE_CODES = {
     'nomn': 'именительный',  # Кто? Что? (работает Иванов)
-    'gent': 'родительный',   # Кого? Чего? (нет Иванова)
-    'datv': 'дательный',     # Кому? Чему? (дать Иванову)
-    'accs': 'винительный',   # Кого? Что? (вижу Иванова)
+    'gent': 'родительный',  # Кого? Чего? (нет Иванова)
+    'datv': 'дательный',  # Кому? Чему? (дать Иванову)
+    'accs': 'винительный',  # Кого? Что? (вижу Иванова)
     'ablt': 'творительный',  # Кем? Чем? (доволен Ивановым)
-    'loct': 'предложный'     # О ком? О чем? (думаю об Иванове)
+    'loct': 'предложный'  # О ком? О чем? (думаю об Иванове)
 }
 
 
@@ -32,7 +32,8 @@ def get_gender_from_name(full_name: str) -> str:
         first_name = parts[1].lower()
         male_endings = ['й', 'н', 'р', 'т', 'м', 'к', 'п', 'с', 'л', 'в', 'д', 'б']
         female_endings = ['а', 'я', 'ь']
-        if any(first_name.endswith(e) for e in male_endings) and not any(first_name.endswith(e) for e in female_endings):
+        if any(first_name.endswith(e) for e in male_endings) and not any(
+                first_name.endswith(e) for e in female_endings):
             return 'masc'
         elif any(first_name.endswith(e) for e in female_endings):
             return 'femn'
@@ -43,14 +44,15 @@ def get_gender_from_name(full_name: str) -> str:
 
 def decline_word_to_case(word: str, target_case: str, gender: str = None) -> str:
     """
-    Склоняет одно слово в заданный падеж. Если gender=None,
-    pymorphy2 подбирает форму без учёта пола (для фраз).
-    Если gender='masc'/'femn', то учитываем род (для ФИО).
+    Склоняет одно слово в заданный падеж.
+    Если gender=None (для фраз), pymorphy2 подбирает форму без учёта пола.
+    Если gender='masc'/'femn' (для ФИО), то учитываем род.
     """
     parse_results = morph.parse(word)
     if not parse_results:
         return word
 
+    # Берём наиболее вероятный разбор
     parse = parse_results[0]
 
     # Если нужно женское склонение фамилии или существительного
@@ -72,6 +74,67 @@ def decline_word_to_case(word: str, target_case: str, gender: str = None) -> str
     return form.word if form else word
 
 
+def pick_parse_in_nomn(word: str):
+    """
+    Возвращает наилучший разбор слова, который стоит в именительном падеже (nomn).
+    Если такого нет, вернёт просто самый вероятный разбор (parse_results[0]).
+
+    Нужен для того, чтобы мы точно взяли форму 'клиническое' (ADJF, nomn, neut, sing)
+    вместо какой-нибудь другой, если pymorphy2 распознает несколько вариантов.
+    """
+    parses = morph.parse(word)
+    if not parses:
+        return None
+    best_nomn = None
+    best_score = 0.0
+
+    for p in parses:
+        if 'nomn' in p.tag and p.score > best_score:
+            best_nomn = p
+            best_score = p.score
+
+    return best_nomn if best_nomn else parses[0]
+
+
+def decline_phrase(phrase: str, target_case: str) -> str:
+    """
+    Склоняет фразу (должность, словосочетание типа "Клиническое отделение", и т.д.)
+    в заданный падеж.
+    Логика:
+      1) Если слово изначально не в именительном падеже, оставляем как есть.
+      2) Если слово в именительном падеже, пытаемся склонить его в нужный.
+    """
+    if target_case == 'nomn':
+        return phrase
+
+    parts = phrase.split()
+    declined_parts = []
+
+    for part in parts:
+        # Берем разбор с учётом того, что слово должно быть в nomn (если оно действительно таково)
+        parse_in_nomn = pick_parse_in_nomn(part)
+        if not parse_in_nomn:
+            # Если pymorphy2 вообще не разобрало слово
+            declined_parts.append(part)
+            continue
+
+        # Если реальный разбор в номинативе
+        if 'nomn' in parse_in_nomn.tag:
+            # Склоняем в нужный падеж
+            inflected = parse_in_nomn.inflect({target_case})
+            if inflected:
+                declined_parts.append(inflected.word)
+            else:
+                # Не получилось — оставим исходное
+                declined_parts.append(part)
+        else:
+            # Если слово уже не nomn (по мнению лучшего разбора),
+            # то не трогаем
+            declined_parts.append(part)
+
+    return " ".join(declined_parts)
+
+
 def decline_full_name(full_name: str, target_case: str) -> str:
     """
     Склоняет ФИО с учётом пола.
@@ -83,6 +146,7 @@ def decline_full_name(full_name: str, target_case: str) -> str:
     gender = get_gender_from_name(full_name)
     parts = full_name.split()
     declined_parts = []
+
     for part in parts:
         declined_word = decline_word_to_case(part, target_case, gender=gender)
         # Для ФИО делаем первую букву заглавной
@@ -93,50 +157,13 @@ def decline_full_name(full_name: str, target_case: str) -> str:
     return " ".join(declined_parts)
 
 
-def decline_phrase(phrase: str, target_case: str) -> str:
-    """
-    Склоняет фразу (должность, несколько слов и т.д.) в заданный падеж.
-    При этом, если слово уже не в именительном падеже (nomn), оно останется как есть.
-    """
-    if target_case == 'nomn':
-        return phrase
-
-    parts = phrase.split()
-    declined_parts = []
-
-    for part in parts:
-        parse_results = morph.parse(part)
-        if not parse_results:
-            # Если pymorphy2 не распознало слово, оставляем без изменений
-            declined_parts.append(part)
-            continue
-
-        parse = parse_results[0]
-
-        # Проверяем, есть ли признак именительного падежа (nomn) в тегах
-        if 'nomn' in parse.tag:
-            # Только если слово в именительном падеже,
-            # переводим в целевой падеж
-            inflected = parse.inflect({target_case})
-            if inflected:
-                declined_parts.append(inflected.word)
-            else:
-                # Не получилось склонить – возвращаем исходное
-                declined_parts.append(part)
-        else:
-            # Если слово уже не в именительном падеже,
-            # оставляем его как есть
-            declined_parts.append(part)
-
-    return " ".join(declined_parts)
-
-
 def get_all_cases(text: str, is_full_name: bool = False) -> dict:
     """
     Возвращает все падежные формы (nomn, gent, datv, accs, ablt, loct)
     для переданного текста.
-    Если is_full_name=True, будет использоваться decline_full_name,
-    иначе decline_phrase.
+
+    Если is_full_name=True, будет использоваться decline_full_name (учёт пола, заглавные буквы).
+    Если is_full_name=False, будет использоваться decline_phrase (общая фраза).
     """
     result = {}
     for case_code in CASE_CODES:

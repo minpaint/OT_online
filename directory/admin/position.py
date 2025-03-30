@@ -1,3 +1,4 @@
+# D:\YandexDisk\OT_online\directory\admin\position.py
 """
 👔 Админ-класс для модели Position с древовидным отображением.
 Используем кастомный шаблон для вывода change list в виде таблицы.
@@ -20,17 +21,28 @@ from directory.models.siz import SIZNorm, SIZ
 class SIZNormInlineForPosition(admin.TabularInline):
     """📋 Встроенные нормы СИЗ для должности с отображением всех полей"""
     model = SIZNorm
-    extra = 1
+    extra = 0  # Изменено с 1 на 0, чтобы не добавлять пустую строку автоматически
     fields = ('siz', 'classification', 'unit', 'quantity', 'wear_period', 'condition', 'order')
     readonly_fields = ('classification', 'unit', 'wear_period')
     verbose_name = "Норма СИЗ"
     verbose_name_plural = "Нормы СИЗ"
     autocomplete_fields = ['siz']
-    template = 'admin/directory/position/edit_inline/tabular_siz_norms.html'
 
+    # Удаляем строку template = 'admin/directory/position/edit_inline/tabular_siz_norms.html'
+    # поскольку этого шаблона не существует в проекте
+
+    # Предотвращаем отображение пустых форм
+    def get_extra(self, request, obj=None, **kwargs):
+        """Возвращает 0 для существующих объектов, 1 для новых"""
+        return 0 if obj else 1
+
+    # Улучшаем фильтрацию запросов
     def get_queryset(self, request):
         # Все нормы для должности, отсортированные по условию и порядку
-        return super().get_queryset(request).select_related('siz').order_by('condition', 'order')
+        # Исключаем пустые нормы (без указанного СИЗ)
+        return super().get_queryset(request).select_related('siz').filter(
+            siz__isnull=False
+        ).order_by('condition', 'order')
 
     def classification(self, obj):
         """📊 Отображение классификации СИЗ"""
@@ -166,7 +178,12 @@ class PositionAdmin(TreeViewMixin, admin.ModelAdmin):
         return custom_urls + urls
 
     def copy_reference_norms_view(self, request, object_id):
-        """👥 View для копирования эталонных норм в текущую должность"""
+        """👥 View для копирования эталонных норм в текущую должность
+
+        Копирование выполняется только при точном совпадении названий должностей
+        и только в исключительных случаях, когда в разных организациях
+        для одинаковых профессий выдаются разные СИЗ.
+        """
         position = self.get_object(request, object_id)
         if not position:
             messages.error(request, "Должность не найдена.")
@@ -176,44 +193,82 @@ class PositionAdmin(TreeViewMixin, admin.ModelAdmin):
         reference_norms = Position.find_reference_norms(position.position_name)
 
         if not reference_norms.exists():
-            messages.warning(request, f"Эталонные нормы СИЗ для должности '{position.position_name}' не найдены.")
+            messages.warning(request,
+                             f"Эталонные нормы СИЗ для должности '{position.position_name}' не найдены. Проверьте, что существуют должности с точно таким же названием и у них есть нормы СИЗ.")
             return redirect('admin:directory_position_change', object_id)
 
+        # Сначала удаляем все пустые нормы у этой должности
+        SIZNorm.objects.filter(position=position, siz__isnull=True).delete()
+
+        # Создаем набор для отслеживания уже добавленных норм
+        added_norms = set()
         # Счетчики для статистики
         created_count = 0
         updated_count = 0
+        errors_count = 0
 
         # Копируем нормы
         for norm in reference_norms:
-            # Проверяем, существует ли уже такая норма
-            existing_norm = SIZNorm.objects.filter(
-                position=position,
-                siz=norm.siz,
-                condition=norm.condition
-            ).first()
+            # Пропускаем нормы без указанного СИЗ
+            if not norm.siz:
+                continue
 
-            if existing_norm:
-                # Обновляем существующую норму
-                existing_norm.quantity = norm.quantity
-                existing_norm.order = norm.order
-                existing_norm.save()
-                updated_count += 1
-            else:
-                # Создаем новую норму
-                SIZNorm.objects.create(
-                    position=position,
-                    siz=norm.siz,
-                    quantity=norm.quantity,
-                    condition=norm.condition,
-                    order=norm.order
-                )
-                created_count += 1
+            # Создаем ключ на основе siz.id и condition
+            norm_key = (norm.siz.id, norm.condition)
 
-        messages.success(
-            request,
-            f"Успешно применены эталонные нормы СИЗ: создано {created_count}, обновлено {updated_count}."
-        )
+            # Проверяем, не добавляли ли уже такую норму
+            if norm_key not in added_norms:
+                try:
+                    # Проверяем, существует ли уже такая норма
+                    existing_norm = SIZNorm.objects.filter(
+                        position=position,
+                        siz=norm.siz,
+                        condition=norm.condition
+                    ).first()
 
+                    if existing_norm:
+                        # Обновляем существующую норму
+                        existing_norm.quantity = norm.quantity
+                        existing_norm.order = norm.order
+                        existing_norm.save()
+                        updated_count += 1
+                    else:
+                        # Создаем новую норму
+                        SIZNorm.objects.create(
+                            position=position,
+                            siz=norm.siz,
+                            quantity=norm.quantity,
+                            condition=norm.condition,
+                            order=norm.order
+                        )
+                        created_count += 1
+
+                    # Добавляем ключ в набор добавленных норм
+                    added_norms.add(norm_key)
+                except Exception as e:
+                    errors_count += 1
+                    messages.error(
+                        request,
+                        f"Ошибка при копировании нормы для {norm.siz.name}: {str(e)}"
+                    )
+
+        # После копирования снова проверяем и удаляем все пустые нормы
+        SIZNorm.objects.filter(position=position, siz__isnull=True).delete()
+
+        if created_count > 0 or updated_count > 0:
+            messages.success(
+                request,
+                f"Успешно применены эталонные нормы СИЗ: создано {created_count}, обновлено {updated_count}." +
+                (f" Ошибок: {errors_count}." if errors_count > 0 else "")
+            )
+        else:
+            messages.info(
+                request,
+                "Не было скопировано ни одной нормы СИЗ. Возможно, все нормы уже существуют или у этой должности уже есть все нормы." +
+                (f" Ошибок: {errors_count}." if errors_count > 0 else "")
+            )
+
+        # После копирования и обработки всех норм, перенаправляем на страницу изменения должности
         return redirect('admin:directory_position_change', object_id)
 
     def formfield_for_manytomany(self, db_field, request, **kwargs):
@@ -257,6 +312,7 @@ class PositionAdmin(TreeViewMixin, admin.ModelAdmin):
         2) Фильтрации M2M-полей по организациям
         """
         Form = super().get_form(request, obj, **kwargs)
+
         class PositionFormWithUser(Form):
             def __init__(self, *args, **kwargs):
                 self.user = request.user
@@ -264,8 +320,10 @@ class PositionAdmin(TreeViewMixin, admin.ModelAdmin):
                 # Настраиваем labels и help_text для полей
                 self.fields['documents'].label = "ДОСТУПНЫЕ ДОКУМЕНТЫ"
                 self.fields['equipment'].label = "ДОСТУПНОЕ ОБОРУДОВАНИЕ"
-                self.fields['documents'].help_text = "Удерживайте 'Control' (или 'Command' на Mac), чтобы выбрать несколько значений."
-                self.fields['equipment'].help_text = "Удерживайте 'Control' (или 'Command' на Mac), чтобы выбрать несколько значений."
+                self.fields[
+                    'documents'].help_text = "Удерживайте 'Control' (или 'Command' на Mac), чтобы выбрать несколько значений."
+                self.fields[
+                    'equipment'].help_text = "Удерживайте 'Control' (или 'Command' на Mac), чтобы выбрать несколько значений."
                 # Фильтруем документы и оборудование по организациям
                 if hasattr(request.user, 'profile'):
                     allowed_orgs = request.user.profile.organizations.all()
@@ -283,6 +341,7 @@ class PositionAdmin(TreeViewMixin, admin.ModelAdmin):
                         organization__in=allowed_orgs).distinct().order_by('equipment_name')
                     self.fields['documents'].queryset = docs_qs
                     self.fields['equipment'].queryset = equip_qs
+
         return PositionFormWithUser
 
     def get_additional_node_data(self, obj):

@@ -185,22 +185,20 @@ class Position(models.Model):
     @classmethod
     def find_reference_norms(cls, position_name):
         """
-        🔍 Ищет эталонные нормы СИЗ для должности по названию
+        🔍 Ищет эталонные нормы СИЗ для должности ТОЛЬКО по точному совпадению названия
+
+        Используется в исключительных случаях, когда в разных организациях
+        для одинаковых профессий выдаются разные СИЗ
+
+        Возвращает QuerySet с нормами СИЗ
         """
-        # Найти все должности с таким же названием
-        positions = cls.objects.filter(position_name__iexact=position_name)
+        # Найти все должности с точно таким же названием
+        positions = cls.objects.filter(position_name__exact=position_name)
 
-        # Найти все нормы для этих должностей
+        # Импортируем модель SIZNorm
         from directory.models.siz import SIZNorm
-        norms = SIZNorm.objects.filter(position__in=positions).select_related('siz')
 
-        # Если норм не найдено, пытаемся найти по аналогичным названиям
-        if not norms.exists():
-            # Поиск по части названия должности
-            similar_positions = cls.objects.filter(
-                position_name__icontains=position_name.split()[0] if position_name.split() else ""
-            )
-            if similar_positions.exists():
-                norms = SIZNorm.objects.filter(position__in=similar_positions).select_related('siz')
+        # Получаем нормы для найденных должностей
+        norms = SIZNorm.objects.filter(position__in=positions).select_related('siz')
 
         return norms
