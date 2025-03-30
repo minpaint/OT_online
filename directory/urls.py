@@ -88,6 +88,7 @@ document_patterns = [
     path('admission-order/<int:employee_id>/', AdmissionOrderFormView.as_view(), name='admission_order_form'),
     path('documents-preview/', DocumentsPreviewView.as_view(), name='documents_preview'),
     path('api/update-preview-data/', update_document_data, name='update_preview_data'),
+
 ]
 
 # ⚙️ URL-маршруты для оборудования (если появится соответствующий ListView)
