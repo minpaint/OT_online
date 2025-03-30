@@ -89,7 +89,8 @@ def prepare_employee_context(employee) -> Dict[str, Any]:
         'order_number': "",
         # Дополнительные поля
         'internship_duration': "2",  # Продолжительность стажировки в днях
-        'location': "г. Минск",  # Место издания документа
+        # Место нахождения (из организации)
+        'location': employee.organization.location if employee.organization and hasattr(employee.organization, 'location') and employee.organization.location else "г. Минск",
     }
 
     # Добавляем поиск подписанта распоряжений

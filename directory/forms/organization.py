@@ -1,8 +1,9 @@
-# 📁 directory/forms/organization.py
+# directory/forms/organization.py
 from django import forms
 from crispy_forms.helper import FormHelper
 from crispy_forms.layout import Submit
 from directory.models import Organization
+
 
 class OrganizationForm(forms.ModelForm):
     """🏢 Форма для организаций"""

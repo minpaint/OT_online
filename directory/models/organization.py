@@ -1,3 +1,5 @@
+# directory/models/organization.py
+
 from django.db import models
 
 class Organization(models.Model):
@@ -10,6 +12,10 @@ class Organization(models.Model):
     short_name_by = models.CharField(max_length=100, verbose_name="Краткое наименование (бел)")
     requisites_ru = models.TextField(verbose_name="Реквизиты (рус)", blank=True)
     requisites_by = models.TextField(verbose_name="Реквизиты (бел)", blank=True)
+    # Добавляем новое поле для места нахождения
+    location = models.CharField(max_length=100, verbose_name="Место нахождения",
+                              default="г. Минск", blank=True,
+                              help_text="Например: г. Минск, г. Брест и т.д.")
 
     class Meta:
         verbose_name = "Организация"
