@@ -1,4 +1,3 @@
-# D:\YandexDisk\OT_online\directory\views\__init__.py
 from django.views.generic import TemplateView
 from django.contrib.auth.mixins import LoginRequiredMixin
 from django.shortcuts import render, redirect
@@ -39,9 +38,9 @@ from .positions import (
 # Используем абсолютный импорт, чтобы избежать конфликтов
 from directory.views.documents import (
     DocumentSelectionView,
-    InternshipOrderFormView,
-    AdmissionOrderFormView,
-    DocumentsPreviewView,  # Исправлено: раньше было DocumentPreviewView
+    AllOrdersFormView,  # Обновлено: заменяем устаревшие классы
+    SIZCardFormView,  # Обновлено: добавляем новый класс
+    DocumentsPreviewView,
     GeneratedDocumentListView,
     GeneratedDocumentDetailView,
     document_download,
@@ -165,9 +164,9 @@ __all__ = [
     'get_departments',
     'UserRegistrationView',
     'DocumentSelectionView',
-    'InternshipOrderFormView',
-    'AdmissionOrderFormView',
-    'DocumentsPreviewView',  # Исправлено: раньше было DocumentPreviewView
+    'AllOrdersFormView',  # Обновлено: заменяем устаревшие классы
+    'SIZCardFormView',  # Обновлено: добавляем новый класс
+    'DocumentsPreviewView',
     'GeneratedDocumentListView',
     'GeneratedDocumentDetailView',
     'document_download',
