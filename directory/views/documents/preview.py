@@ -1,4 +1,3 @@
-# D:\YandexDisk\OT_online\directory\views\documents\preview.py
 """
 👁️ Представления для предпросмотра документов
 
@@ -9,12 +8,13 @@ import os
 import tempfile
 import zipfile
 import datetime
+import logging
 from django.views.generic import FormView, TemplateView
 from django.contrib.auth.mixins import LoginRequiredMixin
 from django.shortcuts import get_object_or_404, redirect
 from django.http import JsonResponse, HttpResponse
 from django.contrib import messages
-from django.utils.translation import gettext as _
+from django.utils.translation import gettext
 from django.views.decorators.http import require_POST
 from django.utils.decorators import method_decorator
 from django.contrib.auth.decorators import login_required
@@ -22,10 +22,14 @@ from django.conf import settings
 
 from directory.models import Employee
 from directory.models.document_template import DocumentTemplate
+from directory.models import GeneratedDocument
 from directory.forms.document_forms import DocumentPreviewForm
 from directory.utils.docx_generator import (
     generate_all_orders, get_document_template, generate_document_from_template
 )
+
+# Настройка логирования
+logger = logging.getLogger(__name__)
 
 
 class DocumentsPreviewView(LoginRequiredMixin, TemplateView):
@@ -40,7 +44,7 @@ class DocumentsPreviewView(LoginRequiredMixin, TemplateView):
         # Получаем данные предпросмотра из сессии
         preview_data_json = self.request.session.get('preview_data')
         if not preview_data_json:
-            messages.error(self.request, _('Не найдены данные для предпросмотра документов'))
+            messages.error(self.request, gettext('Не найдены данные для предпросмотра документов'))
             context['no_data'] = True
             return context
 
@@ -48,7 +52,7 @@ class DocumentsPreviewView(LoginRequiredMixin, TemplateView):
             preview_data = json.loads(preview_data_json)
             context['preview_data'] = preview_data
         except json.JSONDecodeError:
-            messages.error(self.request, _('Ошибка при чтении данных предпросмотра'))
+            messages.error(self.request, gettext('Ошибка при чтении данных предпросмотра'))
             context['no_data'] = True
             return context
 
@@ -59,13 +63,13 @@ class DocumentsPreviewView(LoginRequiredMixin, TemplateView):
                 try:
                     context['employee'] = get_object_or_404(Employee, id=employee_id)
                 except:
-                    messages.warning(self.request, _('Не удалось получить информацию о сотруднике'))
+                    messages.warning(self.request, gettext('Не удалось получить информацию о сотруднике'))
 
         # Получаем словарь соответствия типов документов их названиям
         document_types_dict = dict(DocumentTemplate.DOCUMENT_TYPES)
         context['document_types_dict'] = document_types_dict
 
-        context['title'] = _('Предпросмотр документов')
+        context['title'] = gettext('Предпросмотр документов')
         return context
 
     def post(self, request, *args, **kwargs):
@@ -75,13 +79,13 @@ class DocumentsPreviewView(LoginRequiredMixin, TemplateView):
         # Получаем данные предпросмотра из сессии
         preview_data_json = request.session.get('preview_data')
         if not preview_data_json:
-            messages.error(request, _('Не найдены данные для генерации документов'))
+            messages.error(request, gettext('Не найдены данные для генерации документов'))
             return redirect('directory:home')
 
         try:
             preview_data = json.loads(preview_data_json)
         except json.JSONDecodeError:
-            messages.error(request, _('Ошибка при чтении данных для генерации документов'))
+            messages.error(request, gettext('Ошибка при чтении данных для генерации документов'))
             return redirect('directory:home')
 
         # Получаем обновленные данные документов из формы
@@ -114,7 +118,7 @@ class DocumentsPreviewView(LoginRequiredMixin, TemplateView):
             try:
                 employee = get_object_or_404(Employee, id=employee_id)
             except:
-                messages.error(request, _('Не удалось найти сотрудника'))
+                messages.error(request, gettext('Не удалось найти сотрудника'))
                 continue
 
             # Запоминаем, есть ли карточка СИЗ среди выбранных документов
@@ -150,6 +154,9 @@ class DocumentsPreviewView(LoginRequiredMixin, TemplateView):
                 if os.path.exists(doc_path):
                     file_name = os.path.basename(generated_doc.document_file.name)
                     files_to_archive.append((doc_path, file_name))
+                    logger.info(f"Добавлен файл в архив: {doc_path}, размер: {os.path.getsize(doc_path)} bytes")
+                else:
+                    logger.warning(f"Файл не найден по пути: {doc_path}")
 
         # Если нужно добавить карточку СИЗ и хотя бы один сотрудник был найден
         if has_siz_card and employee_id:
@@ -169,33 +176,48 @@ class DocumentsPreviewView(LoginRequiredMixin, TemplateView):
                         for chunk in pdf_response.streaming_content:
                             tmp_file.write(chunk)
 
-                    # Добавляем файл в список для архивирования
-                    pdf_filename = f'siz_card_{employee.full_name_nominative}.pdf'
-                    files_to_archive.append((tmp_file.name, pdf_filename))
+                # Проверяем размер созданного файла
+                tmp_file_size = os.path.getsize(tmp_file.name)
+                logger.info(f"Создан PDF файл для СИЗ: {tmp_file.name}, размер: {tmp_file_size} bytes")
 
-                    # Создаем запись о сгенерированном документе для PDF
-                    template, _ = DocumentTemplate.objects.get_or_create(
+                # Убедимся, что файл не пустой
+                if tmp_file_size == 0:
+                    logger.error("PDF файл СИЗ создан с нулевым размером!")
+                    raise ValueError("PDF файл СИЗ имеет нулевой размер")
+
+                # Добавляем файл в список для архивирования
+                pdf_filename = f'siz_card_{employee.full_name_nominative}.pdf'
+                files_to_archive.append((tmp_file.name, pdf_filename))
+
+                # Создаем запись о сгенерированном документе для PDF
+                template = DocumentTemplate.objects.filter(
+                    document_type='siz_card',
+                    is_active=True
+                ).order_by('-id').first()
+
+                if not template:
+                    template = DocumentTemplate.objects.create(
                         document_type='siz_card',
-                        defaults={
-                            'name': 'Карточка учета СИЗ',
-                            'description': 'Карточка учета средств индивидуальной защиты',
-                            'is_active': True
-                        }
+                        name='Карточка учета СИЗ',
+                        description='Карточка учета средств индивидуальной защиты',
+                        is_active=True
                     )
 
-                    # Создаем запись в базе данных
-                    siz_document = GeneratedDocument(
-                        template=template,
-                        employee=employee,
-                        created_by=request.user
-                    )
-                    siz_document.document_file.save(pdf_filename, pdf_response)
-                    siz_document.save()
+                # Создаем запись в базе данных
+                siz_document = GeneratedDocument(
+                    template=template,
+                    employee=employee,
+                    created_by=request.user
+                )
+                siz_document.document_file.save(pdf_filename, pdf_response)
+                siz_document.save()
 
-                    generated_documents.append(siz_document)
+                generated_documents.append(siz_document)
 
             except Exception as e:
-                messages.warning(request, _(f'Ошибка при генерации карточки СИЗ: {str(e)}'))
+                error_msg = gettext('Ошибка при генерации карточки СИЗ:') + ' ' + str(e)
+                logger.error(f"Ошибка СИЗ: {str(e)}")
+                messages.warning(request, error_msg)
 
         # Очищаем данные предпросмотра из сессии
         if 'preview_data' in request.session:
@@ -211,64 +233,91 @@ class DocumentsPreviewView(LoginRequiredMixin, TemplateView):
             zip_filename = f'documents_{datetime.datetime.now().strftime("%Y%m%d_%H%M%S")}.zip'
             zip_path = os.path.join(tmp_dir, zip_filename)
 
-            # Создаем архив и добавляем в него файлы
-            with zipfile.ZipFile(zip_path, 'w') as zipf:
-                for file_path, file_name in files_to_archive:
-                    zipf.write(file_path, file_name)
-
-            # Отправляем архив пользователю
-            with open(zip_path, 'rb') as f:
-                response = HttpResponse(f.read(), content_type='application/zip')
-                response['Content-Disposition'] = f'attachment; filename="{zip_filename}"'
-
-            # Очищаем временные файлы
+            # Улучшенная версия создания архива
             try:
-                os.unlink(zip_path)
-                for file_path, _ in files_to_archive:
-                    if file_path.startswith(tmp_dir):  # Удаляем только временные файлы
-                        os.unlink(file_path)
+                # Создаем архив и добавляем в него файлы
+                with zipfile.ZipFile(zip_path, 'w', zipfile.ZIP_DEFLATED) as zipf:
+                    for file_path, file_name in files_to_archive:
+                        # Проверяем существование и размер файла
+                        if os.path.exists(file_path) and os.path.getsize(file_path) > 0:
+                            zipf.write(file_path, file_name)
+                            logger.info(f"Файл {file_path} добавлен в архив как {file_name}")
+                        else:
+                            logger.warning(f"Пропущен файл {file_path}: файл не существует или пуст")
+
+                # Проверяем, что архив создался и не пустой
+                if not os.path.exists(zip_path) or os.path.getsize(zip_path) == 0:
+                    raise ValueError("Создан пустой или некорректный архив")
+
+                logger.info(f"Архив создан: {zip_path}, размер: {os.path.getsize(zip_path)} bytes")
+
+                # Отправляем архив пользователю
+                with open(zip_path, 'rb') as f:
+                    zip_content = f.read()
+
+                response = HttpResponse(zip_content, content_type='application/zip')
+                response['Content-Disposition'] = f'attachment; filename="{zip_filename}"'
+                response['Content-Length'] = len(zip_content)
+
+                # Очищаем временные файлы
+                try:
+                    os.unlink(zip_path)
+                    for file_path, _ in files_to_archive:
+                        if file_path.startswith(tmp_dir):  # Удаляем только временные файлы
+                            os.unlink(file_path)
+                except Exception as e:
+                    logger.error(f"Ошибка при удалении временных файлов: {str(e)}")
+
+                success_msg = gettext('Успешно сгенерировано документов: {}').format(len(files_to_archive))
+                messages.success(request, success_msg)
+
+                return response
             except Exception as e:
-                # Логируем ошибку, но не прерываем выполнение
-                import logging
-                logger = logging.getLogger(__name__)
-                logger.error(f"Ошибка при удалении временных файлов: {str(e)}")
-
-            messages.success(
-                request,
-                _('Успешно сгенерировано документов: {}').format(len(files_to_archive))
-            )
-
-            return response
+                logger.error(f"Ошибка при создании архива: {str(e)}")
+                messages.error(request, gettext('Ошибка при создании архива: ') + str(e))
+                return self.get(request, *args, **kwargs)
 
         # Если сгенерирован только один документ
         elif len(generated_documents) == 1:
-            messages.success(request, _('Документ успешно сгенерирован'))
+            messages.success(request, gettext('Документ успешно сгенерирован'))
             return redirect('directory:documents:document_detail', pk=generated_documents[0].id)
 
         # Если есть временные файлы, но не было создано документов в базе
         elif len(files_to_archive) == 1:
             file_path, file_name = files_to_archive[0]
-            with open(file_path, 'rb') as f:
-                content_type = 'application/pdf' if file_name.endswith('.pdf') else 'application/octet-stream'
-                response = HttpResponse(f.read(), content_type=content_type)
-                response['Content-Disposition'] = f'attachment; filename="{file_name}"'
-
-            # Удаляем временный файл
             try:
-                if file_path.startswith(os.path.join(settings.MEDIA_ROOT, 'tmp')):
-                    os.unlink(file_path)
-            except:
-                pass
+                with open(file_path, 'rb') as f:
+                    file_content = f.read()
 
-            messages.success(request, _('Документ успешно сгенерирован'))
-            return response
+                    # Проверка содержимого файла
+                    if len(file_content) == 0:
+                        raise ValueError("Файл пуст")
+
+                    content_type = 'application/pdf' if file_name.endswith('.pdf') else 'application/octet-stream'
+                    response = HttpResponse(file_content, content_type=content_type)
+                    response['Content-Disposition'] = f'attachment; filename="{file_name}"'
+                    response['Content-Length'] = len(file_content)
+
+                # Удаляем временный файл
+                try:
+                    if file_path.startswith(os.path.join(settings.MEDIA_ROOT, 'tmp')):
+                        os.unlink(file_path)
+                except Exception as e:
+                    logger.error(f"Ошибка при удалении временного файла: {str(e)}")
+
+                messages.success(request, gettext('Документ успешно сгенерирован'))
+                return response
+            except Exception as e:
+                logger.error(f"Ошибка при отправке файла: {file_path}, ошибка: {str(e)}")
+                messages.error(request, gettext('Ошибка при отправке файла: ') + str(e))
+                return self.get(request, *args, **kwargs)
 
         else:
-            messages.error(request, _('Не удалось сгенерировать документы'))
+            messages.error(request, gettext('Не удалось сгенерировать документы'))
             return self.get(request, *args, **kwargs)
 
 
-@method_decorator(login_required, name='dispatch')
+@login_required
 @require_POST
 def update_document_data(request):
     """
