@@ -11,16 +11,14 @@ from django.http import JsonResponse
 from django.contrib import messages
 from django.utils.translation import gettext as _
 from django.views.decorators.http import require_POST
-from django.utils.decorators import method_decorator
 from django.contrib.auth.decorators import login_required
 
 from directory.models import Employee
 from directory.models.document_template import DocumentTemplate
 from directory.forms.document_forms import DocumentPreviewForm
 from directory.utils.docx_generator import (
-    generate_internship_order, generate_admission_order
-    # Закомментировали ненужные импорты:
-    # generate_knowledge_protocol, generate_doc_familiarization
+    generate_all_orders, generate_siz_card,
+    get_document_template, generate_document_from_template
 )
 
 
@@ -112,34 +110,20 @@ class DocumentsPreviewView(LoginRequiredMixin, TemplateView):
             generated_doc = None
 
             if doc_type == 'all_orders':
-                from directory.utils.docx_generator import generate_all_orders
                 generated_doc = generate_all_orders(
                     employee,
                     request.user,
                     document_data
                 )
             elif doc_type == 'siz_card':
-                from directory.utils.docx_generator import generate_siz_card
                 generated_doc = generate_siz_card(
                     employee,
                     request.user,
                     document_data
                 )
-            elif doc_type == 'knowledge_protocol':
+            elif doc_type == 'knowledge_protocol' or doc_type == 'doc_familiarization':
                 # Используем общую функцию для генерации документа по шаблону
-                from directory.utils.docx_generator import get_document_template, generate_document_from_template
-                template = get_document_template('knowledge_protocol')
-                if template:
-                    generated_doc = generate_document_from_template(
-                        template,
-                        employee,
-                        request.user,
-                        document_data
-                    )
-            elif doc_type == 'doc_familiarization':
-                # Используем общую функцию для генерации документа по шаблону
-                from directory.utils.docx_generator import get_document_template, generate_document_from_template
-                template = get_document_template('doc_familiarization')
+                template = get_document_template(doc_type)
                 if template:
                     generated_doc = generate_document_from_template(
                         template,
@@ -173,7 +157,6 @@ class DocumentsPreviewView(LoginRequiredMixin, TemplateView):
             return self.get(request, *args, **kwargs)
 
 
-@method_decorator(login_required, name='dispatch')
 @require_POST
 def update_document_data(request):
     """

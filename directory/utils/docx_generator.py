@@ -1,10 +1,10 @@
-# D:\YandexDisk\OT_online\directory\utils\docx_generator.py
 """
 📄 Модуль для генерации документов Word
 
 Этот модуль содержит функции для работы с шаблонами DOCX и
 генерации документов на основе данных из системы.
 """
+
 import os
 import uuid
 from typing import Dict, Any, Optional, Tuple, List
@@ -12,10 +12,8 @@ import datetime
 from docxtpl import DocxTemplate
 from django.conf import settings
 from django.core.files.base import ContentFile
-
 from directory.models.document_template import DocumentTemplate, GeneratedDocument
 from directory.utils.declension import decline_full_name, decline_phrase, get_initials_from_name
-
 
 def get_template_path(template_id: int) -> str:
     """
@@ -33,12 +31,10 @@ def get_template_path(template_id: int) -> str:
     except DocumentTemplate.DoesNotExist:
         raise FileNotFoundError(f"Шаблон с ID {template_id} не найден")
 
-
 def prepare_employee_context(employee) -> Dict[str, Any]:
     """
     Подготавливает контекст с данными сотрудника для шаблона документа.
     Также проверяет наличие необходимых данных и формирует список недостающих.
-
     Args:
         employee: Объект модели Employee
     Returns:
@@ -147,8 +143,8 @@ def prepare_employee_context(employee) -> Dict[str, Any]:
 
     # Добавляем поиск подписанта распоряжений
     from directory.views.documents.utils import get_document_signer
-
     signer, level, found = get_document_signer(employee)
+
     if found:
         context.update({
             'director_position': signer.position.position_name,
@@ -168,7 +164,6 @@ def prepare_employee_context(employee) -> Dict[str, Any]:
     context['has_missing_data'] = len(missing_data) > 0
 
     return context
-
 
 def generate_docx_from_template(template_id: int, context: Dict[str, Any],
                                employee, user=None) -> Optional[GeneratedDocument]:
@@ -213,7 +208,6 @@ def generate_docx_from_template(template_id: int, context: Dict[str, Any],
         generated_doc.save()
 
         return generated_doc
-
     except Exception as e:
         # Логирование ошибки
         import logging
@@ -221,10 +215,9 @@ def generate_docx_from_template(template_id: int, context: Dict[str, Any],
         logger.error(f"Ошибка при генерации документа: {str(e)}")
         return None
 
-
 def generate_all_orders(employee, user=None, custom_context=None):
     """
-    Генерирует все распоряжения для сотрудника (заменяет отдельные функции для каждого типа распоряжения).
+    Генерирует распоряжения для сотрудника (о стажировке и допуске к работе).
     Args:
         employee: Объект модели Employee
         user: Пользователь, создающий документ (опционально)
@@ -243,8 +236,8 @@ def generate_all_orders(employee, user=None, custom_context=None):
 
     # Ищем руководителя стажировки с иерархическим подходом
     from directory.views.documents.utils import get_internship_leader
-
     internship_leader, level, success = get_internship_leader(employee)
+
     if success and internship_leader:
         context.update({
             'head_of_internship_name': internship_leader.full_name_nominative,
@@ -265,12 +258,10 @@ def generate_all_orders(employee, user=None, custom_context=None):
             context['missing_data'].extend(custom_missing_data)
             # Обновляем флаг наличия недостающих данных
             context['has_missing_data'] = len(context['missing_data']) > 0
-
         context.update(custom_context)
 
     # Генерируем документ
     return generate_docx_from_template(template.id, context, employee, user)
-
 
 def generate_siz_card(employee, user=None, custom_context=None):
     """
@@ -338,12 +329,10 @@ def generate_siz_card(employee, user=None, custom_context=None):
             context['missing_data'].extend(custom_missing_data)
             # Обновляем флаг наличия недостающих данных
             context['has_missing_data'] = len(context['missing_data']) > 0
-
         context.update(custom_context)
 
     # Генерируем документ
     return generate_docx_from_template(template.id, context, employee, user)
-
 
 def get_document_template(document_type):
     """
@@ -362,7 +351,6 @@ def get_document_template(document_type):
         logger = logging.getLogger(__name__)
         logger.error(f"Шаблон документа типа '{document_type}' не найден")
         return None
-
 
 def generate_document_from_template(template, employee, user=None, context=None):
     """
@@ -390,7 +378,6 @@ def generate_document_from_template(template, employee, user=None, context=None)
             base_context['missing_data'].extend(custom_missing_data)
             # Обновляем флаг наличия недостающих данных
             base_context['has_missing_data'] = len(base_context['missing_data']) > 0
-
         base_context.update(context)
 
     # Генерируем документ

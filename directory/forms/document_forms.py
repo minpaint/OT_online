@@ -1,4 +1,3 @@
-# D:\YandexDisk\OT_online\directory\forms\document_forms.py
 """
 📝 Формы для работы с документами
 
