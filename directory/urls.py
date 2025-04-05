@@ -84,11 +84,8 @@ document_patterns = [
     path('<int:pk>/', GeneratedDocumentDetailView.as_view(), name='document_detail'),
     path('<int:pk>/download/', document_download, name='document_download'),
     path('selection/<int:employee_id>/', DocumentSelectionView.as_view(), name='document_selection'),
-    path('internship-order/<int:employee_id>/', InternshipOrderFormView.as_view(), name='internship_order_form'),
-    path('admission-order/<int:employee_id>/', AdmissionOrderFormView.as_view(), name='admission_order_form'),
     path('documents-preview/', DocumentsPreviewView.as_view(), name='documents_preview'),
     path('api/update-preview-data/', update_document_data, name='update_preview_data'),
-
 ]
 
 # ⚙️ URL-маршруты для оборудования (если появится соответствующий ListView)

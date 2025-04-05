@@ -1,111 +1,57 @@
 {% extends 'base.html' %}
 {% load static %}
-{% load crispy_forms_tags %}
+{% load i18n %}
+{% load document_filters %}
 
 {% block title %}{{ title }}{% endblock %}
 
 {% block extra_css %}
 <style>
-    /* Стили для предпросмотра документа */
     .document-preview {
         background-color: #fff;
         border: 1px solid #dee2e6;
         border-radius: 0.25rem;
         box-shadow: 0 0.125rem 0.25rem rgba(0, 0, 0, 0.075);
         padding: 2rem;
-        margin-bottom: 1.5rem;
+        margin-bottom: 2rem;
         position: relative;
     }
     
-    .document-preview.editing-enabled .editable-field {
+    .document-title {
+        font-weight: bold;
+        border-bottom: 1px solid #dee2e6;
+        padding-bottom: 0.75rem;
+        margin-bottom: 1.5rem;
+    }
+
+    .editable-field {
         background-color: #f8f9fa;
         border: 1px dashed #ced4da;
         padding: 0.25rem 0.5rem;
         border-radius: 0.25rem;
-        min-height: 2rem;
-        cursor: text;
-    }
-    
-    .document-preview.editing-enabled .editable-field:hover {
-        background-color: #e9ecef;
-    }
-    
-    .editable-field {
-        display: inline-block;
-        min-width: 1rem;
-    }
-    
-    .document-header {
-        text-align: center;
-        margin-bottom: 2rem;
-    }
-    
-    .document-header h1 {
-        font-size: 1.5rem;
-        font-weight: bold;
-        margin: 1rem 0;
-    }
-    
-    .document-date {
-        text-align: right;
-        margin-bottom: 1.5rem;
-    }
-    
-    .document-content {
-        font-size: 1rem;
-        line-height: 1.5;
-    }
-    
-    .document-content p {
-        margin-bottom: 1rem;
-    }
-    
-    .document-footer {
-        margin-top: 2rem;
-    }
-    
-    .document-signatures {
-        margin-top: 2rem;
-    }
-    
-    .document-signatures .signature-line {
-        display: flex;
-        margin-bottom: 1rem;
-    }
-    
-    .document-signatures .signature-title {
-        flex: 0 0 200px;
-    }
-    
-    .document-signatures .signature-placeholder {
-        flex: 1;
-        border-bottom: 1px solid #000;
-        margin: 0 1rem;
-    }
-    
-    .document-signatures .signature-name {
-        flex: 0 0 200px;
-    }
-    
-    .edit-controls {
-        position: sticky;
-        bottom: 0;
-        background-color: rgba(255, 255, 255, 0.9);
-        padding: 1rem;
-        border-top: 1px solid #dee2e6;
-        margin: 2rem -2rem -2rem;
-        display: none;
-    }
-    
-    .document-preview.editing-enabled .edit-controls {
+        margin: 0.25rem 0;
         display: block;
     }
+
+    .editable-field:hover {
+        background-color: #e9ecef;
+    }
+
+    .missing-data-warning {
+        background-color: #fff3cd;
+        border-color: #ffecb5;
+        color: #664d03;
+    }
     
-    .edit-btn {
-        position: absolute;
-        top: 0.5rem;
-        right: 0.5rem;
-        z-index: 10;
+    /* Стили для полей с отсутствующими данными */
+    .missing-field {
+        background-color: #ffebee;
+        border: 1px dashed #f44336;
+    }
+    
+    .missing-field-label {
+        color: #f44336;
+        font-weight: bold;
     }
 </style>
 {% endblock %}
@@ -125,247 +71,176 @@
     </div>
     
     <div class="row">
-        <div class="col-md-10 offset-md-1">
+        <div class="col-md-12">
             <div class="card">
                 <div class="card-header bg-primary text-white">
                     <h4 class="mb-0">{{ title }}</h4>
                 </div>
                 <div class="card-body">
-                    <form method="post" action="">
-                        {% csrf_token %}
-                        {{ form.document_data }}
-                        {{ form.document_type }}
-                        {{ form.employee_id }}
-                        
-                        <button type="button" id="enable-editing-btn" class="btn btn-sm btn-outline-primary mb-3">
-                            <i class="fas fa-edit"></i> Включить редактирование
-                        </button>
-                        
-                        <div id="document-preview" class="document-preview">
-                            <!-- Шаблон для распоряжения о стажировке -->
-                            {% if document_type == 'internship_order' %}
-                                <div class="document-header">
-                                    <p>Общество с ограниченной ответственностью</p>
-                                    <p class="editable-field" data-field="organization_name">{{ document_data.organization_name }}</p>
-                                    <hr>
-                                    <h1>РАСПОРЯЖЕНИЕ</h1>
-                                </div>
-                                
-                                <div class="document-date">
-                                    <span class="editable-field" data-field="location">{{ document_data.location }}</span>
-                                </div>
-                                
-                                <div class="document-date">
-                                    <span class="editable-field" data-field="order_date">{{ document_data.order_date }}</span> №<span class="editable-field" data-field="order_number">{{ document_data.order_number }}</span>
-                                </div>
-                                
-                                <div class="document-content">
-                                    <p>Об установлении стажировки</p>
-                                    
-                                    <p>Во исполнение требований Инструкции о порядке обучения, стажировки, инструктажа и проверки знаний работающих по вопросам охраны труда, утвержденной Постановлением Министерства труда и социальной защиты Республики Беларусь от 28 ноября 2008 г. № 175, -</p>
-                                    
-                                    <p><strong>ОБЯЗЫВАЮ:</strong></p>
-                                    
-                                    <ol>
-                                        <li>
-                                            <span class="editable-field" data-field="fio_dative">{{ document_data.fio_dative }}</span>, 
-                                            <span class="editable-field" data-field="position_dative">{{ document_data.position_dative }}</span>
-                                            {% if document_data.department %} 
-                                            <span class="editable-field" data-field="department">{{ document_data.department }}</span>
-                                            {% endif %}
-                                            {% if document_data.subdivision %} 
-                                            <span class="editable-field" data-field="subdivision">{{ document_data.subdivision }}</span>
-                                            {% endif %}, 
-                                            установить стажировку по вопросам охраны труда продолжительностью 
-                                            <span class="editable-field" data-field="internship_duration">{{ document_data.internship_duration }}</span> (дней), 
-                                            с учетом графика работы.
-                                        </li>
-                                        <li>
-                                            Руководителем стажировки назначить 
-                                            <span class="editable-field" data-field="head_of_internship_position">{{ document_data.head_of_internship_position }}</span>
-                                            <span class="editable-field" data-field="head_of_internship_name">{{ document_data.head_of_internship_name }}</span>.
-                                        </li>
-                                    </ol>
-                                    
-                                    <div class="document-signatures">
-                                        <div class="signature-line">
-                                            <div class="signature-title editable-field" data-field="director_position">{{ document_data.director_position }}</div>
-                                            <div class="signature-placeholder"></div>
-                                            <div class="signature-name editable-field" data-field="director_name">{{ document_data.director_name }}</div>
-                                        </div>
-                                    </div>
-                                    
-                                    <p class="mt-4">С распоряжением ознакомлены:</p>
-                                    
-                                    <div class="signature-line">
-                                        <div class="signature-name editable-field" data-field="employee_name_initials">{{ document_data.employee_name_initials }}</div>
-                                        <div class="signature-placeholder"></div>
-                                    </div>
-                                    
-                                    <div class="signature-line">
-                                        <div class="signature-name editable-field" data-field="head_of_internship_name_initials">{{ document_data.head_of_internship_name_initials }}</div>
-                                        <div class="signature-placeholder"></div>
-                                    </div>
-                                </div>
-                            
-                            <!-- Шаблон для распоряжения о допуске к самостоятельной работе -->
-                            {% elif document_type == 'admission_order' %}
-                                <div class="document-header">
-                                    <p>Общество с ограниченной ответственностью</p>
-                                    <p class="editable-field" data-field="organization_name">{{ document_data.organization_name }}</p>
-                                    <hr>
-                                    <h1>РАСПОРЯЖЕНИЕ</h1>
-                                </div>
-                                
-                                <div class="document-date">
-                                    <span class="editable-field" data-field="location">{{ document_data.location }}</span>
-                                </div>
-                                
-                                <div class="document-date">
-                                    <span class="editable-field" data-field="order_date">{{ document_data.order_date }}</span> №<span class="editable-field" data-field="order_number">{{ document_data.order_number }}</span>
-                                </div>
-                                
-                                <div class="document-content">
-                                    <p>О допуске к самостоятельной работе</p>
-                                    
-                                    <p>В связи с успешным прохождением стажировки по вопросам охраны труда и последующей первичной проверки знаний по вопросам охраны труда</p>
-                                    
-                                    <p><strong>ОБЯЗЫВАЮ:</strong></p>
-                                    
-                                    <ol>
-                                        <li>
-                                            Допустить <span class="editable-field" data-field="fio_nominative">{{ document_data.fio_nominative }}</span>, 
-                                            <span class="editable-field" data-field="position_nominative">{{ document_data.position_nominative }}</span>
-                                            {% if document_data.department %} 
-                                            <span class="editable-field" data-field="department">{{ document_data.department }}</span>
-                                            {% endif %}
-                                            {% if document_data.subdivision %} 
-                                            <span class="editable-field" data-field="subdivision">{{ document_data.subdivision }}</span>
-                                            {% endif %}
-                                            к самостоятельной работе по профессии (должности, отдельному виду работ (услуг)).
-                                        </li>
-                                    </ol>
-                                    
-                                    <div class="document-signatures">
-                                        <div class="signature-line">
-                                            <div class="signature-title editable-field" data-field="director_position">{{ document_data.director_position }}</div>
-                                            <div class="signature-placeholder"></div>
-                                            <div class="signature-name editable-field" data-field="director_name">{{ document_data.director_name }}</div>
-                                        </div>
-                                    </div>
-                                    
-                                    <p class="mt-4">С распоряжением ознакомлены:</p>
-                                    
-                                    <div class="signature-line">
-                                        <div class="signature-name editable-field" data-field="employee_name_initials">{{ document_data.employee_name_initials }}</div>
-                                        <div class="signature-placeholder"></div>
-                                    </div>
-                                    
-                                    <div class="signature-line">
-                                        <div class="signature-name editable-field" data-field="head_of_internship_name_initials">{{ document_data.head_of_internship_name_initials }}</div>
-                                        <div class="signature-placeholder"></div>
-                                    </div>
-                                </div>
-                            {% endif %}
-                            
-                            <!-- Контроли для редактирования -->
-                            <div class="edit-controls">
-                                <div class="alert alert-info">
-                                    <i class="fas fa-info-circle"></i> Вы можете редактировать любой текст, выделенный серым фоном. Внесите необходимые изменения, затем нажмите "Сохранить изменения".
-                                </div>
-                                <button type="button" id="save-changes-btn" class="btn btn-primary">
-                                    <i class="fas fa-save"></i> Сохранить изменения
-                                </button>
-                                <button type="button" id="cancel-editing-btn" class="btn btn-secondary">
-                                    <i class="fas fa-times"></i> Отменить редактирование
-                                </button>
+                    {% if employee %}
+                    <div class="alert alert-info mb-4">
+                        <h5>📋 Информация о сотруднике</h5>
+                        <div class="row">
+                            <div class="col-md-6">
+                                <p><strong>ФИО:</strong> {{ employee.full_name_nominative }}</p>
+                                <p><strong>Должность:</strong> {{ employee.position.position_name }}</p>
+                            </div>
+                            <div class="col-md-6">
+                                {% if employee.department %}
+                                <p><strong>Отдел:</strong> {{ employee.department.name }}</p>
+                                {% endif %}
+                                {% if employee.subdivision %}
+                                <p><strong>Подразделение:</strong> {{ employee.subdivision.name }}</p>
+                                {% endif %}
+                                <p><strong>Организация:</strong> {{ employee.organization.short_name_ru }}</p>
                             </div>
                         </div>
+                    </div>
+                    {% endif %}
+                    
+                    <form method="post" action="">
+                        {% csrf_token %}
                         
-                        <div class="d-flex justify-content-between mt-4">
-                            <a href="{{ request.META.HTTP_REFERER }}" class="btn btn-secondary">
-                                <i class="fas fa-arrow-left"></i> Назад
-                            </a>
-                            <button type="submit" class="btn btn-success">
-                                <i class="fas fa-file-download"></i> Сгенерировать документ
-                            </button>
-                        </div>
+                        {% if preview_data %}
+                            <div class="accordion" id="documentsAccordion">
+                                {% for doc_data in preview_data %}
+                                    <div class="accordion-item">
+                                        <h2 class="accordion-header" id="heading{{ forloop.counter }}">
+                                            <button class="accordion-button {% if not forloop.first %}collapsed{% endif %}" type="button" 
+                                                    data-bs-toggle="collapse" data-bs-target="#collapse{{ forloop.counter }}" 
+                                                    aria-expanded="{% if forloop.first %}true{% else %}false{% endif %}" 
+                                                    aria-controls="collapse{{ forloop.counter }}">
+                                                {% if document_types_dict %}
+                                                    {{ document_types_dict|get_item:doc_data.document_type|default:doc_data.document_type }}
+                                                {% else %}
+                                                    {% if doc_data.document_type == 'all_orders' %}
+                                                        Распоряжения о стажировке
+                                                    {% elif doc_data.document_type == 'siz_card' %}
+                                                        Карточка учета СИЗ
+                                                    {% elif doc_data.document_type == 'knowledge_protocol' %}
+                                                        Протокол проверки знаний
+                                                    {% elif doc_data.document_type == 'doc_familiarization' %}
+                                                        Лист ознакомления с документами
+                                                    {% else %}
+                                                        {{ doc_data.document_type }}
+                                                    {% endif %}
+                                                {% endif %}
+                                                {% if doc_data.document_data.has_missing_data %}
+                                                    <span class="badge bg-warning ms-2">⚠️ Требует внимания</span>
+                                                {% endif %}
+                                            </button>
+                                        </h2>
+                                        <div id="collapse{{ forloop.counter }}" 
+                                             class="accordion-collapse collapse {% if forloop.first %}show{% endif %}" 
+                                             aria-labelledby="heading{{ forloop.counter }}" 
+                                             data-bs-parent="#documentsAccordion">
+                                            <div class="accordion-body">
+                                                {% if doc_data.document_data.has_missing_data %}
+                                                    <div class="alert alert-warning missing-data-warning mb-4">
+                                                        <h5><i class="fas fa-exclamation-triangle"></i> Внимание! Отсутствуют некоторые данные:</h5>
+                                                        <ul>
+                                                            {% for item in doc_data.document_data.missing_data %}
+                                                                <li>{{ item }}</li>
+                                                            {% endfor %}
+                                                        </ul>
+                                                        <p class="mb-0">Пожалуйста, заполните недостающие данные ниже перед генерацией документа.</p>
+                                                    </div>
+                                                {% endif %}
+
+                                                <div class="document-data-form">
+                                                    {% for key, value in doc_data.document_data.items %}
+                                                        {% if key != 'missing_data' and key != 'has_missing_data' %}
+                                                            <div class="mb-3 row">
+                                                                <label class="col-sm-4 col-form-label {% if not value %}missing-field-label{% endif %}">{{ key }}:</label>
+                                                                <div class="col-sm-8">
+                                                                    <input type="text" 
+                                                                           class="form-control document-field {% if not value %}missing-field{% endif %}" 
+                                                                           name="document_data_{{ doc_data.document_type }}_{{ key }}" 
+                                                                           value="{{ value }}"
+                                                                           data-doc-type="{{ doc_data.document_type }}"
+                                                                           data-field-name="{{ key }}"
+                                                                           {% if not value %}placeholder="Необходимо заполнить это поле"{% endif %}>
+                                                                </div>
+                                                            </div>
+                                                        {% endif %}
+                                                    {% endfor %}
+                                                </div>
+                                            </div>
+                                        </div>
+                                    </div>
+                                {% endfor %}
+                            </div>
+
+                            <div class="d-flex justify-content-between mt-4">
+                                {% if employee %}
+                                    <a href="{% url 'directory:documents:document_selection' employee_id=employee.id %}" class="btn btn-secondary">
+                                        <i class="fas fa-arrow-left"></i> Назад
+                                    </a>
+                                {% else %}
+                                    <a href="{% url 'directory:home' %}" class="btn btn-secondary">
+                                        <i class="fas fa-home"></i> На главную
+                                    </a>
+                                {% endif %}
+                                <button type="submit" class="btn btn-success">
+                                    <i class="fas fa-file-download"></i> Сгенерировать документы
+                                </button>
+                            </div>
+                        {% else %}
+                            <div class="alert alert-info">
+                                Нет данных для предпросмотра документов. Пожалуйста, выберите типы документов для генерации.
+                            </div>
+                            
+                            <div class="d-flex justify-content-center mt-4">
+                                <a href="{% url 'directory:home' %}" class="btn btn-primary">
+                                    <i class="fas fa-home"></i> На главную
+                                </a>
+                            </div>
+                        {% endif %}
                     </form>
                 </div>
             </div>
         </div>
     </div>
 </div>
-{% endblock %}
 
-{% block extra_js %}
 <script>
     document.addEventListener('DOMContentLoaded', function() {
-        const documentPreview = document.getElementById('document-preview');
-        const enableEditingBtn = document.getElementById('enable-editing-btn');
-        const saveChangesBtn = document.getElementById('save-changes-btn');
-        const cancelEditingBtn = document.getElementById('cancel-editing-btn');
-        const documentDataInput = document.querySelector('input[name="document_data"]');
-        
-        // Сохраняем оригинальные данные
-        let originalData = JSON.parse(documentDataInput.value);
-        
-        // Включить режим редактирования
-        enableEditingBtn.addEventListener('click', function() {
-            documentPreview.classList.add('editing-enabled');
-            enableEditingBtn.style.display = 'none';
-            
-            // Делаем поля редактируемыми
-            const editableFields = documentPreview.querySelectorAll('.editable-field');
-            editableFields.forEach(field => {
-                field.setAttribute('contenteditable', 'true');
-            });
-        });
-        
-        // Отменить редактирование
-        cancelEditingBtn.addEventListener('click', function() {
-            documentPreview.classList.remove('editing-enabled');
-            enableEditingBtn.style.display = 'block';
-            
-            // Восстанавливаем оригинальные значения
-            const editableFields = documentPreview.querySelectorAll('.editable-field');
-            editableFields.forEach(field => {
-                const fieldName = field.dataset.field;
-                if (originalData[fieldName]) {
-                    field.textContent = originalData[fieldName];
+        // AJAX обновление данных документа при изменении полей
+        const documentFields = document.querySelectorAll('.document-field');
+        documentFields.forEach(field => {
+            field.addEventListener('change', function() {
+                const docType = this.getAttribute('data-doc-type');
+                const fieldName = this.getAttribute('data-field-name');
+                const fieldValue = this.value;
+                
+                // Если поле было отмечено как отсутствующее и теперь заполнено,
+                // удаляем выделение
+                if (fieldValue && this.classList.contains('missing-field')) {
+                    this.classList.remove('missing-field');
+                    const label = this.closest('.row').querySelector('label');
+                    if (label) {
+                        label.classList.remove('missing-field-label');
+                    }
                 }
-                field.setAttribute('contenteditable', 'false');
+
+                fetch('{% url "directory:documents:update_preview_data" %}', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/x-www-form-urlencoded',
+                        'X-CSRFToken': document.querySelector('input[name="csrfmiddlewaretoken"]').value
+                    },
+                    body: `doc_type=${docType}&field_name=${fieldName}&field_value=${fieldValue}`
+                })
+                .then(response => response.json())
+                .then(data => {
+                    if (!data.success) {
+                        console.error('Ошибка при обновлении данных:', data.error);
+                    }
+                })
+                .catch(error => {
+                    console.error('Ошибка при отправке запроса:', error);
+                });
             });
-        });
-        
-        // Сохранить изменения
-        saveChangesBtn.addEventListener('click', function() {
-            // Собираем данные из редактируемых полей
-            const editableFields = documentPreview.querySelectorAll('.editable-field');
-            let updatedData = {...originalData};
-            
-            editableFields.forEach(field => {
-                const fieldName = field.dataset.field;
-                updatedData[fieldName] = field.textContent.trim();
-            });
-            
-            // Обновляем скрытое поле с данными формы
-            documentDataInput.value = JSON.stringify(updatedData);
-            
-            // Сохраняем новые данные как оригинальные
-            originalData = {...updatedData};
-            
-            // Выключаем режим редактирования
-            documentPreview.classList.remove('editing-enabled');
-            enableEditingBtn.style.display = 'block';
-            
-            // Отключаем редактирование полей
-            editableFields.forEach(field => {
-                field.setAttribute('contenteditable', 'false');
-            });
-            
-            // Показываем сообщение
-            alert('Изменения сохранены');
         });
     });
 </script>

@@ -7,11 +7,11 @@
 """
 from .selection import DocumentSelectionView
 from .forms import (
-    InternshipOrderFormView,
-    AdmissionOrderFormView
+    AllOrdersForm,
+    SIZCardForm  # Добавляем новую форму
 )
 from .preview import (
-    DocumentsPreviewView,  # Исправлено: раньше было DocumentPreviewView
+    DocumentsPreviewView,
     update_document_data
 )
 from .management import (
@@ -22,9 +22,9 @@ from .management import (
 
 __all__ = [
     'DocumentSelectionView',
-    'InternshipOrderFormView',
-    'AdmissionOrderFormView',
-    'DocumentsPreviewView',  # Исправлено: раньше было DocumentPreviewView
+    'AllOrdersForm',
+    'SIZCardForm',  # Добавляем новую форму в список экспорта
+    'DocumentsPreviewView',
     'update_document_data',
     'GeneratedDocumentListView',
     'GeneratedDocumentDetailView',

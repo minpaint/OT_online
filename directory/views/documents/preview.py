@@ -111,19 +111,42 @@ class DocumentsPreviewView(LoginRequiredMixin, TemplateView):
             # Генерируем документ в зависимости от типа
             generated_doc = None
 
-            if doc_type == 'internship_order':
-                generated_doc = generate_internship_order(
+            if doc_type == 'all_orders':
+                from directory.utils.docx_generator import generate_all_orders
+                generated_doc = generate_all_orders(
                     employee,
                     request.user,
                     document_data
                 )
-            elif doc_type == 'admission_order':
-                generated_doc = generate_admission_order(
+            elif doc_type == 'siz_card':
+                from directory.utils.docx_generator import generate_siz_card
+                generated_doc = generate_siz_card(
                     employee,
                     request.user,
                     document_data
                 )
-            # Здесь можно добавить обработку других типов документов
+            elif doc_type == 'knowledge_protocol':
+                # Используем общую функцию для генерации документа по шаблону
+                from directory.utils.docx_generator import get_document_template, generate_document_from_template
+                template = get_document_template('knowledge_protocol')
+                if template:
+                    generated_doc = generate_document_from_template(
+                        template,
+                        employee,
+                        request.user,
+                        document_data
+                    )
+            elif doc_type == 'doc_familiarization':
+                # Используем общую функцию для генерации документа по шаблону
+                from directory.utils.docx_generator import get_document_template, generate_document_from_template
+                template = get_document_template('doc_familiarization')
+                if template:
+                    generated_doc = generate_document_from_template(
+                        template,
+                        employee,
+                        request.user,
+                        document_data
+                    )
 
             if generated_doc:
                 generated_documents.append(generated_doc)

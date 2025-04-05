@@ -1,3 +1,4 @@
+# D:\YandexDisk\OT_online\directory\forms\document_forms.py
 """
 📝 Формы для работы с документами
 
@@ -51,9 +52,10 @@ class DocumentSelectionForm(forms.Form):
             )
         )
 
-class InternshipOrderForm(forms.Form):
+
+class AllOrdersForm(forms.Form):
     """
-    Форма для настройки параметров распоряжения о стажировке
+    Форма для настройки параметров распоряжений о стажировке (объединенный шаблон)
     """
     # Поля для редактирования шапки документа
     organization_name = forms.CharField(
@@ -132,7 +134,6 @@ class InternshipOrderForm(forms.Form):
     director_position = forms.CharField(
         label=_("Должность руководителя"),
         required=True,
-        initial="Директор",
         widget=forms.TextInput(attrs={'class': 'form-control'})
     )
 
@@ -155,17 +156,6 @@ class InternshipOrderForm(forms.Form):
         widget=forms.TextInput(attrs={'class': 'form-control'})
     )
 
-    # Добавляем скрытые поля для отслеживания иерархического уровня
-    director_level = forms.CharField(
-        widget=forms.HiddenInput(),
-        required=False
-    )
-
-    internship_leader_level = forms.CharField(
-        widget=forms.HiddenInput(),
-        required=False
-    )
-
     def __init__(self, *args, **kwargs):
         initial_data = kwargs.get('initial', {})
         self.employee = kwargs.pop('employee', None)
@@ -174,7 +164,7 @@ class InternshipOrderForm(forms.Form):
 
         self.helper = FormHelper()
         self.helper.form_method = 'post'
-        self.helper.form_id = 'internship-order-form'
+        self.helper.form_id = 'all-orders-form'
 
         # Создаем красивый макет для формы
         self.helper.layout = Layout(
@@ -225,8 +215,6 @@ class InternshipOrderForm(forms.Form):
                     Div('head_of_internship_name_initials', css_class='col-md-6'),
                     css_class='row'
                 ),
-                'director_level',
-                'internship_leader_level',
             ),
             ButtonHolder(
                 Submit('preview', _('Предпросмотр'), css_class='btn-primary'),
@@ -237,10 +225,13 @@ class InternshipOrderForm(forms.Form):
         )
 
 
-class AdmissionOrderForm(forms.Form):
+class SIZCardForm(forms.Form):
     """
-    Форма для настройки параметров распоряжения о допуске к самостоятельной работе
+    Форма для настройки параметров карточки учета СИЗ
     """
+    # Здесь можно добавить дополнительные поля для настройки карточки СИЗ, если необходимо
+    # Например, размеры СИЗ, которые не указаны в профиле сотрудника
+
     # Поля для редактирования шапки документа
     organization_name = forms.CharField(
         label=_("Наименование организации"),
@@ -248,86 +239,53 @@ class AdmissionOrderForm(forms.Form):
         widget=forms.TextInput(attrs={'class': 'form-control'})
     )
 
-    location = forms.CharField(
-        label=_("Место издания"),
+    employee_name = forms.CharField(
+        label=_("ФИО сотрудника"),
         required=True,
-        initial="г. Минск",
         widget=forms.TextInput(attrs={'class': 'form-control'})
     )
 
-    order_date = forms.DateField(
-        label=_("Дата распоряжения"),
+    position_name = forms.CharField(
+        label=_("Должность"),
         required=True,
-        widget=forms.DateInput(attrs={'type': 'date', 'class': 'form-control'})
+        widget=forms.TextInput(attrs={'class': 'form-control'})
     )
 
-    order_number = forms.CharField(
-        label=_("Номер распоряжения"),
+    # Поля для размеров СИЗ
+    height = forms.CharField(
+        label=_("Рост"),
         required=False,
         widget=forms.TextInput(attrs={'class': 'form-control'})
     )
 
-    # Поля для редактирования данных сотрудника
-    fio_nominative = forms.CharField(
-        label=_("ФИО сотрудника (именительный падеж)"),
-        required=True,
-        widget=forms.TextInput(attrs={'class': 'form-control'})
-    )
-
-    position_nominative = forms.CharField(
-        label=_("Должность (именительный падеж)"),
-        required=True,
-        widget=forms.TextInput(attrs={'class': 'form-control'})
-    )
-
-    department = forms.CharField(
-        label=_("Отдел"),
+    clothing_size = forms.CharField(
+        label=_("Размер одежды"),
         required=False,
         widget=forms.TextInput(attrs={'class': 'form-control'})
     )
 
-    subdivision = forms.CharField(
-        label=_("Структурное подразделение"),
+    shoe_size = forms.CharField(
+        label=_("Размер обуви"),
         required=False,
         widget=forms.TextInput(attrs={'class': 'form-control'})
     )
 
-    # Должность и ФИО директора
-    director_position = forms.CharField(
-        label=_("Должность руководителя"),
-        required=True,
-        initial="Директор",
+    headgear_size = forms.CharField(
+        label=_("Размер головного убора"),
+        required=False,
         widget=forms.TextInput(attrs={'class': 'form-control'})
     )
 
-    director_name = forms.CharField(
-        label=_("ФИО руководителя"),
-        required=True,
+    respirator_size = forms.CharField(
+        label=_("Размер СИЗОД"),
+        required=False,
         widget=forms.TextInput(attrs={'class': 'form-control'})
     )
 
-    # Сотрудники для ознакомления
-    employee_name_initials = forms.CharField(
-        label=_("ФИО сотрудника (сокращенно)"),
-        required=True,
+    gloves_size = forms.CharField(
+        label=_("Размер СИЗ рук"),
+        required=False,
         widget=forms.TextInput(attrs={'class': 'form-control'})
-    )
-
-    head_of_internship_name_initials = forms.CharField(
-        label=_("ФИО руководителя (сокращенно)"),
-        required=True,
-        widget=forms.TextInput(attrs={'class': 'form-control'})
-    )
-
-    # Добавляем скрытые поля для отслеживания иерархического уровня
-    director_level = forms.CharField(
-        widget=forms.HiddenInput(),
-        required=False
-    )
-
-    internship_leader_level = forms.CharField(
-        widget=forms.HiddenInput(),
-        required=False
     )
 
     def __init__(self, *args, **kwargs):
@@ -338,50 +296,36 @@ class AdmissionOrderForm(forms.Form):
 
         self.helper = FormHelper()
         self.helper.form_method = 'post'
-        self.helper.form_id = 'admission-order-form'
+        self.helper.form_id = 'siz-card-form'
 
         # Создаем красивый макет для формы
         self.helper.layout = Layout(
             Fieldset(
                 _('Основная информация'),
                 Div(
-                    Div('organization_name', css_class='col-md-8'),
-                    Div('location', css_class='col-md-4'),
+                    Div('organization_name', css_class='col-md-12'),
                     css_class='row'
                 ),
                 Div(
-                    Div('order_date', css_class='col-md-6'),
-                    Div('order_number', css_class='col-md-6'),
+                    Div('employee_name', css_class='col-md-6'),
+                    Div('position_name', css_class='col-md-6'),
                     css_class='row'
                 ),
             ),
             Fieldset(
-                _('Информация о допуске'),
+                _('Размеры СИЗ'),
                 Div(
-                    Div('fio_nominative', css_class='col-md-6'),
-                    Div('position_nominative', css_class='col-md-6'),
+                    Div('height', css_class='col-md-4'),
+                    Div('clothing_size', css_class='col-md-4'),
+                    Div('shoe_size', css_class='col-md-4'),
                     css_class='row'
                 ),
                 Div(
-                    Div('department', css_class='col-md-6'),
-                    Div('subdivision', css_class='col-md-6'),
+                    Div('headgear_size', css_class='col-md-4'),
+                    Div('respirator_size', css_class='col-md-4'),
+                    Div('gloves_size', css_class='col-md-4'),
                     css_class='row'
                 ),
-            ),
-            Fieldset(
-                _('Подписи и ознакомление'),
-                Div(
-                    Div('director_position', css_class='col-md-6'),
-                    Div('director_name', css_class='col-md-6'),
-                    css_class='row'
-                ),
-                Div(
-                    Div('employee_name_initials', css_class='col-md-6'),
-                    Div('head_of_internship_name_initials', css_class='col-md-6'),
-                    css_class='row'
-                ),
-                'director_level',
-                'internship_leader_level',
             ),
             ButtonHolder(
                 Submit('preview', _('Предпросмотр'), css_class='btn-primary'),
