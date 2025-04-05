@@ -1,3 +1,4 @@
+# D:\YandexDisk\OT_online\directory\management\commands\init_document_templates.py
 """
 📂 Команда для инициализации шаблонов документов
 
@@ -28,24 +29,24 @@ class Command(BaseCommand):
             self.stdout.write(self.style.WARNING(f'Создана директория {templates_dir}'))
 
         # Создаем шаблоны, если они отсутствуют
-        self._create_internship_order_template(templates_dir)
-        self._create_admission_order_template(templates_dir)
+        self._create_all_orders_template(templates_dir)
         self._create_knowledge_protocol_template(templates_dir)
         self._create_doc_familiarization_template(templates_dir)
+        self._create_siz_card_template(templates_dir)
 
         self.stdout.write(self.style.SUCCESS('Шаблоны документов успешно инициализированы'))
 
-    def _create_internship_order_template(self, templates_dir):
+    def _create_all_orders_template(self, templates_dir):
         """
-        Создает шаблон распоряжения о стажировке
+        Создает шаблон распоряжений о стажировке
         """
         # Проверяем, существует ли уже такой шаблон в базе
-        if DocumentTemplate.objects.filter(document_type='internship_order').exists():
-            self.stdout.write('Шаблон распоряжения о стажировке уже существует')
+        if DocumentTemplate.objects.filter(document_type='all_orders').exists():
+            self.stdout.write('Шаблон распоряжений о стажировке уже существует')
             return
 
         # Путь к файлу шаблона
-        template_path = os.path.join(templates_dir, 'internship_order_template.docx')
+        template_path = os.path.join(templates_dir, 'all_order_template.docx')
 
         # Если файл шаблона отсутствует, создаем заглушку
         if not os.path.exists(template_path):
@@ -55,24 +56,24 @@ class Command(BaseCommand):
 
             # Создаем объект шаблона в базе
             template = DocumentTemplate(
-                name='Распоряжение о стажировке',
-                description='Шаблон распоряжения об установлении стажировки сотруднику',
-                document_type='internship_order',
+                name='Распоряжения о стажировке',
+                description='Шаблон для генерации распоряжений о стажировке и допуске к работе',
+                document_type='all_orders',
                 is_active=True
             )
 
             # Создаем простой placeholder-файл
             placeholder_content = (
-                "Шаблон документа: Распоряжение о стажировке\n\n"
+                "Шаблон документа: Распоряжения о стажировке\n\n"
                 "Это временный placeholder-файл. Пожалуйста, замените его "
                 "на реальный шаблон DOCX согласно инструкции в документации."
             )
 
             # Создаем временный файл
             file_content = ContentFile(placeholder_content.encode('utf-8'))
-            template.template_file.save('internship_order_template.docx', file_content)
+            template.template_file.save('all_order_template.docx', file_content)
 
-            self.stdout.write(self.style.SUCCESS('Создан шаблон распоряжения о стажировке'))
+            self.stdout.write(self.style.SUCCESS('Создан шаблон распоряжений о стажировке'))
         else:
             # Загружаем существующий файл шаблона
             with open(template_path, 'rb') as f:
@@ -80,73 +81,15 @@ class Command(BaseCommand):
 
             # Создаем объект шаблона в базе
             template = DocumentTemplate(
-                name='Распоряжение о стажировке',
-                description='Шаблон распоряжения об установлении стажировки сотруднику',
-                document_type='internship_order',
+                name='Распоряжения о стажировке',
+                description='Шаблон для генерации распоряжений о стажировке и допуске к работе',
+                document_type='all_orders',
                 is_active=True
             )
-            template.template_file.save('internship_order_template.docx', file_content)
+            template.template_file.save('all_order_template.docx', file_content)
 
             self.stdout.write(self.style.SUCCESS(
-                f'Создан шаблон распоряжения о стажировке из файла {template_path}'
-            ))
-
-    def _create_admission_order_template(self, templates_dir):
-        """
-        Создает шаблон распоряжения о допуске к самостоятельной работе
-        """
-        # Проверяем, существует ли уже такой шаблон в базе
-        if DocumentTemplate.objects.filter(document_type='admission_order').exists():
-            self.stdout.write('Шаблон распоряжения о допуске к самостоятельной работе уже существует')
-            return
-
-        # Путь к файлу шаблона
-        template_path = os.path.join(templates_dir, 'admission_order_template.docx')
-
-        # Если файл шаблона отсутствует, создаем заглушку
-        if not os.path.exists(template_path):
-            self.stdout.write(self.style.WARNING(
-                f'Файл шаблона {template_path} не найден, создается заглушка'
-            ))
-
-            # Создаем объект шаблона в базе
-            template = DocumentTemplate(
-                name='Распоряжение о допуске к самостоятельной работе',
-                description='Шаблон распоряжения о допуске сотрудника к самостоятельной работе',
-                document_type='admission_order',
-                is_active=True
-            )
-
-            # Создаем простой placeholder-файл
-            placeholder_content = (
-                "Шаблон документа: Распоряжение о допуске к самостоятельной работе\n\n"
-                "Это временный placeholder-файл. Пожалуйста, замените его "
-                "на реальный шаблон DOCX согласно инструкции в документации."
-            )
-
-            # Создаем временный файл
-            file_content = ContentFile(placeholder_content.encode('utf-8'))
-            template.template_file.save('admission_order_template.docx', file_content)
-
-            self.stdout.write(self.style.SUCCESS(
-                'Создан шаблон распоряжения о допуске к самостоятельной работе'
-            ))
-        else:
-            # Загружаем существующий файл шаблона
-            with open(template_path, 'rb') as f:
-                file_content = ContentFile(f.read())
-
-            # Создаем объект шаблона в базе
-            template = DocumentTemplate(
-                name='Распоряжение о допуске к самостоятельной работе',
-                description='Шаблон распоряжения о допуске сотрудника к самостоятельной работе',
-                document_type='admission_order',
-                is_active=True
-            )
-            template.template_file.save('admission_order_template.docx', file_content)
-
-            self.stdout.write(self.style.SUCCESS(
-                f'Создан шаблон распоряжения о допуске к самостоятельной работе из файла {template_path}'
+                f'Создан шаблон распоряжений о стажировке из файла {template_path}'
             ))
 
     def _create_knowledge_protocol_template(self, templates_dir):
@@ -264,3 +207,35 @@ class Command(BaseCommand):
             self.stdout.write(self.style.SUCCESS(
                 f'Создан шаблон листа ознакомления с документами из файла {template_path}'
             ))
+
+    def _create_siz_card_template(self, templates_dir):
+        """
+        Создает шаблон карточки учета СИЗ
+        """
+        # Проверяем, существует ли уже такой шаблон в базе
+        if DocumentTemplate.objects.filter(document_type='siz_card').exists():
+            self.stdout.write('Шаблон карточки учета СИЗ уже существует')
+            return
+
+        # Для карточки СИЗ используется существующий механизм генерации,
+        # поэтому нам не нужен физический файл шаблона
+        template = DocumentTemplate(
+            name='Карточка учета СИЗ',
+            description='Карточка учета выдачи средств индивидуальной защиты',
+            document_type='siz_card',
+            is_active=True
+        )
+
+        # Создаем фиктивный файл (он не будет использоваться)
+        placeholder_content = (
+            "Шаблон документа: Карточка учета СИЗ\n\n"
+            "Этот файл не используется для генерации документа. "
+            "Вместо него используется существующий механизм генерации карточки СИЗ в PDF."
+        )
+
+        file_content = ContentFile(placeholder_content.encode('utf-8'))
+        template.template_file.save('siz_card_template.txt', file_content)
+
+        self.stdout.write(self.style.SUCCESS(
+            'Создан шаблон карточки учета СИЗ'
+        ))
