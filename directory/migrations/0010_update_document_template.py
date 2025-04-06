@@ -14,7 +14,7 @@ def mark_existing_templates_as_default(apps, schema_editor):
 class Migration(migrations.Migration):
 
     dependencies = [
-        ('directory', '0010_update_document_template'),  # Предыдущая миграция
+        ('directory', '0009_update_document_template_types'),  # Предыдущая миграция
     ]
 
     operations = [

@@ -276,6 +276,9 @@ def generate_docx_from_template(template_id: int, context: Dict[str, Any],
         generated_doc.template = template
         generated_doc.employee = employee
         generated_doc.created_by = user
+
+        # *** Исправление: удаляем объект Employee из контекста перед сохранением ***
+        context.pop('employee', None)
         generated_doc.document_data = context
 
         # Сохраняем файл с использованием ContentFile из буфера
