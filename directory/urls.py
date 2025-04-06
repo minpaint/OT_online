@@ -9,11 +9,7 @@ from .views import siz_issued  # 👈 Добавляем импорт модул
 # Импортируем представления из новой модульной структуры документов
 from directory.views.documents import (
     DocumentSelectionView,
-    # InternshipOrderFormView,      # Закомментировано, если класс ещё не реализован
-    # AdmissionOrderFormView,       # Закомментировано, если класс ещё не реализован
-    DocumentsPreviewView,
-    update_document_data,
-    GeneratedDocumentListView,
+   GeneratedDocumentListView,
     GeneratedDocumentDetailView,
     document_download
 )
@@ -89,8 +85,8 @@ document_patterns = [
     # path('internship-order/<int:employee_id>/', InternshipOrderFormView.as_view(), name='internship_order_form'),
     # path('admission-order/<int:employee_id>/', AdmissionOrderFormView.as_view(), name='admission_order_form'),
 
-    path('documents-preview/', DocumentsPreviewView.as_view(), name='documents_preview'),
-    path('api/update-preview-data/', update_document_data, name='update_preview_data'),
+    # path('documents-preview/', DocumentsPreviewView.as_view(), name='documents_preview'),
+    # path('api/update-preview-data/', update_document_data, name='update_preview_data'),
 ]
 
 # ⚙️ URL-маршруты для оборудования (если появится соответствующий ListView)
