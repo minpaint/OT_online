@@ -202,7 +202,8 @@ def generate_docx_from_template(template_id: int, context: Dict[str, Any],
             logger.error(f"Шаблон с ID {template_id} не найден в базе данных")
             raise ValueError(f"Шаблон с ID {template_id} не найден в базе данных")
 
-        template_path = os.path.join(settings.MEDIA_ROOT, str(template.template_file))
+        # Используем template_file.path для получения полного пути к файлу
+        template_path = template.template_file.path
 
         if not os.path.exists(template_path):
             logger.error(f"Файл шаблона не найден: {template_path}")

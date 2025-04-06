@@ -40,7 +40,7 @@ class DocumentTemplate(models.Model):
     )
     template_file = models.FileField(
         _("Файл шаблона"),
-        upload_to='',  # Файл будет сохранён непосредственно в storage.location
+        upload_to='',  # Пустая строка, т.к. storage уже указывает на document_templates
         storage=document_storage
     )
     is_active = models.BooleanField(_("Активен"), default=True)
@@ -85,8 +85,6 @@ class DocumentTemplate(models.Model):
             raise ValidationError(
                 {'is_default': _('Эталонный шаблон не может быть привязан к организации')}
             )
-
-
 
 
 class GeneratedDocument(models.Model):

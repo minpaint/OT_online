@@ -11,6 +11,7 @@ import logging
 from django.core.management.base import BaseCommand, CommandError
 from django.conf import settings
 from django.core.files.base import ContentFile
+from django.core.files import File
 
 from directory.models.document_template import DocumentTemplate
 
@@ -21,10 +22,8 @@ class Command(BaseCommand):
     help = 'Инициализирует шаблоны документов для генерации'
 
     def handle(self, *args, **options):
-        # Определяем базовую директорию для шаблонов
-        templates_dir = os.path.join(settings.BASE_DIR, 'directory', 'data', 'templates')
-
-        # Проверяем существование директории
+        # Создаем директорию для шаблонов, если она не существует
+        templates_dir = os.path.join(settings.MEDIA_ROOT, 'document_templates')
         if not os.path.exists(templates_dir):
             os.makedirs(templates_dir)
             self.stdout.write(self.style.WARNING(f'Создана директория {templates_dir}'))
@@ -90,15 +89,28 @@ class Command(BaseCommand):
             is_active=True
         )
 
-        # Создаем простой placeholder-файл
-        placeholder_content = (
-            f"Шаблон документа: {name}\n\n"
-            f"Это временный placeholder-файл. Пожалуйста, замените его "
-            f"на реальный шаблон DOCX согласно инструкции в документации."
-        )
+        # Проверяем, существует ли шаблон в файловой системе
+        template_path = os.path.join(settings.MEDIA_ROOT, 'document_templates', filename)
 
-        # Сохраняем файл и объект
-        template.template_file.save(filename, ContentFile(placeholder_content.encode('utf-8')))
+        if not os.path.exists(template_path):
+            # Создаем простой DOCX файл
+            from docx import Document
+            doc = Document()
+
+            # Заголовок
+            doc.add_heading(f"Шаблон {name}", 0)
+
+            # Простой пример переменных
+            doc.add_paragraph(f"Это шаблон для {name}.")
+            doc.add_paragraph("Заменить этот файл на реальный шаблон с переменными.")
+
+            # Сохраняем документ
+            doc.save(template_path)
+            self.stdout.write(f'Создан пустой шаблон DOCX для {doc_type}')
+
+        # Сохраняем объект с привязкой к файлу
+        with open(template_path, 'rb') as f:
+            template.template_file.save(filename, File(f))
+
         template.save()
-
         self.stdout.write(f'Создан шаблон для {doc_type}')
