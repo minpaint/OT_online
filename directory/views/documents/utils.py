@@ -3,8 +3,12 @@
 
 Содержит утилиты и вспомогательные функции для работы с документами.
 """
-from directory.utils.declension import get_initials_from_name
+import logging
+from directory.utils.declension import get_initials_from_name, decline_full_name, decline_phrase
 from directory.models import Employee
+
+# Настройка логирования
+logger = logging.getLogger(__name__)
 
 
 def get_internship_leader(employee):
@@ -98,6 +102,8 @@ def get_document_signer(employee):
 def get_internship_leader_position(employee):
     """
     Получает должность руководителя стажировки для сотрудника
+    Должность возвращается с маленькой буквы.
+
     Args:
         employee: Объект сотрудника Employee
     Returns:
@@ -105,9 +111,13 @@ def get_internship_leader_position(employee):
     """
     leader, _, success = get_internship_leader(employee)
     if success and leader and leader.position:
-        return leader.position.position_name, True
+        # Преобразуем должность к нижнему регистру (первая буква)
+        position_name = leader.position.position_name
+        if position_name:
+            position_name = position_name[0].lower() + position_name[1:]
+        return position_name, True
 
-    return "Необходимо указать должность руководителя стажировки", False
+    return "необходимо указать должность руководителя стажировки", False
 
 
 def get_internship_leader_name(employee):
@@ -224,3 +234,131 @@ def get_employee_documents(employee):
 
     # Не найдено
     return ["Необходимо указать список документов"], False
+
+
+def prepare_internship_context(employee, context=None):
+    """
+    Подготавливает контекст для распоряжения о стажировке,
+    включая склонение имени и должности руководителя стажировки
+    в родительный падеж.
+
+    Args:
+        employee: Объект сотрудника Employee
+        context: Существующий контекст (опционально)
+
+    Returns:
+        dict: Обновленный контекст с добавленными данными о стажировке
+    """
+    if context is None:
+        context = {}
+
+    # Получаем информацию о руководителе стажировки
+    leader, level, success = get_internship_leader(employee)
+
+    if success and leader:
+        # Получаем должность и имя в именительном падеже
+        leader_position = leader.position.position_name
+        leader_name = leader.full_name_nominative
+
+        # Преобразуем первую букву должности в нижний регистр
+        if leader_position:
+            leader_position = leader_position[0].lower() + leader_position[1:]
+
+        # Получаем инициалы
+        leader_name_initials = get_initials_from_name(leader_name)
+
+        # Склоняем в родительный падеж
+        leader_position_genitive = decline_phrase(leader_position, 'gent')
+        leader_name_genitive = decline_full_name(leader_name, 'gent')
+
+        # Добавляем в контекст оригинальные и склоненные варианты
+        context.update({
+            'head_of_internship_position': leader_position,
+            'head_of_internship_name': leader_name,
+            'head_of_internship_name_initials': leader_name_initials,  # Добавляем инициалы
+            'head_of_internship_position_genitive': leader_position_genitive,
+            'head_of_internship_name_genitive': leader_name_genitive,
+            'internship_leader_level': level,  # Для отладки
+        })
+    else:
+        # Добавляем заглушки, если руководитель не найден
+        context.update({
+            'head_of_internship_position': "необходимо указать должность",
+            'head_of_internship_name': "Необходимо указать ФИО",
+            'head_of_internship_name_initials': "Н.У.Ф.",  # Заглушка для инициалов
+            'head_of_internship_position_genitive': "необходимо указать должность",
+            'head_of_internship_name_genitive': "Необходимо указать ФИО",
+            'internship_leader_level': None,
+        })
+
+    return context
+
+
+def prepare_director_context(employee, context=None):
+    """
+    Подготавливает контекст для подписанта документа (директора),
+    включая склонение имени и должности в родительный падеж.
+
+    Args:
+        employee: Объект сотрудника Employee
+        context: Существующий контекст (опционально)
+
+    Returns:
+        dict: Обновленный контекст с добавленными данными о подписанте
+    """
+    if context is None:
+        context = {}
+
+    # Получаем информацию о подписанте
+    signer, level, success = get_document_signer(employee)
+
+    if success and signer:
+        # Получаем должность и имя
+        signer_position = signer.position.position_name
+        signer_name = signer.full_name_nominative
+
+        # Получаем инициалы
+        signer_name_initials = get_initials_from_name(signer_name)
+
+        # Склоняем в родительный падеж
+        signer_position_genitive = decline_phrase(signer_position, 'gent')
+        signer_name_genitive = decline_full_name(signer_name, 'gent')
+
+        context.update({
+            'director_position': signer_position,
+            'director_name': signer_name,
+            'director_name_initials': signer_name_initials,
+            'director_position_genitive': signer_position_genitive,
+            'director_name_genitive': signer_name_genitive,
+            'director_level': level,  # Для отладки
+        })
+    else:
+        # Если подписант не найден, получаем информацию о директоре организации
+        director_info, _ = get_director_info(employee.organization)
+        director_position = director_info['position']
+        director_name = director_info['name']
+
+        # Склоняем в родительный падеж
+        director_position_genitive = decline_phrase(director_position, 'gent')
+
+        # Имя директора может быть уже в формате инициалов (И.И. Иванов)
+        # Проверяем формат и обрабатываем соответственно
+        if '.' in director_name:
+            # Уже в формате инициалов, используем как есть
+            director_name_initials = director_name
+            director_name_genitive = director_name  # Предполагаем, что уже склонено правильно
+        else:
+            # Полное имя, генерируем инициалы и склоняем
+            director_name_initials = get_initials_from_name(director_name)
+            director_name_genitive = decline_full_name(director_name, 'gent')
+
+        context.update({
+            'director_position': director_position,
+            'director_name': director_name,
+            'director_name_initials': director_name_initials,
+            'director_position_genitive': director_position_genitive,
+            'director_name_genitive': director_name_genitive,
+            'director_level': None,
+        })
+
+    return context

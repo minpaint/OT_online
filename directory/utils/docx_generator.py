@@ -1,3 +1,4 @@
+# directory/utils/docx_generator.py
 """
 📄 Модуль для генерации документов Word
 
@@ -62,7 +63,7 @@ def prepare_employee_context(employee) -> Dict[str, Any]:
         # ФИО в разных падежах
         'fio_nominative': employee.full_name_nominative,
         'fio_genitive': decline_full_name(employee.full_name_nominative, 'gent'),
-        'fio_dative': decline_full_name(employee.full_name_nominative, 'datv'),
+        'fio_dative': employee.full_name_dative,  # Используем уже готовое поле из модели
         'fio_accusative': decline_full_name(employee.full_name_nominative, 'accs'),
         'fio_instrumental': decline_full_name(employee.full_name_nominative, 'ablt'),
         'fio_prepositional': decline_full_name(employee.full_name_nominative, 'loct'),
@@ -97,6 +98,8 @@ def prepare_employee_context(employee) -> Dict[str, Any]:
         'internship_duration': "2",  # Продолжительность стажировки в днях
         # Место нахождения (из организации)
         'location': employee.organization.location if employee.organization and hasattr(employee.organization, 'location') and employee.organization.location else "г. Минск",
+        # Поля для отображения в шаблоне
+        'employee_name_initials': get_initials_from_name(employee.full_name_nominative),
     }
 
     # Добавляем поиск подписанта распоряжений
@@ -107,6 +110,7 @@ def prepare_employee_context(employee) -> Dict[str, Any]:
         context.update({
             'director_position': signer.position.position_name,
             'director_name': get_initials_from_name(signer.full_name_nominative),
+            'director_name_initials': get_initials_from_name(signer.full_name_nominative),
             'director_level': level,  # Может пригодиться для отладки
         })
     else:
@@ -114,8 +118,48 @@ def prepare_employee_context(employee) -> Dict[str, Any]:
         context.update({
             'director_position': "Директор",
             'director_name': "И.И. Иванов",
+            'director_name_initials': "И.И. Иванов",
         })
 
+    return context
+
+
+def prepare_internship_context(employee, context):
+    """
+    Подготавливает контекст для руководителя стажировки.
+    Args:
+        employee: Объект модели Employee
+        context: Существующий контекст
+    Returns:
+        Dict[str, Any]: Обновленный контекст
+    """
+    # Импортируем необходимые функции
+    from directory.views.documents.utils import get_internship_leader, get_internship_leader_name
+    from directory.views.documents.utils import get_internship_leader_position, get_internship_leader_initials
+    from directory.utils.declension import decline_phrase, decline_full_name
+
+    # Получаем информацию о руководителе стажировки
+    leader_position, position_success = get_internship_leader_position(employee)
+    leader_name, name_success = get_internship_leader_name(employee)
+    leader_initials, initials_success = get_internship_leader_initials(employee)
+    
+    # Получаем объект руководителя для отладки
+    internship_leader, level, success = get_internship_leader(employee)
+    
+    logger.info(f"Получена информация о руководителе стажировки: "
+               f"success={success}, level={level}, "
+               f"position={leader_position}, name={leader_name}")
+    
+    # Обновляем контекст информацией о руководителе
+    context.update({
+        'head_of_internship_position': leader_position,
+        'head_of_internship_name': leader_name,
+        'head_of_internship_name_initials': leader_initials,
+        'head_of_internship_position_genitive': decline_phrase(leader_position, 'gent') if position_success else leader_position,
+        'head_of_internship_name_genitive': decline_full_name(leader_name, 'gent') if name_success else leader_name,
+        'internship_leader_level': level,  # Добавляем для отладки
+    })
+    
     return context
 
 
@@ -133,22 +177,57 @@ def generate_docx_from_template(template_id: int, context: Dict[str, Any],
     """
     try:
         # Получаем шаблон
-        template = DocumentTemplate.objects.get(id=template_id)
+        try:
+            template = DocumentTemplate.objects.get(id=template_id)
+            logger.info(f"Шаблон найден: {template.name} (ID: {template_id})")
+        except DocumentTemplate.DoesNotExist:
+            logger.error(f"Шаблон с ID {template_id} не найден в базе данных")
+            raise ValueError(f"Шаблон с ID {template_id} не найден в базе данных")
+
         template_path = os.path.join(settings.MEDIA_ROOT, str(template.template_file))
 
         # Проверяем существование файла шаблона
         if not os.path.exists(template_path):
             logger.error(f"Файл шаблона не найден: {template_path}")
             raise FileNotFoundError(f"Файл шаблона не найден: {template_path}")
+            
+        # Проверяем размер файла
+        file_size = os.path.getsize(template_path)
+        if file_size == 0:
+            logger.error(f"Файл шаблона пуст: {template_path}")
+            raise ValueError(f"Файл шаблона имеет нулевой размер: {template_path}")
+            
+        logger.info(f"Файл шаблона готов к обработке: {template_path}, размер: {file_size} байт")
 
         # Загружаем шаблон
-        doc = DocxTemplate(template_path)
+        try:
+            doc = DocxTemplate(template_path)
+            logger.info(f"Шаблон успешно загружен в DocxTemplate")
+        except Exception as e:
+            logger.error(f"Ошибка при загрузке шаблона в DocxTemplate: {str(e)}")
+            raise ValueError(f"Ошибка при загрузке шаблона в DocxTemplate: {str(e)}")
+
+        # Проверяем наличие ключевых переменных в контексте
+        common_keys = ['fio_dative', 'position_dative', 'department', 'subdivision', 
+                      'head_of_internship_position', 'head_of_internship_name', 
+                      'head_of_internship_name_initials', 'director_position', 
+                      'director_name_initials', 'employee_name_initials']
+        
+        missing_keys = [key for key in common_keys if key not in context]
+        if missing_keys:
+            logger.warning(f"В контексте отсутствуют часто используемые ключи: {missing_keys}")
 
         # Заполняем шаблон контекстом
-        doc.render(context)
+        try:
+            doc.render(context)
+            logger.info(f"Шаблон успешно заполнен данными")
+        except Exception as e:
+            logger.error(f"Ошибка при заполнении шаблона данными: {str(e)}")
+            raise ValueError(f"Ошибка при заполнении шаблона данными: {str(e)}")
 
         # Создаем имя для сгенерированного файла
-        filename = f"{template.document_type}_{employee.last_name}_{datetime.datetime.now().strftime('%Y%m%d_%H%M%S')}.docx"
+        filename = f"{template.document_type}_{employee.full_name_nominative.split()[0]}_{datetime.datetime.now().strftime('%Y%m%d_%H%M%S')}.docx"
+        logger.info(f"Имя файла для сохранения: {filename}")
 
         # Сохраняем в BytesIO буфер
         docx_buffer = io.BytesIO()
@@ -171,10 +250,22 @@ def generate_docx_from_template(template_id: int, context: Dict[str, Any],
         generated_doc.document_data = context
 
         # Сохраняем файл с использованием ContentFile из буфера
-        generated_doc.document_file.save(filename, ContentFile(file_content))
-        generated_doc.save()
-
-        return generated_doc
+        try:
+            generated_doc.document_file.save(filename, ContentFile(file_content))
+            generated_doc.save()
+            logger.info(f"Документ успешно сохранен в базу данных с ID: {generated_doc.id}")
+            
+            # Проверяем файл в файловой системе после сохранения
+            file_path = os.path.join(settings.MEDIA_ROOT, str(generated_doc.document_file))
+            if os.path.exists(file_path) and os.path.getsize(file_path) > 0:
+                logger.info(f"Проверка после сохранения: файл существует по пути {file_path}, размер: {os.path.getsize(file_path)} байт")
+            else:
+                logger.warning(f"Проверка после сохранения: файл не найден или пуст по пути {file_path}")
+                
+            return generated_doc
+        except Exception as e:
+            logger.error(f"Ошибка при сохранении документа: {str(e)}")
+            raise ValueError(f"Ошибка при сохранении документа: {str(e)}")
 
     except Exception as e:
         # Логирование ошибки с полной трассировкой
@@ -183,9 +274,53 @@ def generate_docx_from_template(template_id: int, context: Dict[str, Any],
         return None
 
 
-def generate_internship_order(employee, user=None, custom_context=None):
+def get_document_template(document_type):
     """
-    Генерирует распоряжение о стажировке для сотрудника.
+    Получает шаблон документа определенного типа.
+    Args:
+        document_type (str): Тип документа ('all_orders', 'knowledge_protocol', etc.)
+    Returns:
+        DocumentTemplate: Объект шаблона документа или None, если шаблон не найден
+    Example:
+        template = get_document_template('all_orders')
+    """
+    try:
+        return DocumentTemplate.objects.get(document_type=document_type, is_active=True)
+    except DocumentTemplate.DoesNotExist:
+        logger.error(f"Шаблон документа типа '{document_type}' не найден")
+        return None
+
+
+def generate_document_from_template(template, employee, user=None, context=None):
+    """
+    Генерирует документ из шаблона и контекста.
+    Args:
+        template: Объект модели DocumentTemplate
+        employee: Объект модели Employee
+        user: Пользователь, создающий документ (опционально)
+        context: Словарь с данными для заполнения шаблона (опционально)
+    Returns:
+        Optional[GeneratedDocument]: Объект сгенерированного документа или None при ошибке
+    """
+    if not template:
+        logger.error("Не указан шаблон документа")
+        return None
+
+    # Подготавливаем базовый контекст
+    base_context = prepare_employee_context(employee)
+
+    # Если есть дополнительный контекст, обновляем основной контекст
+    if context:
+        base_context.update(context)
+
+    # Генерируем документ
+    return generate_docx_from_template(template.id, base_context, employee, user)
+
+
+def generate_all_orders(employee, user=None, custom_context=None):
+    """
+    Генерирует комбинированное распоряжение для сотрудника.
+    Включает стажировку и допуск к самостоятельной работе.
     Args:
         employee: Объект модели Employee
         user: Пользователь, создающий документ (опционально)
@@ -193,78 +328,68 @@ def generate_internship_order(employee, user=None, custom_context=None):
     Returns:
         Optional[GeneratedDocument]: Объект сгенерированного документа или None при ошибке
     """
-    # Получаем шаблон для распоряжения о стажировке
     try:
-        template = DocumentTemplate.objects.get(document_type='internship_order', is_active=True)
-    except DocumentTemplate.DoesNotExist:
-        logger.error("Активный шаблон для распоряжения о стажировке не найден")
-        raise ValueError("Активный шаблон для распоряжения о стажировке не найден")
+        # Пробуем получить шаблон для комбинированного распоряжения
+        template = None
+        templates = DocumentTemplate.objects.filter(document_type='all_orders', is_active=True).order_by('-updated_at')
+        
+        if templates.exists():
+            template = templates.first()
+            logger.info(f"Найден шаблон для комбинированного распоряжения: {template.name} (ID: {template.id})")
+        else:
+            logger.error("Активный шаблон для комбинированного распоряжения не найден")
+            raise ValueError("Активный шаблон для комбинированного распоряжения не найден")
+        
+        # Проверяем наличие файла шаблона
+        template_path = os.path.join(settings.MEDIA_ROOT, str(template.template_file))
+        if not os.path.exists(template_path):
+            logger.error(f"Файл шаблона не существует по пути: {template_path}")
+            raise FileNotFoundError(f"Файл шаблона не найден: {template_path}")
+            
+        # Проверяем размер файла шаблона
+        file_size = os.path.getsize(template_path)
+        if file_size == 0:
+            logger.error(f"Файл шаблона пуст: {template_path}")
+            raise ValueError(f"Файл шаблона имеет нулевой размер: {template_path}")
+        
+        logger.info(f"Файл шаблона найден: {template_path}, размер: {file_size} байт")
 
-    # Подготавливаем базовый контекст
-    context = prepare_employee_context(employee)
+        # Подготавливаем базовый контекст
+        context = prepare_employee_context(employee)
+        logger.info(f"Базовый контекст подготовлен: {list(context.keys())}")
 
-    # Ищем руководителя стажировки с иерархическим подходом
-    from directory.views.documents.utils import get_internship_leader
+        # Обновляем контекст информацией о руководителе стажировки
+        context = prepare_internship_context(employee, context)
+        logger.info(f"Контекст дополнен информацией о руководителе стажировки")
 
-    internship_leader, level, success = get_internship_leader(employee)
-    if success and internship_leader:
-        context.update({
-            'head_of_internship_name': internship_leader.full_name_nominative,
-            'head_of_internship_name_initials': get_initials_from_name(internship_leader.full_name_nominative),
-            'head_of_internship_position': internship_leader.position.position_name if hasattr(internship_leader, 'position') and internship_leader.position else "",
-            'internship_leader_level': level,  # Добавляем для отладки
-        })
-    else:
-        logger.warning(f"Не удалось найти руководителя стажировки для сотрудника {employee.full_name_nominative}")
+        # Добавляем номера распоряжений если они не указаны в custom_context
+        now = datetime.datetime.now()
+        if not custom_context or 'order_number' not in custom_context:
+            context.update({
+                'order_number': f"ОТ-{now.strftime('%Y%m%d')}-{employee.id}",
+                'order_date': now.strftime("%d.%m.%Y"),
+            })
+        
+        # Если есть дополнительные данные, добавляем их в контекст
+        if custom_context:
+            context.update(custom_context)
+            logger.info(f"Контекст дополнен пользовательскими данными: {list(custom_context.keys())}")
+        
+        logger.info(f"Итоговый контекст для шаблона: {list(context.keys())}")
+        
+        # Генерируем документ
+        result = generate_docx_from_template(template.id, context, employee, user)
+        if result:
+            logger.info(f"Документ успешно сгенерирован: {result.id}")
+            return result
+        else:
+            logger.error("Ошибка при генерации документа: функция generate_docx_from_template вернула None")
+            return None
 
-    # Если есть пользовательский контекст, обновляем основной контекст
-    if custom_context:
-        context.update(custom_context)
-
-    # Генерируем документ
-    return generate_docx_from_template(template.id, context, employee, user)
-
-
-def generate_admission_order(employee, user=None, custom_context=None):
-    """
-    Генерирует распоряжение о допуске к самостоятельной работе для сотрудника.
-    Args:
-        employee: Объект модели Employee
-        user: Пользователь, создающий документ (опционально)
-        custom_context: Пользовательский контекст (опционально)
-    Returns:
-        Optional[GeneratedDocument]: Объект сгенерированного документа или None при ошибке
-    """
-    # Получаем шаблон для распоряжения о допуске
-    try:
-        template = DocumentTemplate.objects.get(document_type='admission_order', is_active=True)
-    except DocumentTemplate.DoesNotExist:
-        logger.error("Активный шаблон для распоряжения о допуске к самостоятельной работе не найден")
-        raise ValueError("Активный шаблон для распоряжения о допуске к самостоятельной работе не найден")
-
-    # Подготавливаем базовый контекст
-    context = prepare_employee_context(employee)
-
-    # Ищем руководителя стажировки с иерархическим подходом (он же подписывает распоряжение о допуске)
-    from directory.views.documents.utils import get_internship_leader
-
-    internship_leader, level, success = get_internship_leader(employee)
-    if success and internship_leader:
-        context.update({
-            'head_of_internship_name': internship_leader.full_name_nominative,
-            'head_of_internship_name_initials': get_initials_from_name(internship_leader.full_name_nominative),
-            'head_of_internship_position': internship_leader.position.position_name if hasattr(internship_leader, 'position') and internship_leader.position else "",
-            'internship_leader_level': level,  # Добавляем для отладки
-        })
-    else:
-        logger.warning(f"Не удалось найти руководителя стажировки для сотрудника {employee.full_name_nominative}")
-
-    # Если есть пользовательский контекст, обновляем основной контекст
-    if custom_context:
-        context.update(custom_context)
-
-    # Генерируем документ
-    return generate_docx_from_template(template.id, context, employee, user)
+    except Exception as e:
+        logger.error(f"Ошибка при генерации комбинированного распоряжения: {str(e)}")
+        logger.error(traceback.format_exc())
+        return None
 
 
 def generate_knowledge_protocol(employee, user=None, custom_context=None):
@@ -297,9 +422,9 @@ def generate_knowledge_protocol(employee, user=None, custom_context=None):
     # Получаем информацию о комиссии
     from directory.views.documents.utils import get_commission_members
 
-    commission = get_commission_members(employee)
-    if commission:
-        context.update(commission)
+    commission_members, commission_success = get_commission_members(employee)
+    if commission_success:
+        context['commission_members'] = commission_members
     else:
         logger.warning(f"Не удалось получить информацию о комиссии для сотрудника {employee.full_name_nominative}")
 
@@ -335,7 +460,7 @@ def generate_familiarization_document(employee, document_list=None, user=None, c
     # Если список документов не указан, получаем список по умолчанию
     if not document_list:
         from directory.views.documents.utils import get_employee_documents
-        document_list = get_employee_documents(employee)
+        document_list, success = get_employee_documents(employee)
 
     # Добавляем список документов
     context.update({
@@ -351,101 +476,28 @@ def generate_familiarization_document(employee, document_list=None, user=None, c
     return generate_docx_from_template(template.id, context, employee, user)
 
 
-def generate_all_orders(employee, user=None, document_data=None):
+def generate_siz_card(employee, user=None, custom_context=None):
     """
-    Генерирует комбинированное распоряжение для сотрудника.
-    Включает стажировку и допуск к самостоятельной работе.
-
+    Генерирует карточку учета СИЗ для сотрудника.
     Args:
         employee: Объект модели Employee
         user: Пользователь, создающий документ (опционально)
-        document_data: Дополнительные данные для документа (опционально)
-
+        custom_context: Пользовательский контекст (опционально)
     Returns:
         Optional[GeneratedDocument]: Объект сгенерированного документа или None при ошибке
     """
+    # Переадресуем на существующий механизм генерации карточки СИЗ
     try:
-        # Получаем шаблон для комбинированного распоряжения
-        template = get_document_template('all_orders')
-        if not template:
-            logger.error("Активный шаблон для комбинированного распоряжения не найден")
-            raise ValueError("Активный шаблон для комбинированного распоряжения не найден")
-
-        # Подготавливаем базовый контекст
-        context = prepare_employee_context(employee)
-
-        # Ищем руководителя стажировки с иерархическим подходом
-        from directory.views.documents.utils import get_internship_leader
-
-        internship_leader, level, success = get_internship_leader(employee)
-        if success and internship_leader:
-            context.update({
-                'head_of_internship_name': internship_leader.full_name_nominative,
-                'head_of_internship_name_initials': get_initials_from_name(internship_leader.full_name_nominative),
-                'head_of_internship_position': internship_leader.position.position_name if hasattr(internship_leader, 'position') and internship_leader.position else "",
-                'internship_leader_level': level,  # Добавляем для отладки
-            })
-        else:
-            logger.warning(f"Не удалось найти руководителя стажировки для сотрудника {employee.full_name_nominative}")
-
-        # Добавляем номера распоряжений
-        now = datetime.datetime.now()
-        context.update({
-            'order_number': f"ОТ-{now.strftime('%Y%m%d')}-{employee.id}",
-            'order_date': now.strftime("%d.%m.%Y"),
-        })
-
-        # Если есть дополнительные данные, добавляем их в контекст
-        if document_data:
-            context.update(document_data)
-
-        # Генерируем документ
-        return generate_docx_from_template(template.id, context, employee, user)
-
+        from directory.views.documents.siz_integration import generate_siz_card_excel
+        from django.http import HttpRequest
+        
+        # Создаем фиктивный объект запроса
+        request = HttpRequest()
+        request.user = user
+        
+        # Вызываем функцию генерации карточки СИЗ
+        return generate_siz_card_excel(request, employee.id)
     except Exception as e:
-        logger.error(f"Ошибка при генерации комбинированного распоряжения: {str(e)}")
+        logger.error(f"Ошибка при генерации карточки СИЗ: {str(e)}")
         logger.error(traceback.format_exc())
         return None
-
-
-def get_document_template(document_type):
-    """
-    Получает шаблон документа определенного типа.
-    Args:
-        document_type (str): Тип документа ('internship_order', 'admission_order', 'knowledge_protocol', etc.)
-    Returns:
-        DocumentTemplate: Объект шаблона документа или None, если шаблон не найден
-    Example:
-        template = get_document_template('internship_order')
-    """
-    try:
-        return DocumentTemplate.objects.get(document_type=document_type, is_active=True)
-    except DocumentTemplate.DoesNotExist:
-        logger.error(f"Шаблон документа типа '{document_type}' не найден")
-        return None
-
-
-def generate_document_from_template(template, employee, user=None, context=None):
-    """
-    Генерирует документ из шаблона и контекста.
-    Args:
-        template: Объект модели DocumentTemplate
-        employee: Объект модели Employee
-        user: Пользователь, создающий документ (опционально)
-        context: Словарь с данными для заполнения шаблона (опционально)
-    Returns:
-        Optional[GeneratedDocument]: Объект сгенерированного документа или None при ошибке
-    """
-    if not template:
-        logger.error("Не указан шаблон документа")
-        return None
-
-    # Подготавливаем базовый контекст
-    base_context = prepare_employee_context(employee)
-
-    # Если есть дополнительный контекст, обновляем основной контекст
-    if context:
-        base_context.update(context)
-
-    # Генерируем документ
-    return generate_docx_from_template(template.id, base_context, employee, user)
