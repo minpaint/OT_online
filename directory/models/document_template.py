@@ -1,12 +1,13 @@
 # directory/models/document_template.py
+import os
 from django.db import models
 from django.core.exceptions import ValidationError
 from django.core.files.storage import FileSystemStorage
 from django.utils.translation import gettext_lazy as _
+from django.conf import settings
 
-# Хранилище файлов для шаблонов документов
-document_storage = FileSystemStorage(location='media/document_templates/')
-
+# Настраиваем хранилище для файлов шаблонов: файлы будут сохраняться в MEDIA_ROOT/document_templates
+document_storage = FileSystemStorage(location=os.path.join(settings.MEDIA_ROOT, 'document_templates'))
 
 class DocumentTemplate(models.Model):
     """
@@ -35,7 +36,7 @@ class DocumentTemplate(models.Model):
     )
     template_file = models.FileField(
         _("Файл шаблона"),
-        upload_to='document_templates/',
+        upload_to='',  # Файл будет сохранён непосредственно в storage.location
         storage=document_storage
     )
     is_active = models.BooleanField(_("Активен"), default=True)
@@ -80,6 +81,7 @@ class DocumentTemplate(models.Model):
             raise ValidationError(
                 {'is_default': _('Эталонный шаблон не может быть привязан к организации')}
             )
+
 
 
 class GeneratedDocument(models.Model):
