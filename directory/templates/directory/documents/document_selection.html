@@ -1,44 +1,151 @@
-<!-- directory/templates/directory/documents/document_selection.html -->
 {% extends 'base.html' %}
 {% load static %}
 {% load crispy_forms_tags %}
 
 {% block title %}{{ title }}{% endblock %}
 
+{% block extra_css %}
+<style>
+    .document-type-item {
+        padding: 15px;
+        margin-bottom: 10px;
+        border: 1px solid #dee2e6;
+        border-radius: 5px;
+        transition: background-color 0.2s;
+    }
+    
+    .document-type-item:hover {
+        background-color: #f8f9fa;
+    }
+    
+    .document-type-item .custom-control-input:checked ~ .custom-control-label::before {
+        border-color: #007bff;
+        background-color: #007bff;
+    }
+    
+    .document-type-item .custom-control-label {
+        font-weight: 500;
+        font-size: 1.1rem;
+    }
+    
+    .document-type-icon {
+        font-size: 1.5rem;
+        margin-right: 10px;
+        vertical-align: middle;
+    }
+    
+    .document-type-description {
+        margin-top: 8px;
+        color: #6c757d;
+    }
+    
+    .submit-btn-container {
+        margin-top: 20px;
+    }
+    
+    .alert-employee {
+        border-left: 5px solid #007bff;
+    }
+</style>
+{% endblock %}
+
 {% block content %}
 <div class="container">
     <div class="row">
-        <div class="col-md-8 offset-md-2">
-            <div class="card">
+        <div class="col-md-9 mx-auto">
+            <div class="card shadow-sm">
                 <div class="card-header bg-primary text-white">
                     <h4 class="mb-0">{{ title }}</h4>
                 </div>
                 <div class="card-body">
                     {% if employee %}
-                    <div class="alert alert-info mb-4">
-                        <h5>📋 Информация о сотруднике</h5>
-                        <p><strong>ФИО:</strong> {{ employee.full_name_nominative }}</p>
-                        <p><strong>Должность:</strong> {{ employee.position.position_name }}</p>
-                        {% if employee.department %}
-                        <p><strong>Отдел:</strong> {{ employee.department.name }}</p>
-                        {% endif %}
-                        {% if employee.subdivision %}
-                        <p><strong>Подразделение:</strong> {{ employee.subdivision.name }}</p>
-                        {% endif %}
-                        <p><strong>Организация:</strong> {{ employee.organization.short_name_ru }}</p>
+                    <div class="alert alert-info alert-employee mb-4">
+                        <h5><i class="fas fa-user-circle"></i> Информация о сотруднике</h5>
+                        <div class="row">
+                            <div class="col-md-6">
+                                <p><strong>ФИО:</strong> {{ employee.full_name_nominative }}</p>
+                                <p><strong>Должность:</strong> {{ employee.position.position_name }}</p>
+                            </div>
+                            <div class="col-md-6">
+                                {% if employee.department %}
+                                <p><strong>Отдел:</strong> {{ employee.department.name }}</p>
+                                {% endif %}
+                                {% if employee.subdivision %}
+                                <p><strong>Подразделение:</strong> {{ employee.subdivision.name }}</p>
+                                {% endif %}
+                                <p><strong>Организация:</strong> {{ employee.organization.short_name_ru }}</p>
+                            </div>
+                        </div>
                     </div>
                     {% endif %}
                     
-                    <form method="post" action="">
+                    <form method="post" action="" id="document-selection-form">
                         {% csrf_token %}
-                        {% crispy form %}
+                        <input type="hidden" name="employee_id" value="{{ employee.id }}">
+                        
+                        <h5 class="mb-3"><i class="fas fa-file-alt"></i> Выберите типы документов для генерации</h5>
+                        
+                        <div class="document-types-container">
+                            {% for value, text in form.fields.document_types.choices %}
+                            <div class="document-type-item">
+                                <div class="custom-control custom-checkbox">
+                                    <input type="checkbox" name="document_types" 
+                                           value="{{ value }}" 
+                                           class="custom-control-input" 
+                                           id="id_document_types_{{ forloop.counter }}"
+                                           {% if value in form.initial.document_types %}checked{% endif %}>
+                                    <label class="custom-control-label" for="id_document_types_{{ forloop.counter }}">
+                                        {% if value == 'all_orders' %}
+                                            <i class="fas fa-file-signature document-type-icon text-primary"></i>
+                                        {% elif value == 'knowledge_protocol' %}
+                                            <i class="fas fa-clipboard-check document-type-icon text-success"></i>
+                                        {% elif value == 'doc_familiarization' %}
+                                            <i class="fas fa-file-alt document-type-icon text-info"></i>
+                                        {% elif value == 'siz_card' %}
+                                            <i class="fas fa-shield-alt document-type-icon text-warning"></i>
+                                        {% elif value == 'personal_ot_card' %}
+                                            <i class="fas fa-id-card document-type-icon text-danger"></i>
+                                        {% elif value == 'journal_example' %}
+                                            <i class="fas fa-book document-type-icon text-secondary"></i>
+                                        {% else %}
+                                            <i class="fas fa-file document-type-icon"></i>
+                                        {% endif %}
+                                        {{ text }}
+                                    </label>
+                                </div>
+                                <div class="document-type-description">
+                                    {% if value == 'all_orders' %}
+                                        Распоряжения о стажировке сотрудника и допуске к самостоятельной работе.
+                                    {% elif value == 'knowledge_protocol' %}
+                                        Протокол проверки знаний по охране труда сотрудника.
+                                    {% elif value == 'doc_familiarization' %}
+                                        Лист ознакомления сотрудника с необходимыми документами.
+                                    {% elif value == 'siz_card' %}
+                                        Карточка учета выдачи средств индивидуальной защиты сотруднику.
+                                    {% elif value == 'personal_ot_card' %}
+                                        Личная карточка сотрудника по охране труда.
+                                    {% elif value == 'journal_example' %}
+                                        Пример заполнения журнала для данного сотрудника.
+                                    {% endif %}
+                                </div>
+                            </div>
+                            {% endfor %}
+                        </div>
+                        
+                        <div class="submit-btn-container text-center">
+                            <button type="submit" class="btn btn-primary btn-lg">
+                                <i class="fas fa-file-archive"></i> Скачать архив с документами
+                            </button>
+                            <a href="{% url 'directory:home' %}" class="btn btn-secondary btn-lg ml-2">
+                                Отмена
+                            </a>
+                        </div>
                     </form>
                 </div>
             </div>
         </div>
     </div>
 </div>
-
 {% endblock %}
 
 {% block extra_js %}
@@ -52,9 +159,32 @@
                 if (checkboxes.length === 0) {
                     e.preventDefault();
                     alert('Пожалуйста, выберите хотя бы один тип документа.');
+                } else {
+                    // Добавляем индикатор загрузки
+                    const submitBtn = form.querySelector('button[type="submit"]');
+                    submitBtn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Генерация документов...';
+                    submitBtn.disabled = true;
+                    
+                    // Добавляем сообщение об ожидании
+                    const loadingDiv = document.createElement('div');
+                    loadingDiv.className = 'alert alert-info mt-3';
+                    loadingDiv.innerHTML = '<i class="fas fa-info-circle"></i> Пожалуйста, подождите. Генерация документов может занять некоторое время.';
+                    form.appendChild(loadingDiv);
                 }
             });
         }
+        
+        // Делаем строки с чекбоксами кликабельными
+        const documentTypeItems = document.querySelectorAll('.document-type-item');
+        documentTypeItems.forEach(function(item) {
+            item.addEventListener('click', function(e) {
+                // Проверяем, что клик был не на самом чекбоксе или лейбле
+                if (e.target.tagName !== 'INPUT' && e.target.tagName !== 'LABEL') {
+                    const checkbox = item.querySelector('input[type="checkbox"]');
+                    checkbox.checked = !checkbox.checked;
+                }
+            });
+        });
     });
 </script>
 {% endblock %}

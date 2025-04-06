@@ -38,11 +38,8 @@ from .positions import (
 # Используем абсолютный импорт, чтобы избежать конфликтов
 from directory.views.documents import (
     DocumentSelectionView,
-
     GeneratedDocumentListView,
-    GeneratedDocumentDetailView,
     document_download,
-
 )
 
 # Импортируем представления для выдачи СИЗ

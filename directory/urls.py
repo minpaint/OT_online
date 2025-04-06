@@ -10,7 +10,6 @@ from .views import siz_issued  # 👈 Добавляем импорт модул
 from directory.views.documents import (
     DocumentSelectionView,
    GeneratedDocumentListView,
-    GeneratedDocumentDetailView,
     document_download
 )
 
@@ -77,9 +76,8 @@ position_patterns = [
 # 📄 URL-маршруты для документов
 document_patterns = [
     path('', GeneratedDocumentListView.as_view(), name='document_list'),
-    path('<int:pk>/', GeneratedDocumentDetailView.as_view(), name='document_detail'),
-    path('<int:pk>/download/', document_download, name='document_download'),
     path('selection/<int:employee_id>/', DocumentSelectionView.as_view(), name='document_selection'),
+    path('<int:pk>/download/', document_download, name='document_download'),
 
     # Закомментированы, если классы не реализованы:
     # path('internship-order/<int:employee_id>/', InternshipOrderFormView.as_view(), name='internship_order_form'),

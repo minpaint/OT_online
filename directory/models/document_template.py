@@ -6,8 +6,12 @@ from django.core.files.storage import FileSystemStorage
 from django.utils.translation import gettext_lazy as _
 from django.conf import settings
 
-# Настраиваем хранилище для файлов шаблонов: файлы будут сохраняться в MEDIA_ROOT/document_templates
-document_storage = FileSystemStorage(location=os.path.join(settings.MEDIA_ROOT, 'document_templates'))
+# Настраиваем хранилище для файлов шаблонов: файлы будут сохраняться в MEDIA_ROOT/document_templates,
+# а URL для доступа к ним будет /media/document_templates/
+document_storage = FileSystemStorage(
+    location=os.path.join(settings.MEDIA_ROOT, 'document_templates'),
+    base_url=os.path.join(settings.MEDIA_URL, 'document_templates/')
+)
 
 class DocumentTemplate(models.Model):
     """
@@ -81,6 +85,7 @@ class DocumentTemplate(models.Model):
             raise ValidationError(
                 {'is_default': _('Эталонный шаблон не может быть привязан к организации')}
             )
+
 
 
 

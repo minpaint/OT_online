@@ -362,3 +362,47 @@ def prepare_director_context(employee, context=None):
         })
 
     return context
+
+
+def get_commission_formatted(employee):
+    """
+    Получает данные о комиссии в формате, подходящем для шаблонов документов.
+    Args:
+        employee: Объект модели Employee
+    Returns:
+        tuple: (данные о комиссии в структурированном формате, успешность выполнения)
+    """
+    commission_members, success = get_commission_members(employee)
+    if not success or not commission_members:
+        logger.warning(f"Не удалось получить данные о комиссии для сотрудника {employee.full_name_nominative}")
+        return {
+            'chairman': 'Иванов И.И., директор',
+            'members': ['Петров П.П., зам. директора', 'Сидоров С.С., инженер по ОТ'],
+            'secretary': 'Кузнецова К.К., секретарь'
+        }, False
+
+    try:
+        # Формируем структурированный формат
+        result = {
+            'chairman': commission_members[0]['name'] if isinstance(commission_members[0], dict) else
+            commission_members[0],
+            'members': [],
+            'secretary': commission_members[-1]['name'] if isinstance(commission_members[-1], dict) else
+            commission_members[-1]
+        }
+
+        # Если есть промежуточные члены комиссии
+        if len(commission_members) > 2:
+            for member in commission_members[1:-1]:
+                result['members'].append(member['name'] if isinstance(member, dict) else member)
+        else:
+            result['members'] = ['Петров П.П., зам. директора']
+
+        return result, True
+    except Exception as e:
+        logger.error(f"Ошибка при форматировании данных комиссии: {str(e)}")
+        return {
+            'chairman': 'Иванов И.И., директор',
+            'members': ['Петров П.П., зам. директора'],
+            'secretary': 'Кузнецова К.К., секретарь'
+        }, False
