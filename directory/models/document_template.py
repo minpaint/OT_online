@@ -1,5 +1,6 @@
-# D:\YandexDisk\OT_online\directory\models\document_template.py
+# directory/models/document_template.py
 from django.db import models
+from django.core.exceptions import ValidationError
 from django.core.files.storage import FileSystemStorage
 from django.utils.translation import gettext_lazy as _
 
@@ -15,12 +16,14 @@ class DocumentTemplate(models.Model):
     для генерации документов на основе данных сотрудников.
     """
 
-    # Типы документов - обновлено: убраны отдельные распоряжения, добавлена карточка СИЗ
+    # Типы документов
     DOCUMENT_TYPES = (
-        ('all_orders', '📝 Распоряжения о стажировке'),  # Комбинированный шаблон
+        ('all_orders', '📝 Распоряжения о стажировке'),
         ('knowledge_protocol', '📋 Протокол проверки знаний по охране труда'),
         ('doc_familiarization', '📝 Лист ознакомления с документами'),
-        ('siz_card', '🛡️ Карточка учета СИЗ'),  # Добавлен тип для карточки СИЗ
+        ('siz_card', '🛡️ Карточка учета СИЗ'),
+        ('personal_ot_card', '👤 Личная карточка по ОТ'),
+        ('journal_example', '📒 Образец заполнения журнала'),
     )
 
     name = models.CharField(_("Название шаблона"), max_length=255)
@@ -39,13 +42,44 @@ class DocumentTemplate(models.Model):
     created_at = models.DateTimeField(_("Дата создания"), auto_now_add=True)
     updated_at = models.DateTimeField(_("Дата обновления"), auto_now=True)
 
+    # Привязка к организации
+    organization = models.ForeignKey(
+        'directory.Organization',
+        on_delete=models.CASCADE,
+        related_name="document_templates",
+        verbose_name=_("Организация"),
+        null=True,
+        blank=True,
+        help_text=_("Организация, для которой предназначен шаблон. Если не указана, шаблон считается эталонным.")
+    )
+    is_default = models.BooleanField(
+        verbose_name=_("Эталонный шаблон"),
+        default=False,
+        help_text=_("Указывает, является ли шаблон эталонным для всех организаций")
+    )
+
     class Meta:
         verbose_name = _("Шаблон документа")
         verbose_name_plural = _("Шаблоны документов")
         ordering = ['-updated_at']
+        constraints = [
+            models.UniqueConstraint(
+                fields=['document_type'],
+                condition=models.Q(is_default=True),
+                name='unique_default_template_per_type'
+            )
+        ]
 
     def __str__(self):
         return f"{self.name} ({self.get_document_type_display()})"
+
+    def clean(self):
+        super().clean()
+        # Проверяем, что не может быть одновременно эталонным и привязанным к организации
+        if self.is_default and self.organization:
+            raise ValidationError(
+                {'is_default': _('Эталонный шаблон не может быть привязан к организации')}
+            )
 
 
 class GeneratedDocument(models.Model):

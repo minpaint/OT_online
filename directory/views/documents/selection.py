@@ -1,28 +1,89 @@
-# D:\YandexDisk\OT_online\directory\views\documents\selection.py
+# directory/views/documents/selection.py
 """
 🔍 Представления для выбора типов документов
 
 Содержит представления для выбора типов документов, которые нужно сгенерировать.
 """
 import json
+import logging
 from django.views.generic import FormView
 from django.contrib.auth.mixins import LoginRequiredMixin
-from django.shortcuts import get_object_or_404, redirect
-from django.http import HttpResponseRedirect
-from django.urls import reverse
+from django.shortcuts import get_object_or_404, redirect, render
 from django.contrib import messages
 from django.utils.translation import gettext as _
 
 from directory.models import Employee
 from directory.models.document_template import DocumentTemplate
 from directory.forms.document_forms import DocumentSelectionForm
-from directory.utils.docx_generator import prepare_employee_context
-from .utils import (
-    get_internship_leader_position, get_internship_leader_name,
-    get_internship_leader_initials, get_director_info,
-    get_commission_members, get_safety_instructions,
-    get_employee_documents
+from directory.utils.docx_generator import (
+    generate_all_orders, generate_knowledge_protocol,
+    generate_familiarization_document, generate_siz_card,
+    generate_personal_ot_card, generate_journal_example
 )
+
+# Настройка логирования
+logger = logging.getLogger(__name__)
+
+
+def get_auto_selected_document_types(employee):
+    """
+    Автоматически определяет типы документов для генерации на основе данных сотрудника.
+
+    Правила выбора:
+    1. Если срок стажировки > 0 и нет договора подряда: Распоряжения стажировки + Протокол проверки знаний
+    2. Если срок стажировки > 0 и есть договор подряда: только Протокол проверки знаний
+    3. Если у должности есть связанные документы: Лист ознакомления
+    4. Если у должности есть нормы СИЗ: Карточка учета СИЗ
+
+    Args:
+        employee (Employee): Объект сотрудника
+
+    Returns:
+        list: Список кодов типов документов для генерации
+    """
+    document_types = []
+
+    # Проверяем наличие должности
+    if not employee.position:
+        logger.warning(f"У сотрудника {employee.full_name_nominative} не указана должность")
+        return document_types
+
+    # Проверяем срок стажировки и договор подряда
+    internship_period = getattr(employee.position, 'internship_period_days', 0)
+    is_contractor = getattr(employee, 'is_contractor', False)
+
+    if internship_period > 0:
+        # Если это не договор подряда, добавляем распоряжение о стажировке
+        if not is_contractor:
+            document_types.append('all_orders')
+
+        # В любом случае добавляем протокол проверки знаний
+        document_types.append('knowledge_protocol')
+
+    # Проверяем связанные документы для должности
+    has_documents = False
+    if hasattr(employee.position, 'documents') and employee.position.documents.exists():
+        has_documents = True
+        document_types.append('doc_familiarization')
+
+    # Проверяем наличие норм СИЗ
+    has_siz_norms = False
+
+    # Проверяем эталонные нормы СИЗ
+    from directory.models.siz import SIZNorm
+    if SIZNorm.objects.filter(position=employee.position).exists():
+        has_siz_norms = True
+
+    # Также можно проверить нормы, определенные непосредственно в должности
+    # if hasattr(employee.position, 'siz_items') and employee.position.siz_items.exists():
+    #     has_siz_norms = True
+
+    if has_siz_norms:
+        document_types.append('siz_card')
+
+    logger.info(f"Автоматически выбранные типы документов для {employee.full_name_nominative}: {document_types}")
+
+    return document_types
 
 
 class DocumentSelectionView(LoginRequiredMixin, FormView):
@@ -35,219 +96,108 @@ class DocumentSelectionView(LoginRequiredMixin, FormView):
     def get_initial(self):
         initial = super().get_initial()
         employee_id = self.kwargs.get('employee_id')
+
         if employee_id:
             initial['employee_id'] = employee_id
+
+            # Получаем сотрудника
+            try:
+                employee = Employee.objects.get(id=employee_id)
+
+                # Автоматически выбираем типы документов
+                document_types = get_auto_selected_document_types(employee)
+                initial['document_types'] = document_types
+
+            except Employee.DoesNotExist:
+                logger.error(f"Сотрудник с ID {employee_id} не найден")
+
         return initial
 
     def get_context_data(self, **kwargs):
         context = super().get_context_data(**kwargs)
         employee_id = self.kwargs.get('employee_id')
+
         if employee_id:
-            context['employee'] = get_object_or_404(Employee, id=employee_id)
+            try:
+                employee = Employee.objects.get(id=employee_id)
+                context['employee'] = employee
+
+                # Добавляем информацию о правилах выбора документов для дебага
+                context['internship_period'] = getattr(employee.position, 'internship_period_days',
+                                                       0) if employee.position else 0
+                context['is_contractor'] = getattr(employee, 'is_contractor', False)
+                context['has_documents'] = hasattr(employee.position,
+                                                   'documents') and employee.position.documents.exists() if employee.position else False
+
+                # Проверяем наличие норм СИЗ
+                from directory.models.siz import SIZNorm
+                context['has_siz_norms'] = SIZNorm.objects.filter(
+                    position=employee.position).exists() if employee.position else False
+
+            except Employee.DoesNotExist:
+                logger.error(f"Сотрудник с ID {employee_id} не найден")
+
         context['title'] = _('Выбор типов документов')
         return context
 
-    def _get_document_type_display(self, doc_type):
-        """
-        Получает название типа документа для отображения
-        """
-        for type_code, type_name in DocumentTemplate.DOCUMENT_TYPES:
-            if type_code == doc_type:
-                return type_name
-        return doc_type
-
     def form_valid(self, form):
-        try:
-            employee_id = form.cleaned_data.get('employee_id')
-            if not employee_id and 'employee_id' in self.kwargs:
-                employee_id = self.kwargs['employee_id']
+        # Получаем ID сотрудника и типы документов
+        employee_id = form.cleaned_data.get('employee_id')
+        document_types = form.cleaned_data.get('document_types', [])
 
-            if not employee_id:
-                messages.error(self.request, _("Не указан сотрудник"))
-                return self.form_invalid(form)
-
-            document_types = form.cleaned_data.get('document_types', [])
-
-            if not document_types:
-                messages.error(self.request, _("Не выбран ни один тип документа"))
-                return self.form_invalid(form)
-
-            employee = get_object_or_404(Employee, id=employee_id)
-
-            # Подготавливаем базовый контекст на основе данных сотрудника
-            base_context = prepare_employee_context(employee)
-
-            # Создаем предпросмотры для выбранных типов документов
-            preview_data = []
-
-            for doc_type in document_types:
-                # Создаем контекст для типа документа
-                context = self._prepare_document_context(doc_type, employee, base_context)
-                context['employee_id'] = employee_id  # Добавляем ID сотрудника в контекст
-
-                # Добавляем информацию о типе документа и данные для предпросмотра
-                preview_data.append({
-                    'document_type': doc_type,
-                    'document_data': context,
-                    'employee_id': employee_id
-                })
-
-            # Проверяем, есть ли данные для предпросмотра
-            if not preview_data:
-                messages.error(self.request, _("Не удалось подготовить данные для предпросмотра"))
-                return self.form_invalid(form)
-
-            # Сохраняем данные предпросмотра в сессию
-            self.request.session['preview_data'] = json.dumps(preview_data, default=str)
-
-            # Отладочная информация в сессию
-            self.request.session['debug_info'] = {
-                'employee_id': employee_id,
-                'document_types': document_types,
-                'preview_data_length': len(preview_data)
-            }
-
-            # Проверяем, есть ли недостающие данные в документах
-            has_missing_data = any(
-                data.get('document_data', {}).get('has_missing_data', False)
-                for data in preview_data
-            )
-
-            # Если есть недостающие данные, предупреждаем пользователя
-            if has_missing_data:
-                for data in preview_data:
-                    doc_data = data.get('document_data', {})
-                    missing = doc_data.get('missing_data', [])
-                    if missing:
-                        doc_type_display = self._get_document_type_display(data.get('document_type'))
-                        message = _(f"⚠️ В документе '{doc_type_display}' отсутствуют данные: {', '.join(missing)}")
-                        messages.warning(self.request, message)
-
-                # Добавляем общее предупреждение
-                messages.warning(
-                    self.request,
-                    _("⚠️ В документах отсутствуют некоторые данные. "
-                      "Вы можете добавить их на странице предпросмотра перед генерацией.")
-                )
-
-            # Перенаправляем на страницу предпросмотра
-            return redirect('directory:documents:documents_preview')
-
-        except Exception as e:
-            messages.error(self.request, f"Ошибка при обработке формы: {str(e)}")
+        if not employee_id:
+            messages.error(self.request, _("Не указан сотрудник"))
             return self.form_invalid(form)
 
-    def _prepare_document_context(self, document_type, employee, base_context):
-        """
-        Подготавливает контекст для определенного типа документа
+        if not document_types:
+            messages.error(self.request, _("Не выбран ни один тип документа"))
+            return self.form_invalid(form)
 
-        Args:
-            document_type: Тип документа (строка)
-            employee: Объект сотрудника Employee
-            base_context: Базовый контекст с данными сотрудника
+        # Получаем сотрудника
+        try:
+            employee = Employee.objects.get(id=employee_id)
+        except Employee.DoesNotExist:
+            messages.error(self.request, _("Сотрудник не найден"))
+            return self.form_invalid(form)
 
-        Returns:
-            dict: Контекст документа
-        """
-        context = base_context.copy()
-        missing_data = context.get('missing_data', []).copy()
+        # Генерируем документы
+        generated_documents = []
 
-        # Добавляем дополнительные данные в зависимости от типа документа
-        if document_type == 'all_orders':
-            # Данные для комбинированного распоряжения о стажировке
-            order_data = {
-                'order_number': '',  # Номер распоряжения (пользователь должен ввести)
-            }
+        for doc_type in document_types:
+            generated_doc = self._generate_document(doc_type, employee)
+            if generated_doc:
+                generated_documents.append(generated_doc)
 
-            # Период стажировки
-            if hasattr(employee.position, 'internship_period_days') and employee.position.internship_period_days:
-                order_data['internship_duration'] = employee.position.internship_period_days
+        # Если сгенерирован хотя бы один документ
+        if generated_documents:
+            # Если документ один, перенаправляем на его страницу
+            if len(generated_documents) == 1:
+                messages.success(self.request, _("Документ успешно сгенерирован"))
+                return redirect('directory:documents:document_detail', pk=generated_documents[0].id)
             else:
-                order_data['internship_duration'] = 2
-                missing_data.append('Период стажировки не указан в должности')
+                # Если документов несколько, перенаправляем на список документов
+                messages.success(self.request, _("Документы успешно сгенерированы"))
+                return redirect('directory:documents:document_list')
+        else:
+            messages.error(self.request, _("Не удалось сгенерировать документы"))
+            return self.form_invalid(form)
 
-            # Информация о руководителе стажировки
-            leader_position, position_success = get_internship_leader_position(employee)
-            if not position_success:
-                missing_data.append('Не найден руководитель стажировки')
+    def _generate_document(self, doc_type, employee):
+        """Генерирует документ указанного типа для сотрудника"""
+        logger.info(f"Генерация документа типа {doc_type} для сотрудника {employee.full_name_nominative}")
 
-            leader_name, name_success = get_internship_leader_name(employee)
-            if not name_success:
-                missing_data.append('Не найдено ФИО руководителя стажировки')
-
-            leader_initials, initials_success = get_internship_leader_initials(employee)
-            if not initials_success:
-                missing_data.append('Не найдены инициалы руководителя стажировки')
-
-            order_data.update({
-                'head_of_internship_position': leader_position,
-                'head_of_internship_name': leader_name,
-                'head_of_internship_name_initials': leader_initials,
-            })
-
-            # Информация о директоре (должна храниться в организации)
-            director_info, director_success = get_director_info(employee.organization)
-            if not director_success:
-                missing_data.append('Не найдена информация о директоре')
-
-            order_data.update({
-                'director_position': director_info['position'],
-                'director_name': director_info['name'],
-            })
-
-            context.update(order_data)
-
-        elif document_type == 'siz_card':
-            # Для карточки СИЗ не нужно особой подготовки контекста,
-            # так как используется существующий механизм генерации
-            # Проверяем только наличие размеров
-            if not employee.height:
-                missing_data.append('Не указан рост сотрудника')
-            if not employee.clothing_size:
-                missing_data.append('Не указан размер одежды сотрудника')
-            if not employee.shoe_size:
-                missing_data.append('Не указан размер обуви сотрудника')
-
-        elif document_type == 'knowledge_protocol':
-            # Данные для протокола проверки знаний
-            protocol_data = {
-                'protocol_number': '',  # Номер протокола (пользователь должен ввести)
-                'knowledge_result': 'удовлетворительные',
-            }
-
-            # Члены комиссии
-            commission_members, commission_success = get_commission_members(employee)
-            if not commission_success:
-                missing_data.append('Не найдены члены комиссии')
-
-            protocol_data['commission_members'] = commission_members
-
-            # Инструкции по охране труда
-            safety_instructions, instructions_success = get_safety_instructions(employee)
-            if not instructions_success:
-                missing_data.append('Не найдены инструкции по охране труда')
-
-            protocol_data['safety_instructions'] = safety_instructions
-
-            context.update(protocol_data)
-
-        elif document_type == 'doc_familiarization':
-            # Данные для листа ознакомления с документами
-            familiarization_data = {
-                'familiarization_date': base_context.get('order_date', ''),
-            }
-
-            # Документы для ознакомления
-            documents_list, documents_success = get_employee_documents(employee)
-            if not documents_success:
-                missing_data.append('Не найдены документы для ознакомления')
-
-            familiarization_data['documents_list'] = documents_list
-
-            context.update(familiarization_data)
-
-        # Обновляем информацию о недостающих данных в контексте
-        context['missing_data'] = missing_data
-        context['has_missing_data'] = len(missing_data) > 0
-
-        return context
+        if doc_type == 'all_orders':
+            return generate_all_orders(employee, self.request.user)
+        elif doc_type == 'knowledge_protocol':
+            return generate_knowledge_protocol(employee, self.request.user)
+        elif doc_type == 'doc_familiarization':
+            return generate_familiarization_document(employee, user=self.request.user)
+        elif doc_type == 'siz_card':
+            return generate_siz_card(employee, self.request.user)
+        elif doc_type == 'personal_ot_card':
+            return generate_personal_ot_card(employee, self.request.user)
+        elif doc_type == 'journal_example':
+            return generate_journal_example(employee, self.request.user)
+        else:
+            logger.error(f"Неизвестный тип документа: {doc_type}")
+            return None

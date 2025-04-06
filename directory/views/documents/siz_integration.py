@@ -1,4 +1,4 @@
-# D:\YandexDisk\OT_online\directory\views\documents\siz_integration.py
+# directory/views/documents/siz_integration.py
 """
 🔄 Интеграция с существующим механизмом генерации карточки СИЗ
 
@@ -53,7 +53,8 @@ def generate_siz_card_excel(request, employee_id):
                 defaults={
                     'name': 'Карточка учета СИЗ',
                     'description': 'Шаблон карточки учета выдачи средств индивидуальной защиты',
-                    'is_active': True
+                    'is_active': True,
+                    'is_default': True
                 }
             )
 
