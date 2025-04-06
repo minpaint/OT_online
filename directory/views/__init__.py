@@ -38,13 +38,11 @@ from .positions import (
 # Используем абсолютный импорт, чтобы избежать конфликтов
 from directory.views.documents import (
     DocumentSelectionView,
-    AllOrdersFormView,  # Обновлено: заменяем устаревшие классы
-    SIZCardFormView,  # Обновлено: добавляем новый класс
-    DocumentsPreviewView,
+
     GeneratedDocumentListView,
     GeneratedDocumentDetailView,
     document_download,
-    update_document_data
+
 )
 
 # Импортируем представления для выдачи СИЗ
@@ -164,13 +162,9 @@ __all__ = [
     'get_departments',
     'UserRegistrationView',
     'DocumentSelectionView',
-    'AllOrdersFormView',  # Обновлено: заменяем устаревшие классы
-    'SIZCardFormView',  # Обновлено: добавляем новый класс
-    'DocumentsPreviewView',
-    'GeneratedDocumentListView',
+     'GeneratedDocumentListView',
     'GeneratedDocumentDetailView',
     'document_download',
-    'update_document_data',
     'SIZIssueFormView',
     'SIZPersonalCardView',
     'SIZIssueReturnView',

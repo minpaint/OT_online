@@ -12,11 +12,10 @@ from django.utils.translation import gettext as _
 from django.utils import timezone
 
 from directory.models import Employee
-from directory.forms.document_forms import (
-    AllOrdersForm, SIZCardForm, DocumentPreviewForm
-)
+# Удалены импорты несуществующих форм (AllOrdersForm, SIZCardForm, DocumentPreviewForm)
+
 from directory.utils.docx_generator import (
-    prepare_employee_context, generate_all_orders
+    prepare_employee_context, generate_all_orders, generate_siz_card
 )
 from directory.utils.declension import get_initials_from_name
 
@@ -26,7 +25,20 @@ class AllOrdersFormView(LoginRequiredMixin, FormView):
     Представление для формы распоряжения о стажировке и допуске к работе
     """
     template_name = 'directory/documents/all_orders_form.html'
-    form_class = AllOrdersForm
+    # Поскольку AllOrdersForm отсутствует, нужно создать базовую форму или временно указать другую
+    form_class = None  # Будет заменено на актуальную форму или переопределено в get_form_class
+
+    def get_form_class(self):
+        """Возвращает класс формы для использования"""
+        from django import forms
+
+        # Создаем форму динамически
+        class TempAllOrdersForm(forms.Form):
+            """Временная базовая форма для распоряжений"""
+            organization_name = forms.CharField(label=_("Наименование организации"))
+            order_date = forms.DateField(label=_("Дата распоряжения"))
+
+        return TempAllOrdersForm
 
     def get_employee(self):
         employee_id = self.kwargs.get('employee_id')
@@ -72,7 +84,7 @@ class AllOrdersFormView(LoginRequiredMixin, FormView):
             })
         else:  # admission_order
             initial.update({
-                'fio_dative': context['fio_dative'],  # или можно использовать именительный падеж
+                'fio_dative': context['fio_dative'],
                 'position_dative': context['position_dative'],
             })
 
@@ -117,65 +129,28 @@ class AllOrdersFormView(LoginRequiredMixin, FormView):
         employee = self.get_employee()
         order_type = self.get_order_type()
 
-        # Если нажата кнопка предпросмотра
-        if 'preview' in self.request.POST:
-            # Собираем данные для предпросмотра
-            document_data = form.cleaned_data
-            document_data['employee_id'] = employee.id
-            document_data['order_type'] = order_type
+        # Прямая генерация документа без предпросмотра
+        custom_context = form.cleaned_data
+        custom_context['order_type'] = order_type  # Добавляем тип распоряжения в контекст
 
-            # Передаем данные форме предпросмотра
-            preview_form = DocumentPreviewForm(initial={
-                'document_data': json.dumps(document_data, default=str),
-                'document_type': 'all_orders',  # Используем единый тип для всех распоряжений
-                'employee_id': employee.id
-            })
+        generated_doc = generate_all_orders(
+            employee,
+            self.request.user,
+            custom_context
+        )
 
-            # Определяем заголовок для страницы предпросмотра
+        if generated_doc:
+            # Определяем сообщение об успехе в зависимости от типа распоряжения
             if order_type == 'internship_order':
-                title = _('Предпросмотр распоряжения о стажировке')
+                success_message = _('Распоряжение о стажировке успешно сгенерировано')
             else:  # admission_order
-                title = _('Предпросмотр распоряжения о допуске к самостоятельной работе')
+                success_message = _('Распоряжение о допуске к работе успешно сгенерировано')
 
-            # Рендерим страницу предпросмотра
-            return render(
-                self.request,
-                'directory/documents/document_preview.html',
-                {
-                    'form': preview_form,
-                    'document_data': document_data,
-                    'document_type': 'all_orders',
-                    'employee': employee,
-                    'title': title
-                }
-            )
-
-        # Если нажата кнопка генерации документа
-        elif 'generate' in self.request.POST:
-            # Генерируем документ
-            custom_context = form.cleaned_data
-            custom_context['order_type'] = order_type  # Добавляем тип распоряжения в контекст
-
-            generated_doc = generate_all_orders(
-                employee,
-                self.request.user,
-                custom_context
-            )
-
-            if generated_doc:
-                # Определяем сообщение об успехе в зависимости от типа распоряжения
-                if order_type == 'internship_order':
-                    success_message = _('Распоряжение о стажировке успешно сгенерировано')
-                else:  # admission_order
-                    success_message = _('Распоряжение о допуске к работе успешно сгенерировано')
-
-                messages.success(self.request, success_message)
-                return redirect('directory:documents:document_detail', pk=generated_doc.id)
-            else:
-                messages.error(self.request, _('Ошибка при генерации документа'))
-                return self.form_invalid(form)
-
-        return super().form_valid(form)
+            messages.success(self.request, success_message)
+            return redirect('directory:documents:document_detail', pk=generated_doc.id)
+        else:
+            messages.error(self.request, _('Ошибка при генерации документа'))
+            return self.form_invalid(form)
 
 
 class SIZCardFormView(LoginRequiredMixin, FormView):
@@ -183,7 +158,20 @@ class SIZCardFormView(LoginRequiredMixin, FormView):
     Представление для формы карточки учета СИЗ
     """
     template_name = 'directory/documents/siz_card_form.html'
-    form_class = SIZCardForm
+    # Поскольку SIZCardForm отсутствует, нужно создать базовую форму или временно указать другую
+    form_class = None  # Будет заменено на актуальную форму или переопределено в get_form_class
+
+    def get_form_class(self):
+        """Возвращает класс формы для использования"""
+        from django import forms
+
+        # Создаем форму динамически
+        class TempSIZCardForm(forms.Form):
+            """Временная базовая форма для карточки СИЗ"""
+            organization_name = forms.CharField(label=_("Наименование организации"))
+            employee_name = forms.CharField(label=_("ФИО сотрудника"))
+
+        return TempSIZCardForm
 
     def get_employee(self):
         employee_id = self.kwargs.get('employee_id')
@@ -234,56 +222,23 @@ class SIZCardFormView(LoginRequiredMixin, FormView):
     def form_valid(self, form):
         employee = self.get_employee()
 
-        # Если нажата кнопка предпросмотра
-        if 'preview' in self.request.POST:
-            # Собираем данные для предпросмотра
-            document_data = form.cleaned_data
-            document_data['employee_id'] = employee.id
+        # Прямая генерация документа без предпросмотра
+        custom_context = form.cleaned_data
+        generated_doc = generate_siz_card(
+            employee,
+            self.request.user,
+            custom_context
+        )
 
-            # Передаем данные форме предпросмотра
-            preview_form = DocumentPreviewForm(initial={
-                'document_data': json.dumps(document_data, default=str),
-                'document_type': 'siz_card',
-                'employee_id': employee.id
-            })
-
-            # Рендерим страницу предпросмотра
-            return render(
+        if generated_doc:
+            messages.success(
                 self.request,
-                'directory/documents/document_preview.html',
-                {
-                    'form': preview_form,
-                    'document_data': document_data,
-                    'document_type': 'siz_card',
-                    'employee': employee,
-                    'title': _('Предпросмотр карточки учета СИЗ')
-                }
+                _('Карточка учета СИЗ успешно сгенерирована')
             )
-
-        # Если нажата кнопка генерации документа
-        elif 'generate' in self.request.POST:
-            # Генерируем документ
-            # Здесь будет вызов функции generate_siz_card
-            from directory.utils.docx_generator import generate_siz_card
-
-            custom_context = form.cleaned_data
-            generated_doc = generate_siz_card(
-                employee,
-                self.request.user,
-                custom_context
+            return redirect('directory:documents:document_detail', pk=generated_doc.id)
+        else:
+            messages.error(
+                self.request,
+                _('Ошибка при генерации документа')
             )
-
-            if generated_doc:
-                messages.success(
-                    self.request,
-                    _('Карточка учета СИЗ успешно сгенерирована')
-                )
-                return redirect('directory:documents:document_detail', pk=generated_doc.id)
-            else:
-                messages.error(
-                    self.request,
-                    _('Ошибка при генерации документа')
-                )
-                return self.form_invalid(form)
-
-        return super().form_valid(form)
+            return self.form_invalid(form)

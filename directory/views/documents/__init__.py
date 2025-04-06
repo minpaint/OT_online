@@ -7,15 +7,11 @@
 
 from .selection import DocumentSelectionView
 
-from .forms import (
-    AllOrdersFormView,  # Исправлено: импортируем представления, а не формы
-    SIZCardFormView     # Исправлено: импортируем представления, а не формы
-)
+# Убираем импорт из forms, т.к. мы решили не реализовывать эти формы
+# from .forms import AllOrdersFormView, SIZCardFormView
 
-from .preview import (
-    DocumentsPreviewView,
-    update_document_data
-)
+# Мы также убираем preview, т.к. мы решили не реализовывать эту функциональность
+# from .preview import DocumentsPreviewView, update_document_data
 
 from .management import (
     GeneratedDocumentListView,
@@ -25,10 +21,6 @@ from .management import (
 
 __all__ = [
     'DocumentSelectionView',
-    'AllOrdersFormView',  # Исправлено: экспортируем представления, а не формы
-    'SIZCardFormView',    # Исправлено: экспортируем представления, а не формы
-    'DocumentsPreviewView',
-    'update_document_data',
     'GeneratedDocumentListView',
     'GeneratedDocumentDetailView',
     'document_download',
