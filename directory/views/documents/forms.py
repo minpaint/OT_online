@@ -14,9 +14,11 @@ from django.utils import timezone
 from directory.models import Employee
 # Удалены импорты несуществующих форм (AllOrdersForm, SIZCardForm, DocumentPreviewForm)
 
-from directory.utils.docx_generator import (
-    prepare_employee_context, generate_all_orders, generate_siz_card
-)
+# Обновленные импорты для генераторов документов
+from directory.document_generators.base import prepare_employee_context # Базовая подготовка контекста
+from directory.document_generators.order_generator import generate_all_orders # Генератор распоряжений
+from directory.document_generators.siz_card_generator import generate_siz_card # Генератор карточки СИЗ
+
 from directory.utils.declension import get_initials_from_name
 
 
@@ -56,6 +58,7 @@ class AllOrdersFormView(LoginRequiredMixin, FormView):
         order_type = self.get_order_type()
 
         # Подготавливаем начальные данные для формы на основе данных сотрудника
+        # Используем базовую функцию подготовки контекста
         context = prepare_employee_context(employee)
 
         # Получаем информацию о руководителе стажировки
@@ -133,6 +136,7 @@ class AllOrdersFormView(LoginRequiredMixin, FormView):
         custom_context = form.cleaned_data
         custom_context['order_type'] = order_type  # Добавляем тип распоряжения в контекст
 
+        # Используем импортированную функцию генерации распоряжений
         generated_doc = generate_all_orders(
             employee,
             self.request.user,
@@ -182,6 +186,7 @@ class SIZCardFormView(LoginRequiredMixin, FormView):
         employee = self.get_employee()
 
         # Подготавливаем начальные данные для формы
+        # Используем базовую функцию подготовки контекста
         context = prepare_employee_context(employee)
 
         # Заполняем начальные данные формы
@@ -224,21 +229,27 @@ class SIZCardFormView(LoginRequiredMixin, FormView):
 
         # Прямая генерация документа без предпросмотра
         custom_context = form.cleaned_data
-        generated_doc = generate_siz_card(
+        # Используем импортированную функцию генерации карточки СИЗ
+        generated_response = generate_siz_card(
             employee,
             self.request.user,
             custom_context
         )
-
-        if generated_doc:
-            messages.success(
-                self.request,
-                _('Карточка учета СИЗ успешно сгенерирована')
-            )
-            return redirect('directory:documents:document_detail', pk=generated_doc.id)
+        
+        # generate_siz_card возвращает HttpResponse или None
+        if generated_response and generated_response.status_code == 200: 
+             # Возвращаем сам HttpResponse, т.к. это Excel файл
+            return generated_response
+        # Если нужно сохранить GeneratedDocument, то siz_card_generator надо переделать
+        # elif generated_doc: # Если бы возвращался GeneratedDocument
+        #     messages.success(
+        #         self.request,
+        #         _('Карточка учета СИЗ успешно сгенерирована')
+        #     )
+        #     return redirect('directory:documents:document_detail', pk=generated_doc.id)
         else:
             messages.error(
                 self.request,
-                _('Ошибка при генерации документа')
+                _('Ошибка при генерации карточки СИЗ')
             )
             return self.form_invalid(form)
