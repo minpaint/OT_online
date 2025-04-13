@@ -1,0 +1,50 @@
+<!-- templates/directory/commissions/member_form.html -->
+{% extends "base.html" %}
+{% load static %}
+{% load crispy_forms_tags %}
+
+{% block title %}{{ title }}{% endblock %}
+
+{% block content %}
+<div class="container">
+    <h1 class="mb-4">{{ title }}</h1>
+
+    <div class="card">
+        <div class="card-body">
+            <form method="post">
+                {% csrf_token %}
+                
+                {% crispy form %}
+                
+                <div class="d-flex justify-content-between mt-3">
+                    <a href="{% url 'directory:commissions:commission_detail' commission.id %}" class="btn btn-secondary">
+                        <i class="fas fa-times"></i> Отмена
+                    </a>
+                    <button type="submit" class="btn btn-primary">
+                        <i class="fas fa-save"></i> Сохранить
+                    </button>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+    $(document).ready(function() {
+        // Инициализация Select2 для улучшенного выбора сотрудников
+        $('#id_employee').select2({
+            placeholder: 'Выберите сотрудника',
+            width: '100%'
+        });
+        
+        // Автоматическая установка роли из URL, если она передана
+        const urlParams = new URLSearchParams(window.location.search);
+        const role = urlParams.get('role');
+        if (role) {
+            $('#id_role').val(role).trigger('change');
+        }
+    });
+</script>
+{% endblock %}

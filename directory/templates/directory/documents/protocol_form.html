@@ -1,0 +1,205 @@
+<!-- templates/directory/documents/protocol_form.html -->
+{% extends "base.html" %}
+{% load static %}
+{% load crispy_forms_tags %}
+
+{% block title %}{{ title }}{% endblock %}
+
+{% block content %}
+<div class="container">
+    <h1 class="mb-4">{{ title }}</h1>
+    
+    <!-- Информация о сотруднике -->
+    <div class="card mb-4">
+        <div class="card-header">
+            <h5>Сотрудник</h5>
+        </div>
+        <div class="card-body">
+            <div class="row">
+                <div class="col-md-6">
+                    <dl>
+                        <dt>ФИО</dt>
+                        <dd>{{ employee.full_name_nominative }}</dd>
+                        
+                        <dt>Должность</dt>
+                        <dd>{{ employee.position.position_name }}</dd>
+                    </dl>
+                </div>
+                <div class="col-md-6">
+                    <dl>
+                        <dt>Организация</dt>
+                        <dd>{{ employee.organization.short_name_ru }}</dd>
+                        
+                        {% if employee.subdivision %}
+                            <dt>Подразделение</dt>
+                            <dd>{{ employee.subdivision.name }}</dd>
+                        {% endif %}
+                        
+                        {% if employee.department %}
+                            <dt>Отдел</dt>
+                            <dd>{{ employee.department.name }}</dd>
+                        {% endif %}
+                    </dl>
+                </div>
+            </div>
+        </div>
+    </div>
+    
+    <!-- Автоматически найденная комиссия -->
+    {% if commission %}
+        <div class="card mb-4">
+            <div class="card-header">
+                <h5>Комиссия для протокола проверки знаний</h5>
+            </div>
+            <div class="card-body">
+                <div class="alert alert-info">
+                    <p>Для сотрудника автоматически выбрана комиссия на уровне 
+                    {% if commission.department %}
+                        отдела <strong>{{ commission.department.name }}</strong>
+                    {% elif commission.subdivision %}
+                        подразделения <strong>{{ commission.subdivision.name }}</strong>
+                    {% else %}
+                        организации <strong>{{ commission.organization.short_name_ru }}</strong>
+                    {% endif %}
+                    </p>
+                    <h5>{{ commission.name }}</h5>
+                </div>
+                
+                {% if warning_message %}
+                    <div class="alert alert-warning">
+                        {{ warning_message }}
+                    </div>
+                {% endif %}
+                
+                <!-- Предпросмотр состава комиссии -->
+                {% if commission_data %}
+                    <h6>Состав комиссии:</h6>
+                    <ul class="list-group mb-3">
+                        {% if commission_data.chairman %}
+                            <li class="list-group-item">
+                                <strong>Председатель:</strong> {{ commission_data.chairman.formatted }}
+                            </li>
+                        {% endif %}
+                        
+                        {% if commission_data.members %}
+                            <li class="list-group-item">
+                                <strong>Члены комиссии:</strong> 
+                                <ul>
+                                    {% for member in commission_data.members %}
+                                        <li>{{ member.formatted }}</li>
+                                    {% endfor %}
+                                </ul>
+                            </li>
+                        {% endif %}
+                        
+                        {% if commission_data.secretary %}
+                            <li class="list-group-item">
+                                <strong>Секретарь:</strong> {{ commission_data.secretary.formatted }}
+                            </li>
+                        {% endif %}
+                    </ul>
+                {% endif %}
+            </div>
+        </div>
+    {% else %}
+        <div class="card mb-4">
+            <div class="card-header bg-warning text-white">
+                <h5>Внимание! Комиссия не найдена</h5>
+            </div>
+            <div class="card-body">
+                <div class="alert alert-warning">
+                    Для сотрудника не найдена подходящая комиссия по проверке знаний.
+                    <p>Необходимо <a href="{% url 'directory:commissions:commission_create' %}">создать комиссию</a> на одном из уровней:</p>
+                    <ul>
+                        <li>Уровень организации: {{ employee.organization.short_name_ru }}</li>
+                        {% if employee.subdivision %}
+                            <li>Уровень подразделения: {{ employee.subdivision.name }}</li>
+                        {% endif %}
+                        {% if employee.department %}
+                            <li>Уровень отдела: {{ employee.department.name }}</li>
+                        {% endif %}
+                    </ul>
+                </div>
+            </div>
+        </div>
+    {% endif %}
+    
+    <!-- Форма создания протокола -->
+    <div class="card mb-4">
+        <div class="card-header">
+            <h5>Параметры протокола проверки знаний</h5>
+        </div>
+        <div class="card-body">
+            <form method="post">
+                {% csrf_token %}
+                
+                <div class="row">
+                    <div class="col-md-6">
+                        <div class="form-group mb-3">
+                            <label for="{{ form.ticket_number.id_for_label }}">{{ form.ticket_number.label }}</label>
+                            {{ form.ticket_number }}
+                            {% if form.ticket_number.errors %}
+                                <div class="invalid-feedback d-block">
+                                    {{ form.ticket_number.errors }}
+                                </div>
+                            {% endif %}
+                        </div>
+                    </div>
+                    <div class="col-md-6">
+                        <div class="form-group mb-3">
+                            <label for="{{ form.test_result.id_for_label }}">{{ form.test_result.label }}</label>
+                            {{ form.test_result }}
+                            {% if form.test_result.errors %}
+                                <div class="invalid-feedback d-block">
+                                    {{ form.test_result.errors }}
+                                </div>
+                            {% endif %}
+                        </div>
+                    </div>
+                </div>
+                
+                <div class="form-group mt-4 d-flex justify-content-between">
+                    <a href="{% url 'directory:documents:document_selection' employee.id %}" class="btn btn-secondary">
+                        <i class="fas fa-arrow-left"></i> Назад к выбору документов
+                    </a>
+                    <button type="submit" class="btn btn-primary" {% if not commission %}disabled{% endif %}>
+                        <i class="fas fa-file-alt"></i> Сгенерировать протокол
+                    </button>
+                </div>
+                
+                {% if not commission %}
+                    <small class="text-danger">Сначала необходимо создать комиссию для генерации протокола</small>
+                {% endif %}
+            </form>
+        </div>
+    </div>
+    
+    {% if selected_document_types %}
+        <div class="card mb-4">
+            <div class="card-header">
+                <h5>Другие выбранные документы</h5>
+            </div>
+            <div class="card-body">
+                <p>После создания протокола будет выполнена генерация следующих документов:</p>
+                <ul>
+                    {% for doc_type in selected_document_types %}
+                        <li>
+                            {% if doc_type == 'knowledge_protocol' %}
+                                Протокол проверки знаний
+                            {% elif doc_type == 'all_orders' %}
+                                Распоряжения о стажировке
+                            {% elif doc_type == 'doc_familiarization' %}
+                                Лист ознакомления с документами
+                            {% elif doc_type == 'siz_card' %}
+                                Карточка учета СИЗ
+                            {% else %}
+                                {{ doc_type }}
+                            {% endif %}
+                        </li>
+                    {% endfor %}
+                </ul>
+            </div>
+        </div>
+    {% endif %}
+</div>
+{% endblock %}

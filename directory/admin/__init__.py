@@ -12,6 +12,7 @@ from .subdivision import StructuralSubdivisionAdmin
 from .user import CustomUserAdmin
 # Убираем SIZNormGroupAdmin из импортов
 from .siz import SIZAdmin, SIZNormAdmin
+from .commission_admin import CommissionAdmin, CommissionMemberAdmin
 
 __all__ = [
     'DepartmentAdmin',

@@ -1,0 +1,66 @@
+<!-- templates/directory/commissions/form.html -->
+{% extends "base.html" %}
+{% load static %}
+{% load crispy_forms_tags %}
+
+{% block title %}{{ title }}{% endblock %}
+
+{% block content %}
+<div class="container">
+    <h1 class="mb-4">{{ title }}</h1>
+
+    <div class="card">
+        <div class="card-body">
+            <form method="post">
+                {% csrf_token %}
+                
+                {% crispy form %}
+                
+                <div class="d-flex justify-content-between mt-3">
+                    <a href="{% url 'directory:commissions:commission_list' %}" class="btn btn-secondary">
+                        <i class="fas fa-times"></i> Отмена
+                    </a>
+                    <button type="submit" class="btn btn-primary">
+                        <i class="fas fa-save"></i> Сохранить
+                    </button>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+    $(document).ready(function() {
+        // Скрипт для отображения/скрытия полей в зависимости от выбора
+        function updateFieldVisibility() {
+            const organizationSelected = $('#id_organization').val() !== '';
+            const subdivisionSelected = $('#id_subdivision').val() !== '';
+            const departmentSelected = $('#id_department').val() !== '';
+            
+            // Если одно из полей выбрано, деактивируем остальные
+            if (organizationSelected) {
+                $('#id_subdivision').prop('disabled', true);
+                $('#id_department').prop('disabled', true);
+            } else if (subdivisionSelected) {
+                $('#id_organization').prop('disabled', true);
+                $('#id_department').prop('disabled', true);
+            } else if (departmentSelected) {
+                $('#id_organization').prop('disabled', true);
+                $('#id_subdivision').prop('disabled', true);
+            } else {
+                $('#id_organization').prop('disabled', false);
+                $('#id_subdivision').prop('disabled', false);
+                $('#id_department').prop('disabled', false);
+            }
+        }
+        
+        // Вызываем функцию при загрузке страницы
+        updateFieldVisibility();
+        
+        // Вызываем функцию при изменении значения полей
+        $('#id_organization, #id_subdivision, #id_department').change(updateFieldVisibility);
+    });
+</script>
+{% endblock %}

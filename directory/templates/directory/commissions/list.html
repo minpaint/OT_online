@@ -1,0 +1,188 @@
+<!-- templates/directory/commissions/list.html -->
+{% extends "base.html" %}
+{% load static %}
+
+{% block title %}{{ title }}{% endblock %}
+
+{% block content %}
+<div class="container">
+    <h1 class="mb-4">{{ title }}</h1>
+    
+    <!-- Панель фильтров -->
+    <div class="card mb-4">
+        <div class="card-header">
+            <h5>Фильтры</h5>
+        </div>
+        <div class="card-body">
+            <form method="get" class="row g-3">
+                <div class="col-md-3">
+                    <label for="is_active" class="form-label">Статус</label>
+                    <select name="is_active" id="is_active" class="form-select">
+                        <option value="">Все</option>
+                        <option value="true" {% if filter_is_active == 'true' %}selected{% endif %}>Активные</option>
+                        <option value="false" {% if filter_is_active == 'false' %}selected{% endif %}>Неактивные</option>
+                    </select>
+                </div>
+                <div class="col-md-3">
+                    <label for="commission_type" class="form-label">Тип комиссии</label>
+                 <select name="commission_type" id="commission_type" class="form-select">
+                        <option value="">Все типы</option>
+                        <option value="ot" {% if filter_commission_type == 'ot' %}selected{% endif %}>🛡️ Охрана труда</option>
+                        <option value="eb" {% if filter_commission_type == 'eb' %}selected{% endif %}>⚡ Электробезопасность</option>
+                        <option value="pb" {% if filter_commission_type == 'pb' %}selected{% endif %}>🔥 Пожарная безопасность</option>
+                        <option value="other" {% if filter_commission_type == 'other' %}selected{% endif %}>📋 Иная</option>
+                    </select>
+                </div>
+                <div class="col-md-3">
+                    <label for="level" class="form-label">Уровень</label>
+                    <select name="level" id="level" class="form-select">
+                        <option value="">Все уровни</option>
+                        <option value="org" {% if filter_level == 'org' %}selected{% endif %}>Организация</option>
+                        <option value="sub" {% if filter_level == 'sub' %}selected{% endif %}>Структурное подразделение</option>
+                        <option value="dep" {% if filter_level == 'dep' %}selected{% endif %}>Отдел</option>
+                    </select>
+                </div>
+                <div class="col-md-3 d-flex align-items-end">
+                    <button type="submit" class="btn btn-primary me-2">Применить</button>
+                    <a href="{% url 'directory:commissions:commission_list' %}" class="btn btn-outline-secondary">Сбросить</a>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <!-- Кнопка создания новой комиссии -->
+    <div class="mb-3">
+        <a href="{% url 'directory:commissions:commission_create' %}" class="btn btn-success">
+            <i class="fas fa-plus-circle"></i> Создать комиссию
+        </a>
+    </div>
+
+    <!-- Таблица комиссий -->
+    <div class="card">
+        <div class="card-body">
+            {% if commissions %}
+                <div class="table-responsive">
+                    <table class="table table-striped table-hover">
+                        <thead class="table-light">
+                            <tr>
+                                <th>Название</th>
+                                <th>Тип</th>
+                                <th>Уровень</th>
+                                <th>Участников</th>
+                                <th>Статус</th>
+                                <th>Действия</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            {% for commission in commissions %}
+                                <tr>
+                                    <td>
+                                        <a href="{% url 'directory:commissions:commission_detail' commission.id %}">
+                                            {{ commission.name }}
+                                        </a>
+                                    </td>
+                                    <td>
+                                        {% if commission.commission_type == 'ot' %}
+                                            🛡️ Охрана труда
+                                        {% elif commission.commission_type == 'eb' %}
+                                            ⚡ Электробезопасность
+                                        {% elif commission.commission_type == 'pb' %}
+                                            🔥 Пожарная безопасность
+                                        {% else %}
+                                            📋 Иная
+                                        {% endif %}
+                                    </td>
+                                    <td>
+                                        {% if commission.department %}
+                                            Отдел: {{ commission.department.name }}
+                                        {% elif commission.subdivision %}
+                                            Подразделение: {{ commission.subdivision.name }}
+                                        {% elif commission.organization %}
+                                            Организация: {{ commission.organization.short_name_ru }}
+                                        {% else %}
+                                            Не указан
+                                        {% endif %}
+                                    </td>
+                                    <td>{{ commission.members.filter.count }}</td>
+                                    <td>
+                                        {% if commission.is_active %}
+                                            <span class="badge bg-success">Активна</span>
+                                        {% else %}
+                                            <span class="badge bg-secondary">Неактивна</span>
+                                        {% endif %}
+                                    </td>
+                                    <td>
+                                        <div class="btn-group">
+                                            <a href="{% url 'directory:commissions:commission_detail' commission.id %}" class="btn btn-sm btn-info" title="Подробности">
+                                                <i class="fas fa-eye"></i>
+                                            </a>
+                                            <a href="{% url 'directory:commissions:commission_update' commission.id %}" class="btn btn-sm btn-primary" title="Редактировать">
+                                                <i class="fas fa-edit"></i>
+                                            </a>
+                                            <a href="{% url 'directory:commissions:commission_delete' commission.id %}" class="btn btn-sm btn-danger" title="Удалить">
+                                                <i class="fas fa-trash"></i>
+                                            </a>
+                                        </div>
+                                    </td>
+                                </tr>
+                            {% endfor %}
+                        </tbody>
+                    </table>
+                </div>
+
+                <!-- Пагинация -->
+                {% if is_paginated %}
+                    <nav aria-label="Навигация по страницам">
+                        <ul class="pagination justify-content-center">
+                            {% if page_obj.has_previous %}
+                                <li class="page-item">
+                                    <a class="page-link" href="?page=1{% for key, value in request.GET.items %}{% if key != 'page' %}&{{ key }}={{ value }}{% endif %}{% endfor %}" aria-label="First">
+                                        <span aria-hidden="true">&laquo;&laquo;</span>
+                                    </a>
+                                </li>
+                                <li class="page-item">
+                                    <a class="page-link" href="?page={{ page_obj.previous_page_number }}{% for key, value in request.GET.items %}{% if key != 'page' %}&{{ key }}={{ value }}{% endif %}{% endfor %}" aria-label="Previous">
+                                        <span aria-hidden="true">&laquo;</span>
+                                    </a>
+                                </li>
+                            {% endif %}
+
+                            {% for i in paginator.page_range %}
+                                {% if page_obj.number == i %}
+                                    <li class="page-item active">
+                                        <span class="page-link">{{ i }}</span>
+                                    </li>
+                                {% elif i > page_obj.number|add:'-3' and i < page_obj.number|add:'3' %}
+                                    <li class="page-item">
+                                        <a class="page-link" href="?page={{ i }}{% for key, value in request.GET.items %}{% if key != 'page' %}&{{ key }}={{ value }}{% endif %}{% endfor %}">{{ i }}</a>
+                                    </li>
+                                {% endif %}
+                            {% endfor %}
+
+                            {% if page_obj.has_next %}
+                                <li class="page-item">
+                                    <a class="page-link" href="?page={{ page_obj.next_page_number }}{% for key, value in request.GET.items %}{% if key != 'page' %}&{{ key }}={{ value }}{% endif %}{% endfor %}" aria-label="Next">
+                                        <span aria-hidden="true">&raquo;</span>
+                                    </a>
+                                </li>
+                                <li class="page-item">
+                                    <a class="page-link" href="?page={{ paginator.num_pages }}{% for key, value in request.GET.items %}{% if key != 'page' %}&{{ key }}={{ value }}{% endif %}{% endfor %}" aria-label="Last">
+                                        <span aria-hidden="true">&raquo;&raquo;</span>
+                                    </a>
+                                </li>
+                            {% endif %}
+                        </ul>
+                    </nav>
+                {% endif %}
+            {% else %}
+                <div class="alert alert-info">
+                    <h4 class="alert-heading">Комиссии не найдены</h4>
+                    <p>В системе еще не создано ни одной комиссии по проверке знаний или ни одна из существующих комиссий не соответствует выбранным фильтрам.</p>
+                    <hr>
+                    <p class="mb-0">Вы можете <a href="{% url 'directory:commissions:commission_create' %}" class="alert-link">создать новую комиссию</a> или <a href="{% url 'directory:commissions:commission_list' %}" class="alert-link">сбросить фильтры</a>.</p>
+                </div>
+            {% endif %}
+        </div>
+    </div>
+</div>
+{% endblock %}

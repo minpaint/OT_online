@@ -5,36 +5,39 @@ from django.contrib.auth import logout
 
 from .views import siz
 from .views import siz_issued  # 👈 Добавляем импорт модуля siz_issued
+from directory.views import commissions  # 👈 Добавляем импорт модуля commissions
 
 # Импортируем представления из новой модульной структуры документов
 from directory.views.documents import (
     DocumentSelectionView,
-   GeneratedDocumentListView,
-    document_download
+    GeneratedDocumentListView,
+    document_download,
+# Временно закомментируем импорт
+# KnowledgeProtocolCreateView,
 )
 
 from directory.views import (
-    HomePageView,         # 🏠 Главная страница
-    EmployeeListView,     # 👥 Список сотрудников
-    EmployeeCreateView,   # 👤 Создание сотрудника
-    EmployeeUpdateView,   # ✏️ Редактирование сотрудника
-    EmployeeDeleteView,   # 🗑️ Удаление сотрудника
-    EmployeeHiringView,   # 👥 Найм сотрудника - добавляем импорт
-    PositionListView,     # 👔 Список должностей
-    PositionCreateView,   # ➕ Создание должности
-    PositionUpdateView,   # ✏️ Редактирование должности
-    PositionDeleteView,   # 🗑️ Удаление должности
-    UserRegistrationView, # 🔐 Регистрация пользователей
+    HomePageView,  # 🏠 Главная страница
+    EmployeeListView,  # 👥 Список сотрудников
+    EmployeeCreateView,  # 👤 Создание сотрудника
+    EmployeeUpdateView,  # ✏️ Редактирование сотрудника
+    EmployeeDeleteView,  # 🗑️ Удаление сотрудника
+    EmployeeHiringView,  # 👥 Найм сотрудника - добавляем импорт
+    PositionListView,  # 👔 Список должностей
+    PositionCreateView,  # ➕ Создание должности
+    PositionUpdateView,  # ✏️ Редактирование должности
+    PositionDeleteView,  # 🗑️ Удаление должности
+    UserRegistrationView,  # 🔐 Регистрация пользователей
 )
 
 from directory.autocomplete_views import (
-    OrganizationAutocomplete,    # 🏢 Автодополнение организаций
-    SubdivisionAutocomplete,     # 🏭 Автодополнение подразделений
-    DepartmentAutocomplete,      # 📂 Автодополнение отделов
-    PositionAutocomplete,        # 👔 Автодополнение должностей
-    DocumentAutocomplete,        # 📄 Автодополнение документов
-    EquipmentAutocomplete,       # ⚙️ Автодополнение оборудования
-    SIZAutocomplete,             # 🛡️ Автодополнение СИЗ
+    OrganizationAutocomplete,  # 🏢 Автодополнение организаций
+    SubdivisionAutocomplete,  # 🏭 Автодополнение подразделений
+    DepartmentAutocomplete,  # 📂 Автодополнение отделов
+    PositionAutocomplete,  # 👔 Автодополнение должностей
+    DocumentAutocomplete,  # 📄 Автодополнение документов
+    EquipmentAutocomplete,  # ⚙️ Автодополнение оборудования
+    SIZAutocomplete,  # 🛡️ Автодополнение СИЗ
 )
 
 app_name = 'directory'
@@ -78,6 +81,8 @@ document_patterns = [
     path('', GeneratedDocumentListView.as_view(), name='document_list'),
     path('selection/<int:employee_id>/', DocumentSelectionView.as_view(), name='document_selection'),
     path('<int:pk>/download/', document_download, name='document_download'),
+    # Временно закомментируем импорт
+    # path('knowledge-protocol/<int:employee_id>/', KnowledgeProtocolCreateView.as_view(), name='knowledge_protocol_form'),  # 👈 Добавляем маршрут для протоколов
 
     # Закомментированы, если классы не реализованы:
     # path('internship-order/<int:employee_id>/', InternshipOrderFormView.as_view(), name='internship_order_form'),
@@ -85,6 +90,18 @@ document_patterns = [
 
     # path('documents-preview/', DocumentsPreviewView.as_view(), name='documents_preview'),
     # path('api/update-preview-data/', update_document_data, name='update_preview_data'),
+]
+
+# 🔍 URL-маршруты для комиссий
+commission_patterns = [
+    path('', commissions.CommissionListView.as_view(), name='commission_list'),
+    path('create/', commissions.CommissionCreateView.as_view(), name='commission_create'),
+    path('<int:pk>/', commissions.CommissionDetailView.as_view(), name='commission_detail'),
+    path('<int:pk>/update/', commissions.CommissionUpdateView.as_view(), name='commission_update'),
+    path('<int:pk>/delete/', commissions.CommissionDeleteView.as_view(), name='commission_delete'),
+    path('<int:commission_id>/member/add/', commissions.CommissionMemberCreateView.as_view(), name='commission_member_add'),
+    path('member/<int:pk>/update/', commissions.CommissionMemberUpdateView.as_view(), name='commission_member_update'),
+    path('member/<int:pk>/delete/', commissions.CommissionMemberDeleteView.as_view(), name='commission_member_delete'),
 ]
 
 # ⚙️ URL-маршруты для оборудования (если появится соответствующий ListView)
@@ -164,6 +181,7 @@ urlpatterns = [
     path('equipment/', include((equipment_patterns, 'equipment'))),
     path('positions/<int:position_id>/siz-norms/', siz.position_siz_norms, name='position_siz_norms'),
     path('siz/', include((siz_patterns, 'siz'))),
+    path('commissions/', include((commission_patterns, 'commissions'))),  # 👈 Добавляем маршруты для комиссий
 
     # API эндпоинты для работы с личной карточкой СИЗ
     path('api/positions/<int:position_id>/siz-norms/', siz.get_position_siz_norms, name='api_position_siz_norms'),

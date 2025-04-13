@@ -5,6 +5,7 @@ from .department import Department
 from .document import Document
 from .equipment import Equipment
 from .position import Position
+from .commission import Commission, CommissionMember
 from .employee import Employee
 from .profile import Profile
 from .siz_issued import SIZIssued
