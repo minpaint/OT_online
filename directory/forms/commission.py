@@ -150,7 +150,7 @@ class CommissionMemberForm(forms.ModelForm):
         widgets = {
             'commission': forms.HiddenInput(),
             'employee': autocomplete.ModelSelect2(
-                url='directory:employee-autocomplete',
+                url='directory:employee-for-commission-autocomplete',
                 forward=['commission'],
                 attrs={'data-placeholder': '👤 Выберите сотрудника...', 'class': 'form-control select2'}
             ),
@@ -184,12 +184,22 @@ class CommissionMemberForm(forms.ModelForm):
         if commission:
             self.fields['commission'].initial = commission.id
 
+            # ИСПРАВЛЕНИЕ: Настраиваем виджет только если комиссия сохранена
+            if commission.pk:
+                # Настраиваем виджет для выбора сотрудников с учетом иерархии комиссии
+                self.fields['employee'].widget.forward = [
+                    ('commission', commission.id),
+                    ('organization', commission.organization_id or ''),
+                    ('subdivision', commission.subdivision_id or ''),
+                    ('department', commission.department_id or '')
+                ]
+
         # Создаем список ролей с информацией о том, какие уже заняты
         self.role_choices = []
 
         # Получаем занятые роли для визуализации в форме
         existing_roles = []
-        if commission:
+        if commission and commission.pk:  # ИСПРАВЛЕНИЕ: проверяем, что комиссия сохранена
             existing_roles = list(commission.members.filter(
                 is_active=True
             ).exclude(
@@ -213,6 +223,10 @@ class CommissionMemberForm(forms.ModelForm):
         commission = cleaned_data.get('commission')
         role = cleaned_data.get('role')
         is_active = cleaned_data.get('is_active')
+
+        # ИСПРАВЛЕНИЕ: Проверяем, что комиссия сохранена
+        if not commission or not commission.pk:
+            return cleaned_data
 
         # Проверка на дубликаты ролей председателя и секретаря
         if is_active and role in ['chairman', 'secretary']:

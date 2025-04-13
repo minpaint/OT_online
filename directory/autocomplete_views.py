@@ -342,13 +342,106 @@ class EmployeeByCommissionAutocomplete(autocomplete.Select2QuerySetView):
 
         if self.q:
             qs = qs.filter(
-                Q(last_name__icontains=self.q) |
-                Q(first_name__icontains=self.q) |
-                Q(middle_name__icontains=self.q)
+                Q(full_name_nominative__icontains=self.q)
             )
 
-        return qs.order_by('last_name', 'first_name')
+        return qs.select_related('position', 'organization', 'subdivision', 'department').order_by('full_name_nominative')
 
     def get_result_label(self, result):
         position = result.position.position_name if result.position else "Без должности"
         return f"{result.full_name_nominative} - {position}"
+
+
+class EmployeeForCommissionAutocomplete(autocomplete.Select2QuerySetView):
+    """
+    👤 Автодополнение для выбора сотрудников в комиссию с учетом иерархии
+    """
+    def get_queryset(self):
+        if not self.request.user.is_authenticated:
+            return Employee.objects.none()
+
+        qs = Employee.objects.all()
+
+        # Получаем параметры из forwarded
+        organization_id = self.forwarded.get('organization', None)
+        subdivision_id = self.forwarded.get('subdivision', None)
+        department_id = self.forwarded.get('department', None)
+        commission_id = self.forwarded.get('commission', None)
+
+        # Если передан ID комиссии, используем его для определения структуры
+        if commission_id:
+            try:
+                commission = Commission.objects.get(id=commission_id)
+                if commission.department:
+                    department_id = commission.department.id
+                    subdivision_id = commission.department.subdivision_id
+                    organization_id = commission.department.organization_id
+                elif commission.subdivision:
+                    subdivision_id = commission.subdivision.id
+                    organization_id = commission.subdivision.organization_id
+                elif commission.organization:
+                    organization_id = commission.organization.id
+            except Commission.DoesNotExist:
+                pass
+
+        # Фильтруем по иерархии
+        if department_id:
+            qs = qs.filter(department_id=department_id)
+        elif subdivision_id:
+            qs = qs.filter(subdivision_id=subdivision_id)
+        elif organization_id:
+            qs = qs.filter(organization_id=organization_id)
+        else:
+            return Employee.objects.none()
+
+        # Поиск по ФИО
+        if self.q:
+            qs = qs.filter(
+                Q(full_name_nominative__icontains=self.q)
+            )
+
+        return qs.select_related('position', 'organization', 'subdivision', 'department').order_by('full_name_nominative')
+
+    def get_result_label(self, item):
+        # Форматируем результат для отображения
+        position = item.position.position_name if item.position else "Нет должности"
+        return f"{item.full_name_nominative} - {position}"
+
+
+class CommissionAutocomplete(autocomplete.Select2QuerySetView):
+    """
+    Автодополнение для выбора комиссий
+    """
+    def get_queryset(self):
+        if not self.request.user.is_authenticated:
+            return Commission.objects.none()
+
+        qs = Commission.objects.all()
+
+        # Фильтрация по активности
+        qs = qs.filter(is_active=True)
+
+        # Фильтрация по организациям пользователя
+        if not self.request.user.is_superuser and hasattr(self.request.user, 'profile'):
+            allowed_orgs = self.request.user.profile.organizations.all()
+            qs = qs.filter(
+                Q(organization__in=allowed_orgs) |
+                Q(subdivision__organization__in=allowed_orgs) |
+                Q(department__organization__in=allowed_orgs)
+            )
+
+        # Поиск по названию
+        if self.q:
+            qs = qs.filter(name__icontains=self.q)
+
+        return qs.order_by('name')
+
+    def get_result_label(self, item):
+        # Форматируем результат с учетом уровня
+        if item.department:
+            return f"{item.name} ({item.department.name})"
+        elif item.subdivision:
+            return f"{item.name} ({item.subdivision.name})"
+        elif item.organization:
+            return f"{item.name} ({item.organization.short_name_ru})"
+        return item.name

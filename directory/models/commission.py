@@ -1,5 +1,3 @@
-# directory/models/commission.py
-
 from django.db import models
 from django.core.exceptions import ValidationError
 
@@ -121,6 +119,11 @@ class CommissionMember(models.Model):
 
     def clean(self):
         """Валидация модели при сохранении"""
+        # ИСПРАВЛЕНИЕ: Проверяем, что комиссия имеет первичный ключ
+        if not self.commission_id:
+            # Если комиссия еще не сохранена, пропускаем проверку уникальности роли
+            return
+
         # Проверяем, что для ролей 'chairman' и 'secretary' есть только один активный участник
         if self.is_active and self.role in ['chairman', 'secretary']:
             existing = CommissionMember.objects.filter(
