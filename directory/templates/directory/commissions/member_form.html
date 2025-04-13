@@ -22,6 +22,11 @@
                         <div class="form-group">
                             <label for="{{ form.employee.id_for_label }}">Сотрудник</label>
                             {{ form.employee }}
+                            {% if form.employee.errors %}
+                                <div class="text-danger">
+                                    {{ form.employee.errors }}
+                                </div>
+                            {% endif %}
                         </div>
                     </div>
                     
@@ -44,6 +49,11 @@
                                 </div>
                             {% endfor %}
                         </div>
+                        {% if form.role.errors %}
+                            <div class="text-danger mt-2">
+                                {{ form.role.errors }}
+                            </div>
+                        {% endif %}
                     </div>
                 </div>
                 
@@ -54,6 +64,11 @@
                             Активен
                         </label>
                     </div>
+                    {% if form.is_active.errors %}
+                        <div class="text-danger">
+                            {{ form.is_active.errors }}
+                        </div>
+                    {% endif %}
                 </div>
 
                 <div class="d-flex justify-content-between mt-3">
@@ -68,4 +83,27 @@
         </div>
     </div>
 </div>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+    $(document).ready(function() {
+        // Инициализация Select2 с автодополнением
+        $('.select2, select[name="employee"]').select2({
+            width: '100%',
+            language: 'ru',
+            placeholder: 'Выберите сотрудника',
+            allowClear: true
+        });
+        
+        // Подсветка выбранной роли
+        $('input[name="role"]').change(function() {
+            $('.role-selector .form-check').removeClass('bg-light');
+            $(this).closest('.form-check').addClass('bg-light');
+        });
+        
+        // Подсветить выбранную роль при загрузке
+        $('input[name="role"]:checked').closest('.form-check').addClass('bg-light');
+    });
+</script>
 {% endblock %}

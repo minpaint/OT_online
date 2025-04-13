@@ -38,6 +38,7 @@ from directory.autocomplete_views import (
     DocumentAutocomplete,  # 📄 Автодополнение документов
     EquipmentAutocomplete,  # ⚙️ Автодополнение оборудования
     SIZAutocomplete,  # 🛡️ Автодополнение СИЗ
+    EmployeeByCommissionAutocomplete,  # 👥 Автодополнение сотрудников для комиссий
 )
 
 app_name = 'directory'
@@ -57,6 +58,7 @@ autocomplete_patterns = [
     path('document/', DocumentAutocomplete.as_view(), name='document-autocomplete'),
     path('equipment/', EquipmentAutocomplete.as_view(), name='equipment-autocomplete'),
     path('siz/', SIZAutocomplete.as_view(), name='siz-autocomplete'),
+    path('employee/', EmployeeByCommissionAutocomplete.as_view(), name='employee-autocomplete'),
 ]
 
 # 👥 URL-маршруты для сотрудников

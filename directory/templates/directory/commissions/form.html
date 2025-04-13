@@ -33,45 +33,117 @@
 {% block extra_js %}
 <script>
     $(document).ready(function() {
-        // Функция для управления зависимыми полями и их состоянием
-        function updateFieldVisibility() {
-            const organizationField = $('#id_organization');
-            const subdivisionField = $('#id_subdivision');
-            const departmentField = $('#id_department');
+        // Инициализация Select2 для всех полей автодополнения
+        $('.select2-field').select2({
+            width: '100%',
+            language: 'ru',
+            placeholder: function() {
+                return $(this).data('placeholder');
+            },
+            allowClear: true
+        });
+
+        // Улучшенная функция обновления состояния полей
+        function updateFieldStates() {
+            const orgField = $('#id_organization');
+            const subdivField = $('#id_subdivision');
+            const deptField = $('#id_department');
             
-            const organizationSelected = organizationField.val() !== '';
-            const subdivisionSelected = subdivisionField.val() !== '';
-            const departmentSelected = departmentField.val() !== '';
+            const orgSelected = orgField.val() && orgField.val() !== '';
+            const subdivSelected = subdivField.val() && subdivField.val() !== '';
+            const deptSelected = deptField.val() && deptField.val() !== '';
             
-            // Управление доступностью полей в зависимости от выбора
-            if (organizationSelected) {
-                subdivisionField.prop('disabled', true).closest('.form-group').addClass('text-muted');
-                departmentField.prop('disabled', true).closest('.form-group').addClass('text-muted');
+            // Функция для обновления визуального состояния поля
+            function updateFieldVisibility(field, active) {
+                const formGroup = field.closest('.form-group');
+                
+                if (active) {
+                    field.prop('disabled', false);
+                    formGroup.removeClass('opacity-50');
+                } else {
+                    field.prop('disabled', true);
+                    formGroup.addClass('opacity-50');
+                }
+            }
+            
+            // Логика управления видимостью и доступностью полей
+            if (orgSelected) {
+                // Если выбрана организация
+                updateFieldVisibility(orgField, true);
+                updateFieldVisibility(subdivField, true);
+                updateFieldVisibility(deptField, false);
+                
+                if (subdivSelected) {
+                    // Если выбрано также и подразделение
+                    updateFieldVisibility(deptField, true);
+                }
+            } else if (subdivSelected) {
+                // Если выбрано только подразделение
+                updateFieldVisibility(orgField, false);
+                updateFieldVisibility(subdivField, true);
+                updateFieldVisibility(deptField, true);
+            } else if (deptSelected) {
+                // Если выбран только отдел
+                updateFieldVisibility(orgField, false);
+                updateFieldVisibility(subdivField, false);
+                updateFieldVisibility(deptField, true);
             } else {
-                subdivisionField.prop('disabled', false).closest('.form-group').removeClass('text-muted');
-            }
-            
-            if (subdivisionSelected) {
-                organizationField.prop('disabled', true).closest('.form-group').addClass('text-muted');
-                departmentField.prop('disabled', false).closest('.form-group').removeClass('text-muted');
-            } else if (!organizationSelected) {
-                organizationField.prop('disabled', false).closest('.form-group').removeClass('text-muted');
-                departmentField.prop('disabled', true).closest('.form-group').addClass('text-muted');
-            }
-            
-            if (departmentSelected) {
-                organizationField.prop('disabled', true).closest('.form-group').addClass('text-muted');
-                subdivisionField.prop('disabled', true).closest('.form-group').addClass('text-muted');
+                // Если ничего не выбрано
+                updateFieldVisibility(orgField, true);
+                updateFieldVisibility(subdivField, false);
+                updateFieldVisibility(deptField, false);
             }
         }
         
-        // Обработчики изменения значений полей
-        $('#id_organization, #id_subdivision, #id_department').on('change', function() {
-            updateFieldVisibility();
-        });
+        // Функция очистки зависимых полей
+        function resetDependentFields() {
+            const orgField = $('#id_organization');
+            const subdivField = $('#id_subdivision');
+            const deptField = $('#id_department');
+            
+            // При изменении организации, сбрасываем подразделение и отдел
+            orgField.on('change', function() {
+                // Если выбрали организацию, но есть значение в подразделении
+                if (orgField.val() && subdivField.val()) {
+                    // Проверяем, принадлежит ли подразделение к выбранной организации
+                    // Это будет работать с сервера через AJAX
+                } else if (!orgField.val()) {
+                    // Если организация очищена, очищаем зависимые поля
+                    subdivField.val(null).trigger('change');
+                }
+                updateFieldStates();
+            });
+            
+            // При изменении подразделения, сбрасываем отдел
+            subdivField.on('change', function() {
+                if (subdivField.val()) {
+                    // Если выбрали подразделение, очищаем организацию и активируем отдел
+                    if (orgField.val()) {
+                        // Если уже была выбрана организация, проверяем согласованность
+                    } else {
+                        // Если организация не была выбрана
+                        orgField.val(null);
+                    }
+                } else {
+                    // Если подразделение очищено, очищаем отдел
+                    deptField.val(null).trigger('change');
+                }
+                updateFieldStates();
+            });
+            
+            // При изменении отдела
+            deptField.on('change', function() {
+                if (deptField.val()) {
+                    // Если выбрали отдел, очищаем прямой выбор организации
+                    orgField.val(null);
+                }
+                updateFieldStates();
+            });
+        }
         
-        // Инициализация при загрузке страницы
-        updateFieldVisibility();
+        // Инициализация функций
+        resetDependentFields();
+        updateFieldStates();
         
         // Перед отправкой формы разблокируем все поля для корректного сохранения
         $('form').on('submit', function() {

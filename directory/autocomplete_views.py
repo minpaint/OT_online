@@ -81,6 +81,7 @@ class DepartmentAutocomplete(autocomplete.Select2QuerySetView):
     """
     📂 Автодополнение для отделов
     """
+
     def get_queryset(self):
         if not self.request.user.is_authenticated:
             return Department.objects.none()
@@ -92,11 +93,19 @@ class DepartmentAutocomplete(autocomplete.Select2QuerySetView):
             allowed_orgs = self.request.user.profile.organizations.all()
             qs = qs.filter(organization__in=allowed_orgs)
 
-        # Получаем id подразделения из forwarded
+        # Получаем параметры из forwarded
         subdivision_id = self.forwarded.get('subdivision', None)
+        organization_id = self.forwarded.get('organization', None)
+
+        # Создаем фильтр для согласованной фильтрации
         if subdivision_id:
             qs = qs.filter(subdivision_id=subdivision_id)
+
+            # Дополнительно проверяем согласованность с организацией
+            if organization_id:
+                qs = qs.filter(organization_id=organization_id)
         else:
+            # Если подразделение не выбрано, возвращаем пустой результат
             return Department.objects.none()
 
         # Поиск по названию

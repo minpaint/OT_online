@@ -15,21 +15,21 @@ class CommissionForm(OrganizationRestrictionFormMixin, forms.ModelForm):
         model = Commission
         fields = ['name', 'commission_type', 'organization', 'subdivision', 'department', 'is_active']
         widgets = {
-            'name': forms.TextInput(attrs={'class': 'form-control'}),
+            'name': forms.TextInput(attrs={'class': 'form-control', 'placeholder': 'Название комиссии'}),
             'commission_type': forms.Select(attrs={'class': 'form-control'}),
             'organization': autocomplete.ModelSelect2(
                 url='directory:organization-autocomplete',
-                attrs={'data-placeholder': '🏢 Выберите организацию...'}
+                attrs={'data-placeholder': '🏢 Выберите организацию...', 'class': 'form-control'}
             ),
             'subdivision': autocomplete.ModelSelect2(
                 url='directory:subdivision-autocomplete',
                 forward=['organization'],
-                attrs={'data-placeholder': '🏭 Выберите подразделение...'}
+                attrs={'data-placeholder': '🏭 Выберите подразделение...', 'class': 'form-control'}
             ),
             'department': autocomplete.ModelSelect2(
                 url='directory:department-autocomplete',
-                forward=['subdivision'],
-                attrs={'data-placeholder': '📂 Выберите отдел...'}
+                forward=['subdivision', 'organization'],  # Важно передавать оба параметра
+                attrs={'data-placeholder': '📂 Выберите отдел...', 'class': 'form-control'}
             ),
             'is_active': forms.CheckboxInput(attrs={'class': 'form-check-input'}),
         }
@@ -68,28 +68,46 @@ class CommissionForm(OrganizationRestrictionFormMixin, forms.ModelForm):
         self.fields['subdivision'].required = False
         self.fields['department'].required = False
 
-        # Если пользователь привязан к организациям, ограничиваем выбор
+        # Инициализация для организаций в зависимости от прав пользователя
         if self.user and hasattr(self.user, 'profile'):
             user_orgs = self.user.profile.organizations.all()
             self.fields['organization'].queryset = user_orgs
+        else:
+            self.fields['organization'].queryset = Organization.objects.all()
 
-            if user_orgs.count() == 1:
-                org = user_orgs.first()
-                self.initial['organization'] = org.id
-                self.fields['subdivision'].queryset = Subdivision.objects.filter(organization=org)
-            else:
-                self.fields['subdivision'].queryset = Subdivision.objects.none()
+        # КЛЮЧЕВОЙ МОМЕНТ: Обработка данных формы из POST запроса или initial
+        # Для выбора организации
+        org_id = None
+        if self.data and 'organization' in self.data:
+            org_id = self.data.get('organization') or None
+        elif self.instance and self.instance.pk and self.instance.organization:
+            org_id = self.instance.organization.pk
+        elif self.initial.get('organization'):
+            org_id = self.initial.get('organization')
 
-        # По умолчанию отделы недоступны пока не выбрано подразделение
-        self.fields['department'].queryset = Department.objects.none()
+        # Для выбора подразделения
+        subdiv_id = None
+        if self.data and 'subdivision' in self.data:
+            subdiv_id = self.data.get('subdivision') or None
+        elif self.instance and self.instance.pk and self.instance.subdivision:
+            subdiv_id = self.instance.subdivision.pk
+        elif self.initial.get('subdivision'):
+            subdiv_id = self.initial.get('subdivision')
 
-        # Инициализация полей при редактировании
-        if self.instance and self.instance.pk:
-            if self.instance.organization:
-                self.fields['subdivision'].queryset = Subdivision.objects.filter(
-                    organization=self.instance.organization)
-            if self.instance.subdivision:
-                self.fields['department'].queryset = Department.objects.filter(subdivision=self.instance.subdivision)
+        # Настраиваем querysets для зависимых полей
+        if org_id:
+            # Если выбрана организация, загружаем её подразделения
+            self.fields['subdivision'].queryset = Subdivision.objects.filter(organization_id=org_id)
+        else:
+            # Если организация не выбрана, очищаем список подразделений
+            self.fields['subdivision'].queryset = Subdivision.objects.none()
+
+        if subdiv_id:
+            # Если выбрано подразделение, загружаем его отделы
+            self.fields['department'].queryset = Department.objects.filter(subdivision_id=subdiv_id)
+        else:
+            # Если подразделение не выбрано, очищаем список отделов
+            self.fields['department'].queryset = Department.objects.none()
 
     def clean(self):
         """Дополнительная валидация формы"""
@@ -110,6 +128,16 @@ class CommissionForm(OrganizationRestrictionFormMixin, forms.ModelForm):
                 'структурное подразделение или отдел.'
             )
 
+        # Проверка согласованности иерархии: подразделение должно принадлежать организации
+        if subdivision and organization and subdivision.organization != organization:
+            self.add_error('subdivision',
+                           'Выбранное подразделение не принадлежит выбранной организации')
+
+        # Проверка согласованности иерархии: отдел должен принадлежать подразделению
+        if department and subdivision and department.subdivision != subdivision:
+            self.add_error('department',
+                           'Выбранный отдел не принадлежит выбранному подразделению')
+
         return cleaned_data
 
 
@@ -124,7 +152,7 @@ class CommissionMemberForm(forms.ModelForm):
             'employee': autocomplete.ModelSelect2(
                 url='directory:employee-autocomplete',
                 forward=['commission'],
-                attrs={'data-placeholder': '👤 Выберите сотрудника...'}
+                attrs={'data-placeholder': '👤 Выберите сотрудника...', 'class': 'form-control select2'}
             ),
             'role': forms.Select(attrs={'class': 'form-control'}),
             'is_active': forms.CheckboxInput(attrs={'class': 'form-check-input'}),
@@ -156,6 +184,9 @@ class CommissionMemberForm(forms.ModelForm):
         if commission:
             self.fields['commission'].initial = commission.id
 
+        # Создаем список ролей с информацией о том, какие уже заняты
+        self.role_choices = []
+
         # Получаем занятые роли для визуализации в форме
         existing_roles = []
         if commission:
@@ -166,7 +197,6 @@ class CommissionMemberForm(forms.ModelForm):
             ).values_list('role', flat=True))
 
         # Создаем список ролей с информацией о том, какие уже заняты
-        self.role_choices = []
         for value, label in self.fields['role'].choices:
             disabled = False
             tooltip = ""
