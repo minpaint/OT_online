@@ -7,8 +7,11 @@ from directory.models import (
     Department,
     Position,
     Document,
-    Equipment
+    Equipment,
+    Employee,
+    Commission
 )
+
 
 class OrganizationAutocomplete(autocomplete.Select2QuerySetView):
     """
@@ -300,3 +303,43 @@ class SIZAutocomplete(autocomplete.Select2QuerySetView):
             qs = qs.filter(name__icontains=self.q)
 
         return qs.order_by('name')
+
+
+class EmployeeByCommissionAutocomplete(autocomplete.Select2QuerySetView):
+    """
+    Автодополнение для выбора сотрудников, фильтрующее по организационной структуре комиссии
+    """
+    def get_queryset(self):
+        if not self.request.user.is_authenticated:
+            return Employee.objects.none()
+
+        qs = Employee.objects.filter(is_active=True)
+
+        # Получаем id комиссии из параметра forward
+        commission_id = self.forwarded.get('commission', None)
+        if commission_id:
+            try:
+                commission = Commission.objects.get(id=commission_id)
+
+                # Фильтруем сотрудников в зависимости от привязки комиссии
+                if commission.department:
+                    qs = qs.filter(department=commission.department)
+                elif commission.subdivision:
+                    qs = qs.filter(subdivision=commission.subdivision)
+                elif commission.organization:
+                    qs = qs.filter(organization=commission.organization)
+            except Commission.DoesNotExist:
+                pass
+
+        if self.q:
+            qs = qs.filter(
+                Q(last_name__icontains=self.q) |
+                Q(first_name__icontains=self.q) |
+                Q(middle_name__icontains=self.q)
+            )
+
+        return qs.order_by('last_name', 'first_name')
+
+    def get_result_label(self, result):
+        position = result.position.position_name if result.position else "Без должности"
+        return f"{result.full_name_nominative} - {position}"

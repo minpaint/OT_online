@@ -1,14 +1,15 @@
-# directory/forms/commission.py
-
 from django import forms
 from django.core.exceptions import ValidationError
 from crispy_forms.helper import FormHelper
 from crispy_forms.layout import Layout, Fieldset, ButtonHolder, Submit, Div, HTML, Field, Row, Column
-from directory.models import Commission, CommissionMember, Employee
+from dal import autocomplete
+from directory.models import Commission, CommissionMember, Employee, Organization, StructuralSubdivision as Subdivision, \
+    Department
+from .mixins import OrganizationRestrictionFormMixin
 
 
-class CommissionForm(forms.ModelForm):
-    """Форма для создания и редактирования комиссии"""
+class CommissionForm(OrganizationRestrictionFormMixin, forms.ModelForm):
+    """Форма для создания и редактирования комиссии с иерархическим выбором структуры"""
 
     class Meta:
         model = Commission
@@ -16,13 +17,25 @@ class CommissionForm(forms.ModelForm):
         widgets = {
             'name': forms.TextInput(attrs={'class': 'form-control'}),
             'commission_type': forms.Select(attrs={'class': 'form-control'}),
-            'organization': forms.Select(attrs={'class': 'form-control'}),
-            'subdivision': forms.Select(attrs={'class': 'form-control'}),
-            'department': forms.Select(attrs={'class': 'form-control'}),
+            'organization': autocomplete.ModelSelect2(
+                url='directory:organization-autocomplete',
+                attrs={'data-placeholder': '🏢 Выберите организацию...'}
+            ),
+            'subdivision': autocomplete.ModelSelect2(
+                url='directory:subdivision-autocomplete',
+                forward=['organization'],
+                attrs={'data-placeholder': '🏭 Выберите подразделение...'}
+            ),
+            'department': autocomplete.ModelSelect2(
+                url='directory:department-autocomplete',
+                forward=['subdivision'],
+                attrs={'data-placeholder': '📂 Выберите отдел...'}
+            ),
             'is_active': forms.CheckboxInput(attrs={'class': 'form-check-input'}),
         }
 
     def __init__(self, *args, **kwargs):
+        self.user = kwargs.pop('user', None)
         super().__init__(*args, **kwargs)
 
         # Настройка внешнего вида формы
@@ -55,6 +68,29 @@ class CommissionForm(forms.ModelForm):
         self.fields['subdivision'].required = False
         self.fields['department'].required = False
 
+        # Если пользователь привязан к организациям, ограничиваем выбор
+        if self.user and hasattr(self.user, 'profile'):
+            user_orgs = self.user.profile.organizations.all()
+            self.fields['organization'].queryset = user_orgs
+
+            if user_orgs.count() == 1:
+                org = user_orgs.first()
+                self.initial['organization'] = org.id
+                self.fields['subdivision'].queryset = Subdivision.objects.filter(organization=org)
+            else:
+                self.fields['subdivision'].queryset = Subdivision.objects.none()
+
+        # По умолчанию отделы недоступны пока не выбрано подразделение
+        self.fields['department'].queryset = Department.objects.none()
+
+        # Инициализация полей при редактировании
+        if self.instance and self.instance.pk:
+            if self.instance.organization:
+                self.fields['subdivision'].queryset = Subdivision.objects.filter(
+                    organization=self.instance.organization)
+            if self.instance.subdivision:
+                self.fields['department'].queryset = Department.objects.filter(subdivision=self.instance.subdivision)
+
     def clean(self):
         """Дополнительная валидация формы"""
         cleaned_data = super().clean()
@@ -67,9 +103,7 @@ class CommissionForm(forms.ModelForm):
         bindings = sum(1 for field in [organization, subdivision, department] if field is not None)
 
         if bindings == 0:
-            raise ValidationError(
-                'Необходимо выбрать организацию, структурное подразделение или отдел.'
-            )
+            raise ValidationError('Необходимо выбрать организацию, структурное подразделение или отдел.')
         elif bindings > 1:
             raise ValidationError(
                 'Комиссия должна быть привязана только к одному уровню: организация, '
@@ -87,7 +121,11 @@ class CommissionMemberForm(forms.ModelForm):
         fields = ['commission', 'employee', 'role', 'is_active']
         widgets = {
             'commission': forms.HiddenInput(),
-            'employee': forms.Select(attrs={'class': 'form-control select2'}),
+            'employee': autocomplete.ModelSelect2(
+                url='directory:employee-autocomplete',
+                forward=['commission'],
+                attrs={'data-placeholder': '👤 Выберите сотрудника...'}
+            ),
             'role': forms.Select(attrs={'class': 'form-control'}),
             'is_active': forms.CheckboxInput(attrs={'class': 'form-check-input'}),
         }
@@ -114,37 +152,29 @@ class CommissionMemberForm(forms.ModelForm):
             )
         )
 
-        # Если комиссия передана, ограничиваем выбор сотрудников только своей организацией
+        # Устанавливаем комиссию в скрытое поле
         if commission:
-            if commission.department:
-                # Сотрудники этого отдела
-                employees = Employee.objects.filter(department=commission.department)
-            elif commission.subdivision:
-                # Сотрудники этого подразделения
-                employees = Employee.objects.filter(subdivision=commission.subdivision)
-            elif commission.organization:
-                # Сотрудники этой организации
-                employees = Employee.objects.filter(organization=commission.organization)
-            else:
-                employees = Employee.objects.none()
-
-            self.fields['employee'].queryset = employees
             self.fields['commission'].initial = commission.id
-        else:
-            # Если комиссия не передана, но это редактирование существующего участника
-            if self.instance and self.instance.pk:
-                commission = self.instance.commission
 
-                if commission.department:
-                    employees = Employee.objects.filter(department=commission.department)
-                elif commission.subdivision:
-                    employees = Employee.objects.filter(subdivision=commission.subdivision)
-                elif commission.organization:
-                    employees = Employee.objects.filter(organization=commission.organization)
-                else:
-                    employees = Employee.objects.none()
+        # Получаем занятые роли для визуализации в форме
+        existing_roles = []
+        if commission:
+            existing_roles = list(commission.members.filter(
+                is_active=True
+            ).exclude(
+                id=self.instance.id if self.instance and self.instance.id else None
+            ).values_list('role', flat=True))
 
-                self.fields['employee'].queryset = employees
+        # Создаем список ролей с информацией о том, какие уже заняты
+        self.role_choices = []
+        for value, label in self.fields['role'].choices:
+            disabled = False
+            tooltip = ""
+            if value in ['chairman', 'secretary'] and value in existing_roles:
+                disabled = True
+                tooltip = f"Роль {label} уже занята"
+
+            self.role_choices.append((value, label, disabled, tooltip))
 
     def clean(self):
         """Дополнительная валидация формы"""

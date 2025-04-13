@@ -13,9 +13,9 @@
         <div class="card-body">
             <form method="post">
                 {% csrf_token %}
-                
+
                 {% crispy form %}
-                
+
                 <div class="d-flex justify-content-between mt-3">
                     <a href="{% url 'directory:commissions:commission_list' %}" class="btn btn-secondary">
                         <i class="fas fa-times"></i> Отмена
@@ -33,34 +33,50 @@
 {% block extra_js %}
 <script>
     $(document).ready(function() {
-        // Скрипт для отображения/скрытия полей в зависимости от выбора
+        // Функция для управления зависимыми полями и их состоянием
         function updateFieldVisibility() {
-            const organizationSelected = $('#id_organization').val() !== '';
-            const subdivisionSelected = $('#id_subdivision').val() !== '';
-            const departmentSelected = $('#id_department').val() !== '';
+            const organizationField = $('#id_organization');
+            const subdivisionField = $('#id_subdivision');
+            const departmentField = $('#id_department');
             
-            // Если одно из полей выбрано, деактивируем остальные
+            const organizationSelected = organizationField.val() !== '';
+            const subdivisionSelected = subdivisionField.val() !== '';
+            const departmentSelected = departmentField.val() !== '';
+            
+            // Управление доступностью полей в зависимости от выбора
             if (organizationSelected) {
-                $('#id_subdivision').prop('disabled', true);
-                $('#id_department').prop('disabled', true);
-            } else if (subdivisionSelected) {
-                $('#id_organization').prop('disabled', true);
-                $('#id_department').prop('disabled', true);
-            } else if (departmentSelected) {
-                $('#id_organization').prop('disabled', true);
-                $('#id_subdivision').prop('disabled', true);
+                subdivisionField.prop('disabled', true).closest('.form-group').addClass('text-muted');
+                departmentField.prop('disabled', true).closest('.form-group').addClass('text-muted');
             } else {
-                $('#id_organization').prop('disabled', false);
-                $('#id_subdivision').prop('disabled', false);
-                $('#id_department').prop('disabled', false);
+                subdivisionField.prop('disabled', false).closest('.form-group').removeClass('text-muted');
+            }
+            
+            if (subdivisionSelected) {
+                organizationField.prop('disabled', true).closest('.form-group').addClass('text-muted');
+                departmentField.prop('disabled', false).closest('.form-group').removeClass('text-muted');
+            } else if (!organizationSelected) {
+                organizationField.prop('disabled', false).closest('.form-group').removeClass('text-muted');
+                departmentField.prop('disabled', true).closest('.form-group').addClass('text-muted');
+            }
+            
+            if (departmentSelected) {
+                organizationField.prop('disabled', true).closest('.form-group').addClass('text-muted');
+                subdivisionField.prop('disabled', true).closest('.form-group').addClass('text-muted');
             }
         }
         
-        // Вызываем функцию при загрузке страницы
+        // Обработчики изменения значений полей
+        $('#id_organization, #id_subdivision, #id_department').on('change', function() {
+            updateFieldVisibility();
+        });
+        
+        // Инициализация при загрузке страницы
         updateFieldVisibility();
         
-        // Вызываем функцию при изменении значения полей
-        $('#id_organization, #id_subdivision, #id_department').change(updateFieldVisibility);
+        // Перед отправкой формы разблокируем все поля для корректного сохранения
+        $('form').on('submit', function() {
+            $('#id_organization, #id_subdivision, #id_department').prop('disabled', false);
+        });
     });
 </script>
 {% endblock %}

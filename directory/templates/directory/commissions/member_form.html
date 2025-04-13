@@ -8,14 +8,54 @@
 {% block content %}
 <div class="container">
     <h1 class="mb-4">{{ title }}</h1>
+    <p class="lead">Комиссия: {{ commission.name }}</p>
 
     <div class="card">
         <div class="card-body">
             <form method="post">
                 {% csrf_token %}
                 
-                {% crispy form %}
+                {{ form.commission }}
                 
+                <div class="row">
+                    <div class="col-md-6">
+                        <div class="form-group">
+                            <label for="{{ form.employee.id_for_label }}">Сотрудник</label>
+                            {{ form.employee }}
+                        </div>
+                    </div>
+                    
+                    <div class="col-md-6">
+                        <label>Роль участника</label>
+                        <div class="role-selector">
+                            {% for value, label, disabled, tooltip in form.role_choices %}
+                                <div class="form-check">
+                                    <input type="radio" name="role" value="{{ value }}" 
+                                           id="id_role_{{ forloop.counter }}" 
+                                           class="form-check-input" 
+                                           {% if form.role.value == value %}checked{% endif %} 
+                                           {% if disabled %}disabled{% endif %}>
+                                    <label class="form-check-label" for="id_role_{{ forloop.counter }}">
+                                        {{ label }}
+                                    </label>
+                                    {% if disabled %}
+                                        <small class="text-danger ml-2">{{ tooltip }}</small>
+                                    {% endif %}
+                                </div>
+                            {% endfor %}
+                        </div>
+                    </div>
+                </div>
+                
+                <div class="form-group mt-3">
+                    <div class="form-check">
+                        {{ form.is_active }}
+                        <label class="form-check-label" for="{{ form.is_active.id_for_label }}">
+                            Активен
+                        </label>
+                    </div>
+                </div>
+
                 <div class="d-flex justify-content-between mt-3">
                     <a href="{% url 'directory:commissions:commission_detail' commission.id %}" class="btn btn-secondary">
                         <i class="fas fa-times"></i> Отмена
@@ -28,23 +68,4 @@
         </div>
     </div>
 </div>
-{% endblock %}
-
-{% block extra_js %}
-<script>
-    $(document).ready(function() {
-        // Инициализация Select2 для улучшенного выбора сотрудников
-        $('#id_employee').select2({
-            placeholder: 'Выберите сотрудника',
-            width: '100%'
-        });
-        
-        // Автоматическая установка роли из URL, если она передана
-        const urlParams = new URLSearchParams(window.location.search);
-        const role = urlParams.get('role');
-        if (role) {
-            $('#id_role').val(role).trigger('change');
-        }
-    });
-</script>
 {% endblock %}
