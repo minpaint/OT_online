@@ -1,6 +1,9 @@
+# directory/admin/commission_admin.py
+
 from django.contrib import admin
 from django.utils.html import format_html
 from dal import autocomplete
+from django.core.exceptions import ValidationError
 from directory.models import Commission, CommissionMember, Employee
 
 
@@ -11,46 +14,24 @@ class CommissionMemberInline(admin.TabularInline):
     fields = ['employee', 'role', 'is_active']
 
     def formfield_for_foreignkey(self, db_field, request, **kwargs):
-        # ИСПРАВЛЕНИЕ: Переопределяем виджет для поля employee
+        # Переопределяем виджет для поля employee
         if db_field.name == 'employee':
-            # Получаем объект комиссии, если он есть в request
-            obj = getattr(request, '_obj_', None)
-            forward = []
-
-            # Если комиссия существует и сохранена, добавляем forward параметры
-            if obj and obj.pk:
-                forward = [
-                    ('commission', obj.pk),
-                    ('organization', obj.organization_id or ''),
-                    ('subdivision', obj.subdivision_id or ''),
-                    ('department', obj.department_id or '')
-                ]
-
             kwargs['widget'] = autocomplete.ModelSelect2(
                 url='directory:employee-for-commission-autocomplete',
-                forward=forward,
-                attrs={'data-placeholder': 'Выберите сотрудника...'}
+                forward=['commission', 'organization', 'subdivision', 'department']
             )
         return super().formfield_for_foreignkey(db_field, request, **kwargs)
 
     def get_formset(self, request, obj=None, **kwargs):
-        # ИСПРАВЛЕНИЕ: Передаем информацию о комиссии в inline-форму только если она сохранена
+        # Передаем информацию о комиссии в inline-форму
         formset = super().get_formset(request, obj, **kwargs)
-
-        # Устанавливаем параметры forward только если комиссия сохранена
-        if obj and obj.pk:  # Только если объект комиссии уже сохранен
-            if 'employee' in formset.form.base_fields:
-                formset.form.base_fields['employee'].widget.forward = [
-                    ('commission', obj.pk),
-                    ('organization', obj.organization_id or ''),
-                    ('subdivision', obj.subdivision_id or ''),
-                    ('department', obj.department_id or '')
-                ]
-        else:
-            # Для новой комиссии временно отключаем forward параметры
-            if 'employee' in formset.form.base_fields:
-                formset.form.base_fields['employee'].widget.forward = []
-
+        if obj:  # Только если объект комиссии уже сохранен
+            formset.form.base_fields['employee'].widget.forward = [
+                ('commission', obj.pk),
+                ('organization', obj.organization_id or ''),
+                ('subdivision', obj.subdivision_id or ''),
+                ('department', obj.department_id or '')
+            ]
         return formset
 
 
@@ -69,12 +50,6 @@ class CommissionAdmin(admin.ModelAdmin):
 
     # Указываем, что поля должны использовать автодополнение
     autocomplete_fields = ['organization']
-
-    # ИСПРАВЛЕНИЕ: Сохраняем объект в request для использования в inline формах
-    def get_form(self, request, obj=None, **kwargs):
-        # Сохраняем объект в request, чтобы использовать в inline формах
-        request._obj_ = obj
-        return super().get_form(request, obj, **kwargs)
 
     def get_form(self, request, obj=None, **kwargs):
         form = super().get_form(request, obj, **kwargs)
@@ -178,3 +153,53 @@ class CommissionMemberAdmin(admin.ModelAdmin):
         return format_html('{} {}', icon, obj.get_role_display())
 
     role_display.short_description = 'Роль'
+
+    def get_form(self, request, obj=None, **kwargs):
+        form = super().get_form(request, obj, **kwargs)
+
+        if obj and obj.commission:
+            # Получаем занятые роли для визуализации
+            existing_roles = list(obj.commission.members.filter(
+                is_active=True
+            ).exclude(
+                id=obj.id if obj and obj.id else None
+            ).values_list('role', flat=True))
+
+            # Создаем дополнительное свойство для формы
+            form.role_choices = []
+            for value, label in form.base_fields['role'].choices:
+                disabled = False
+                tooltip = ""
+                if value in ['chairman', 'secretary'] and value in existing_roles:
+                    disabled = True
+                    tooltip = f"Роль {label} уже занята"
+                form.role_choices.append((value, label, disabled, tooltip))
+
+        return form
+
+    def clean_form(self, request, obj=None):
+        """Дополнительная валидация формы"""
+        form = super().clean_form(request, obj)
+
+        if obj and obj.is_active and obj.role in ['chairman', 'secretary']:
+            # Проверка на дубликаты ролей председателя и секретаря
+            existing = CommissionMember.objects.filter(
+                commission=obj.commission,
+                role=obj.role,
+                is_active=True
+            )
+
+            # Исключаем текущий экземпляр из проверки
+            if obj.pk:
+                existing = existing.exclude(id=obj.pk)
+
+            if existing.exists():
+                role_display = dict(CommissionMember.ROLE_CHOICES)[obj.role]
+                self.message_user(
+                    request,
+                    f'В комиссии уже есть активный {role_display.lower()}. '
+                    'Пожалуйста, деактивируйте его перед назначением нового.',
+                    level='ERROR'
+                )
+
+        return form
