@@ -1,0 +1,48 @@
+<tr class="tree-row" data-level="{{ level }}" data-parent-id="{{ parent_id }}">
+    <td class="field-checkbox">
+        <input type="checkbox" name="_selected_action" value="{{ item.pk }}" class="action-select">
+    </td>
+    <td class="field-name">
+        {% if item.commission_type == 'ot' %}
+            <span class="tree-icon">🛡️</span>
+        {% elif item.commission_type == 'eb' %}
+            <span class="tree-icon">⚡</span>
+        {% elif item.commission_type == 'pb' %}
+            <span class="tree-icon">🔥</span>
+        {% else %}
+            <span class="tree-icon">📋</span>
+        {% endif %}
+
+        <a href="{% url 'admin:directory_commission_change' item.pk %}">
+            {{ item.name }}
+        </a>
+
+        {% if not item.is_active %}
+            <span style="color: red; font-size: 90%;">(неактивная)</span>
+        {% endif %}
+    </td>
+    <td class="field-roles">
+        {% if item.members %}
+            {% for chair in item.members.chairman %}
+                <div>
+                    👑 {{ chair.name }}{% if chair.position %} — {{ chair.position }}{% endif %}
+                </div>
+            {% endfor %}
+            {% for sec in item.members.secretary %}
+                <div>
+                    📝 {{ sec.name }}{% if sec.position %} — {{ sec.position }}{% endif %}
+                </div>
+            {% endfor %}
+            {% for mem in item.members.members %}
+                <div>
+                    👤 {{ mem.name }}{% if mem.position %} — {{ mem.position }}{% endif %}
+                </div>
+            {% endfor %}
+        {% endif %}
+    </td>
+    <td class="field-actions">
+        <a href="{% url 'admin:directory_commission_change' item.pk %}" class="edit-link">✏️</a>
+        <a href="{% url 'admin:directory_commission_delete' item.pk %}" class="delete-link">🗑️</a>
+        <a href="{% url 'admin:directory_commission_history' item.pk %}" class="history-link">📋</a>
+    </td>
+</tr>

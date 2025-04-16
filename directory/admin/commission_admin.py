@@ -1,10 +1,9 @@
-# directory/admin/commission_admin.py
-
 from django.contrib import admin
 from django.utils.html import format_html
 from dal import autocomplete
 from django.core.exceptions import ValidationError
 from directory.models import Commission, CommissionMember, Employee
+from directory.admin.mixins.commission_tree_view import CommissionTreeViewMixin
 
 
 class CommissionMemberInline(admin.TabularInline):
@@ -36,16 +35,28 @@ class CommissionMemberInline(admin.TabularInline):
 
 
 @admin.register(Commission)
-class CommissionAdmin(admin.ModelAdmin):
+class CommissionAdmin(CommissionTreeViewMixin, admin.ModelAdmin):
     """Административный интерфейс для комиссий"""
     list_display = ['name', 'commission_type_display', 'level_display', 'members_count', 'is_active', 'created_at']
     list_filter = ['is_active', 'commission_type', 'created_at']
     search_fields = ['name']
     inlines = [CommissionMemberInline]
 
+    # Теперь комиссия может быть на любом из трёх уровней:
+    # организация / подразделение / отдел
+    # (при этом организация обязательна всегда)
     fieldsets = [
-        (None, {'fields': ['name', 'commission_type', 'is_active']}),
-        ('Привязка к структуре', {'fields': ['organization', 'subdivision', 'department']}),
+        (None, {
+            'fields': ['name', 'commission_type', 'is_active']
+        }),
+        ('Привязка к структуре', {
+            'fields': ['organization', 'subdivision', 'department'],
+            'description': (
+                "Заполните поля для выбора организации / подразделения / отдела. "
+                "Если комиссия на уровне подразделения, укажите 'organization' и 'subdivision'. "
+                "Если на уровне отдела, дополнительно заполните 'department'."
+            )
+        }),
     ]
 
     # Указываем, что поля должны использовать автодополнение
@@ -54,35 +65,34 @@ class CommissionAdmin(admin.ModelAdmin):
     def get_form(self, request, obj=None, **kwargs):
         form = super().get_form(request, obj, **kwargs)
 
-        # Настраиваем иерархические зависимости
+        # Настраиваем иерархические зависимости (ModelSelect2):
         form.base_fields['subdivision'].widget = autocomplete.ModelSelect2(
             url='directory:subdivision-autocomplete',
             forward=['organization']
         )
-
         form.base_fields['department'].widget = autocomplete.ModelSelect2(
             url='directory:department-autocomplete',
             forward=['subdivision']
         )
-
         return form
 
     def save_formset(self, request, form, formset, change):
         """
         Переопределяем метод для обработки сохранения связанных объектов
+        (комиссия -> участники комиссии).
         """
         instances = formset.save(commit=False)
 
-        # Сначала сохраняем основной объект комиссии
+        # Сначала сохраняем саму комиссию
         parent_obj = form.instance
         parent_obj.save()
 
-        # Затем сохраняем связанные объекты
+        # Сохраняем связанные объекты (участников)
         for instance in instances:
-            instance.commission = parent_obj  # Устанавливаем связь
+            instance.commission = parent_obj
             instance.save()
 
-        # Обрабатываем удаление элементов, если есть
+        # Удаляем помеченные на удаление
         for obj in formset.deleted_objects:
             obj.delete()
 
@@ -98,26 +108,25 @@ class CommissionAdmin(admin.ModelAdmin):
         }
         icon = icons.get(obj.commission_type, '📋')
         return format_html('{} {}', icon, obj.get_commission_type_display())
-
     commission_type_display.short_description = 'Тип комиссии'
 
     def level_display(self, obj):
-        """Отображает уровень комиссии"""
+        """Отображает текстовое описание уровня комиссии"""
         return obj.get_level_display()
-
     level_display.short_description = 'Уровень'
 
     def members_count(self, obj):
         """Отображает количество активных участников комиссии"""
-        count = obj.members.filter(is_active=True).count()
-        return count
-
+        return obj.members.filter(is_active=True).count()
     members_count.short_description = 'Участников'
 
     class Media:
         js = (
-            'admin/js/commission_admin.js',  # JavaScript для работы с зависимыми полями
+            'directory/js/main.js',  # или ваш скрипт для дерева (если нужен здесь)
         )
+        css = {
+            'all': ('admin/css/tree_view.css',)
+        }
 
 
 @admin.register(CommissionMember)
@@ -127,11 +136,17 @@ class CommissionMemberAdmin(admin.ModelAdmin):
     list_filter = ['is_active', 'role', 'commission']
     search_fields = ['employee__full_name_nominative', 'commission__name']
 
+    def get_model_perms(self, request):
+        """
+        Скрывает модель из списка в админке, но сохраняет доступ по URL
+        """
+        return {}
+
     def formfield_for_foreignkey(self, db_field, request, **kwargs):
-        # Настраиваем автодополнение для полей
+        # Настраиваем автодополнение
         if db_field.name == 'commission':
             kwargs['widget'] = autocomplete.ModelSelect2(
-                url='directory:commission-autocomplete',  # URL для автодополнения комиссий
+                url='directory:commission-autocomplete',
                 attrs={'data-placeholder': 'Выберите комиссию...'}
             )
         elif db_field.name == 'employee':
@@ -151,55 +166,33 @@ class CommissionMemberAdmin(admin.ModelAdmin):
         }
         icon = icons.get(obj.role, '👤')
         return format_html('{} {}', icon, obj.get_role_display())
-
     role_display.short_description = 'Роль'
 
     def get_form(self, request, obj=None, **kwargs):
+        # Дополнительная логика для подсказок по занятым ролям
         form = super().get_form(request, obj, **kwargs)
 
         if obj and obj.commission:
-            # Получаем занятые роли для визуализации
-            existing_roles = list(obj.commission.members.filter(
-                is_active=True
-            ).exclude(
-                id=obj.id if obj and obj.id else None
-            ).values_list('role', flat=True))
+            existing_roles = list(
+                obj.commission.members.filter(is_active=True)
+                .exclude(id=obj.id if obj.id else None)
+                .values_list('role', flat=True)
+            )
 
-            # Создаем дополнительное свойство для формы
             form.role_choices = []
             for value, label in form.base_fields['role'].choices:
                 disabled = False
                 tooltip = ""
+                # Если 'chairman' или 'secretary' уже заняты, блокируем выбор
                 if value in ['chairman', 'secretary'] and value in existing_roles:
                     disabled = True
-                    tooltip = f"Роль {label} уже занята"
+                    tooltip = f"Роль {label} уже занята."
                 form.role_choices.append((value, label, disabled, tooltip))
-
         return form
 
     def clean_form(self, request, obj=None):
-        """Дополнительная валидация формы"""
-        form = super().clean_form(request, obj)
-
-        if obj and obj.is_active and obj.role in ['chairman', 'secretary']:
-            # Проверка на дубликаты ролей председателя и секретаря
-            existing = CommissionMember.objects.filter(
-                commission=obj.commission,
-                role=obj.role,
-                is_active=True
-            )
-
-            # Исключаем текущий экземпляр из проверки
-            if obj.pk:
-                existing = existing.exclude(id=obj.pk)
-
-            if existing.exists():
-                role_display = dict(CommissionMember.ROLE_CHOICES)[obj.role]
-                self.message_user(
-                    request,
-                    f'В комиссии уже есть активный {role_display.lower()}. '
-                    'Пожалуйста, деактивируйте его перед назначением нового.',
-                    level='ERROR'
-                )
-
-        return form
+        """
+        Дополнительная валидация формы инлайна.
+        На самом деле основная проверка в .clean() модели CommissionMember.
+        """
+        return super().clean_form(request, obj)
