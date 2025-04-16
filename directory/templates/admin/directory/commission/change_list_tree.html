@@ -1,0 +1,181 @@
+{% extends "admin/change_list.html" %}
+{% load i18n admin_urls static directory_tags %}
+
+{% block extrahead %}
+    {{ block.super }}
+    <link rel="stylesheet" type="text/css" href="{% static 'admin/css/tree_view.css' %}">
+    <script type="text/javascript" src="{% static 'admin/js/tree_view.js' %}"></script>
+{% endblock %}
+
+{% block result_list %}
+<div class="tree-controls">
+    <button type="button" class="tree-btn expand-all">{% trans "Развернуть всё" %}</button>
+    <button type="button" class="tree-btn collapse-all">{% trans "Свернуть всё" %}</button>
+    <div class="tree-search-container">
+        <input type="text" class="tree-search" placeholder="{% trans 'Поиск в дереве...' %}">
+    </div>
+</div>
+
+<table id="result_list" class="tree-table">
+    <thead>
+        <tr>
+            <th class="column-checkbox">
+                <input type="checkbox" id="select-all">
+            </th>
+            <th class="column-name">{% trans "Наименование" %}</th>
+            <th class="column-roles">{% trans "Состав" %}</th>
+            <th class="column-actions">{% trans "Действия" %}</th>
+        </tr>
+    </thead>
+    <tbody>
+        {% for org, org_data in tree.items %}
+            <!-- Организация -->
+            <tr class="tree-row" data-level="0" data-node-id="org-{{ org.pk }}" data-parent-id="">
+                <td class="column-checkbox"></td>
+                <td class="field-name">
+                    <button class="toggle-btn" data-state="expanded" onclick="event.stopPropagation();">[-]</button>
+                    <span class="tree-icon">{{ tree_settings.icons.organization }}</span>
+                    {{ org_data.name }}
+                </td>
+                <td class="field-roles"></td>
+                <td class="field-actions"></td>
+            </tr>
+            
+            <!-- Комиссии организации -->
+            {% for item in org_data.items %}
+                <tr class="tree-row" data-level="1" data-node-id="item-{{ item.pk }}" data-parent-id="org-{{ org.pk }}">
+                    <td class="column-checkbox">
+                        <input type="checkbox" name="_selected_action" value="{{ item.pk }}" class="action-select">
+                    </td>
+                    <td class="field-name">
+                        {% with commission_type=item.commission_type %}
+                            <span class="tree-icon">{{ tree_settings.icons|get_item:commission_type }}</span>
+                            <a href="{% url 'admin:directory_commission_change' item.pk %}">
+                                {{ item.name }} {% if not item.is_active %}[неактивна]{% endif %}
+                            </a>
+                        {% endwith %}
+                    </td>
+                    <td class="field-roles">
+                        {% if item.members %}
+                            {% for chairman in item.members.chairman %}
+                                <div>👑 {{ chairman.name }} - {{ chairman.position }}</div>
+                            {% endfor %}
+                            {% for secretary in item.members.secretary %}
+                                <div>📝 {{ secretary.name }} - {{ secretary.position }}</div>
+                            {% endfor %}
+                            {% for member in item.members.members %}
+                                <div>👤 {{ member.name }} - {{ member.position }}</div>
+                            {% endfor %}
+                        {% else %}
+                            <em>Нет участников</em>
+                        {% endif %}
+                    </td>
+                    <td class="field-actions">
+                        <a href="{% url 'admin:directory_commission_change' item.pk %}" class="button">Редактировать</a>
+                    </td>
+                </tr>
+            {% endfor %}
+            
+            <!-- Подразделения -->
+            {% for sub, sub_data in org_data.subdivisions.items %}
+                <tr class="tree-row" data-level="1" data-node-id="sub-{{ sub.pk }}" data-parent-id="org-{{ org.pk }}">
+                    <td class="column-checkbox"></td>
+                    <td class="field-name">
+                        <button class="toggle-btn" data-state="expanded" onclick="event.stopPropagation();">[-]</button>
+                        <span class="tree-icon">{{ tree_settings.icons.subdivision }}</span>
+                        {{ sub_data.name }}
+                    </td>
+                    <td class="field-roles"></td>
+                    <td class="field-actions"></td>
+                </tr>
+                
+                <!-- Комиссии подразделения -->
+                {% for item in sub_data.items %}
+                    <tr class="tree-row" data-level="2" data-node-id="item-{{ item.pk }}" data-parent-id="sub-{{ sub.pk }}">
+                        <td class="column-checkbox">
+                            <input type="checkbox" name="_selected_action" value="{{ item.pk }}" class="action-select">
+                        </td>
+                        <td class="field-name">
+                            {% with commission_type=item.commission_type %}
+                                <span class="tree-icon">{{ tree_settings.icons|get_item:commission_type }}</span>
+                                <a href="{% url 'admin:directory_commission_change' item.pk %}">
+                                    {{ item.name }} {% if not item.is_active %}[неактивна]{% endif %}
+                                </a>
+                            {% endwith %}
+                        </td>
+                        <td class="field-roles">
+                            {% if item.members %}
+                                {% for chairman in item.members.chairman %}
+                                    <div>👑 {{ chairman.name }} - {{ chairman.position }}</div>
+                                {% endfor %}
+                                {% for secretary in item.members.secretary %}
+                                    <div>📝 {{ secretary.name }} - {{ secretary.position }}</div>
+                                {% endfor %}
+                                {% for member in item.members.members %}
+                                    <div>👤 {{ member.name }} - {{ member.position }}</div>
+                                {% endfor %}
+                            {% else %}
+                                <em>Нет участников</em>
+                            {% endif %}
+                        </td>
+                        <td class="field-actions">
+                            <a href="{% url 'admin:directory_commission_change' item.pk %}" class="button">Редактировать</a>
+                        </td>
+                    </tr>
+                {% endfor %}
+                
+                <!-- Отделы -->
+                {% for dept, dept_data in sub_data.departments.items %}
+                    <tr class="tree-row" data-level="2" data-node-id="dept-{{ dept.pk }}" data-parent-id="sub-{{ sub.pk }}">
+                        <td class="column-checkbox"></td>
+                        <td class="field-name">
+                            <button class="toggle-btn" data-state="expanded" onclick="event.stopPropagation();">[-]</button>
+                            <span class="tree-icon">{{ tree_settings.icons.department }}</span>
+                            {{ dept_data.name }}
+                        </td>
+                        <td class="field-roles"></td>
+                        <td class="field-actions"></td>
+                    </tr>
+                    
+                    <!-- Комиссии отдела -->
+                    {% for item in dept_data.items %}
+                        <tr class="tree-row" data-level="3" data-node-id="item-{{ item.pk }}" data-parent-id="dept-{{ dept.pk }}">
+                            <td class="column-checkbox">
+                                <input type="checkbox" name="_selected_action" value="{{ item.pk }}" class="action-select">
+                            </td>
+                            <td class="field-name">
+                                {% with commission_type=item.commission_type %}
+                                    <span class="tree-icon">{{ tree_settings.icons|get_item:commission_type }}</span>
+                                    <a href="{% url 'admin:directory_commission_change' item.pk %}">
+                                        {{ item.name }} {% if not item.is_active %}[неактивна]{% endif %}
+                                    </a>
+                                {% endwith %}
+                            </td>
+                            <td class="field-roles">
+                                {% if item.members %}
+                                    {% for chairman in item.members.chairman %}
+                                        <div>👑 {{ chairman.name }} - {{ chairman.position }}</div>
+                                    {% endfor %}
+                                    {% for secretary in item.members.secretary %}
+                                        <div>📝 {{ secretary.name }} - {{ secretary.position }}</div>
+                                    {% endfor %}
+                                    {% for member in item.members.members %}
+                                        <div>👤 {{ member.name }} - {{ member.position }}</div>
+                                    {% endfor %}
+                                {% else %}
+                                    <em>Нет участников</em>
+                                {% endif %}
+                            </td>
+                            <td class="field-actions">
+                                <a href="{% url 'admin:directory_commission_change' item.pk %}" class="button">Редактировать</a>
+                            </td>
+                        </tr>
+                    {% endfor %}
+                {% endfor %}
+            {% endfor %}
+        {% endfor %}
+    </tbody>
+</table>
+{% endblock %}
+
+{% block pagination %}{% endblock %}

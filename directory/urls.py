@@ -101,6 +101,7 @@ document_patterns = [
 # 🔍 URL-маршруты для комиссий
 commission_patterns = [
     path('', commissions.CommissionListView.as_view(), name='commission_list'),
+    path('tree/', commissions.CommissionTreeView.as_view(), name='commission_tree'),
     path('create/', commissions.CommissionCreateView.as_view(), name='commission_create'),
     path('<int:pk>/', commissions.CommissionDetailView.as_view(), name='commission_detail'),
     path('<int:pk>/update/', commissions.CommissionUpdateView.as_view(), name='commission_update'),
