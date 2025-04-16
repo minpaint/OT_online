@@ -69,7 +69,6 @@ class CommissionTreeViewMixin(TreeViewMixin):
     def _add_members_to_item(self, item):
         """
         Добавляет информацию об участниках к комиссии.
-        Улучшенная версия с комбинированным подходом к получению должности.
         """
         obj = item['object']
         # Проверяем, что объект является комиссией
@@ -85,10 +84,6 @@ class CommissionTreeViewMixin(TreeViewMixin):
             }
 
             for member in members:
-                # Комбинированный подход для получения должности
-                position = ""
-                if hasattr(member.employee, 'position') and member.employee.position:
-                    position = getattr(member.employee.position, 'position_name', '')
                 elif hasattr(member.employee, 'position_name'):
                     position = member.employee.position_name
                 elif hasattr(member.employee, 'job_title'):
@@ -96,7 +91,6 @@ class CommissionTreeViewMixin(TreeViewMixin):
 
                 roles[member.role].append({
                     'name': getattr(member.employee, 'full_name_nominative', str(member.employee)),
-                    'position': position,
                     'role': member.get_role_display(),
                     'role_code': member.role
                 })
@@ -118,8 +112,3 @@ class CommissionTreeViewMixin(TreeViewMixin):
         Оптимизируем запросы, добавляя prefetch_related для участников.
         """
         qs = super()._optimize_queryset(queryset)
-        return qs.prefetch_related(
-            'members',
-            'members__employee',
-            'members__employee__position'  # Добавляем префетч для позиции сотрудника
-        )
