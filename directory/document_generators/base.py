@@ -7,7 +7,7 @@
 import os
 import io
 import logging
-from typing import Dict, Any, Optional
+from typing import Dict, Any, Optional, Callable
 import datetime
 import traceback
 from docxtpl import DocxTemplate
@@ -79,7 +79,7 @@ def prepare_employee_context(employee) -> Dict[str, Any]:
     # Основной контекст данных сотрудника
     context = {
         # Основные данные сотрудника
-        'employee': employee, # Добавляем объект сотрудника в контекст для возможного использования
+        'employee': employee,  # Добавляем объект сотрудника в контекст для возможного использования
         # ФИО в разных падежах
         'fio_nominative': employee.full_name_nominative,
         'fio_genitive': decline_full_name(employee.full_name_nominative, 'gent'),
@@ -104,19 +104,31 @@ def prepare_employee_context(employee) -> Dict[str, Any]:
         'subdivision_genitive': decline_phrase(employee.subdivision.name, 'gent') if employee.subdivision else "",
         'subdivision_dative': decline_phrase(employee.subdivision.name, 'datv') if employee.subdivision else "",
         # Организация
-        'organization_name': employee.organization.short_name_ru if employee.organization else "",  # Оставляем именительный падеж
-        'organization_name_genitive': decline_phrase(employee.organization.short_name_ru, 'gent') if employee.organization else "",
-        'organization_name_dative': decline_phrase(employee.organization.short_name_ru, 'datv') if employee.organization else "",
-        'organization_name_accusative': decline_phrase(employee.organization.short_name_ru, 'accs') if employee.organization else "",
-        'organization_name_instrumental': decline_phrase(employee.organization.short_name_ru, 'ablt') if employee.organization else "",
-        'organization_name_prepositional': decline_phrase(employee.organization.short_name_ru, 'loct') if employee.organization else "",
+        'organization_name': employee.organization.short_name_ru if employee.organization else "",
+        # Оставляем именительный падеж
+        'organization_name_genitive': decline_phrase(employee.organization.short_name_ru,
+                                                     'gent') if employee.organization else "",
+        'organization_name_dative': decline_phrase(employee.organization.short_name_ru,
+                                                   'datv') if employee.organization else "",
+        'organization_name_accusative': decline_phrase(employee.organization.short_name_ru,
+                                                       'accs') if employee.organization else "",
+        'organization_name_instrumental': decline_phrase(employee.organization.short_name_ru,
+                                                         'ablt') if employee.organization else "",
+        'organization_name_prepositional': decline_phrase(employee.organization.short_name_ru,
+                                                          'loct') if employee.organization else "",
 
-        'organization_full_name': employee.organization.full_name_ru if employee.organization else "",  # Оставляем именительный падеж
-        'organization_full_name_genitive': decline_phrase(employee.organization.full_name_ru, 'gent') if employee.organization else "",
-        'organization_full_name_dative': decline_phrase(employee.organization.full_name_ru, 'datv') if employee.organization else "",
-        'organization_full_name_accusative': decline_phrase(employee.organization.full_name_ru, 'accs') if employee.organization else "",
-        'organization_full_name_instrumental': decline_phrase(employee.organization.full_name_ru, 'ablt') if employee.organization else "",
-        'organization_full_name_prepositional': decline_phrase(employee.organization.full_name_ru, 'loct') if employee.organization else "",
+        'organization_full_name': employee.organization.full_name_ru if employee.organization else "",
+        # Оставляем именительный падеж
+        'organization_full_name_genitive': decline_phrase(employee.organization.full_name_ru,
+                                                          'gent') if employee.organization else "",
+        'organization_full_name_dative': decline_phrase(employee.organization.full_name_ru,
+                                                        'datv') if employee.organization else "",
+        'organization_full_name_accusative': decline_phrase(employee.organization.full_name_ru,
+                                                            'accs') if employee.organization else "",
+        'organization_full_name_instrumental': decline_phrase(employee.organization.full_name_ru,
+                                                              'ablt') if employee.organization else "",
+        'organization_full_name_prepositional': decline_phrase(employee.organization.full_name_ru,
+                                                               'loct') if employee.organization else "",
 
         # Даты и номера документов
         'current_date': date_str,
@@ -129,7 +141,8 @@ def prepare_employee_context(employee) -> Dict[str, Any]:
         # Дополнительные поля
         'internship_duration': getattr(employee.position, 'internship_period_days', 2) if employee.position else "2",
         # Место нахождения (из организации)
-        'location': employee.organization.location if employee.organization and hasattr(employee.organization, 'location') and employee.organization.location else "г. Минск",
+        'location': employee.organization.location if employee.organization and hasattr(employee.organization,
+                                                                                        'location') and employee.organization.location else "г. Минск",
         # Поля для отображения в шаблоне
         'employee_name_initials': get_initials_from_name(employee.full_name_nominative),
     }
@@ -156,8 +169,10 @@ def prepare_employee_context(employee) -> Dict[str, Any]:
 
     return context
 
+
 def generate_docx_from_template(template: DocumentTemplate, context: Dict[str, Any],
-                                employee, user=None) -> Optional[GeneratedDocument]:
+                                employee, user=None, post_processor: Optional[Callable] = None) -> Optional[
+    GeneratedDocument]:
     """
     Генерирует документ DOCX на основе шаблона и контекста данных.
     Args:
@@ -165,6 +180,7 @@ def generate_docx_from_template(template: DocumentTemplate, context: Dict[str, A
         context (Dict[str, Any]): Словарь с данными для заполнения шаблона
         employee: Объект модели Employee
         user: Пользователь, создающий документ (опционально)
+        post_processor: Функция пост-обработки документа (например, для обработки таблиц)
     Returns:
         Optional[GeneratedDocument]: Объект сгенерированного документа или None при ошибке
     """
@@ -202,9 +218,21 @@ def generate_docx_from_template(template: DocumentTemplate, context: Dict[str, A
             context_to_render.pop('employee', None)
             doc.render(context_to_render)
             logger.info("Шаблон успешно заполнен данными")
+
+            # Применяем пост-обработчик, если он указан
+            if post_processor and callable(post_processor):
+                try:
+                    logger.info("Применение пост-обработчика к документу")
+                    doc = post_processor(doc, context_to_render)
+                    logger.info("Пост-обработчик успешно применен")
+                except Exception as e:
+                    logger.error(f"Ошибка при применении пост-обработчика: {str(e)}")
+                    logger.error(traceback.format_exc())
+                    # Продолжаем с оригинальным документом
+
         except Exception as e:
             logger.error(f"Ошибка при заполнении шаблона данными: {str(e)}")
-            logger.error(f"Контекст при ошибке: {context_to_render.keys()}") # Лог ключей контекста
+            logger.error(f"Контекст при ошибке: {context_to_render.keys()}")  # Лог ключей контекста
             raise ValueError(f"Ошибка при заполнении шаблона данными: {str(e)}")
 
         filename = f"{template.document_type}_{employee.full_name_nominative.split()[0]}_{datetime.datetime.now().strftime('%Y%m%d_%H%M%S')}.docx"
@@ -236,7 +264,8 @@ def generate_docx_from_template(template: DocumentTemplate, context: Dict[str, A
 
             file_path = os.path.join(settings.MEDIA_ROOT, str(generated_doc.document_file))
             if os.path.exists(file_path) and os.path.getsize(file_path) > 0:
-                logger.info(f"Проверка после сохранения: файл существует по пути {file_path}, размер: {os.path.getsize(file_path)} байт")
+                logger.info(
+                    f"Проверка после сохранения: файл существует по пути {file_path}, размер: {os.path.getsize(file_path)} байт")
             else:
                 logger.warning(f"Проверка после сохранения: файл не найден или пуст по пути {file_path}")
 
