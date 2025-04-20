@@ -9,21 +9,14 @@ from directory.forms.mixins import OrganizationRestrictionFormMixin
 
 
 class EquipmentForm(OrganizationRestrictionFormMixin, forms.ModelForm):
-    """
-    ⚙️ Форма для оборудования с ограничением по организациям
-
-    Использует автодополнение для выбора организации, подразделения и отдела,
-    и фильтрует данные согласно разрешённым организациям из профиля пользователя.
-    Добавлены поля для технического обслуживания.
-    """
-
     class Meta:
         model = Equipment
         fields = [
             'equipment_name', 'inventory_number',
             'organization', 'subdivision', 'department',
-            'maintenance_period_days', 'last_maintenance_date',
-            'next_maintenance_date', 'maintenance_status'
+            'maintenance_period_months',
+            'last_maintenance_date', 'next_maintenance_date',
+            'maintenance_status'
         ]
         widgets = {
             'organization': autocomplete.ModelSelect2(
@@ -41,12 +34,10 @@ class EquipmentForm(OrganizationRestrictionFormMixin, forms.ModelForm):
                 attrs={'data-placeholder': '📂 Выберите отдел...'}
             ),
             'last_maintenance_date': forms.DateInput(
-                attrs={'type': 'date'},
-                format='%Y-%m-%d'
+                attrs={'type': 'date'}, format='%Y-%m-%d'
             ),
             'next_maintenance_date': forms.DateInput(
-                attrs={'type': 'date'},
-                format='%Y-%m-%d'
+                attrs={'type': 'date'}, format='%Y-%m-%d'
             ),
         }
 
@@ -54,21 +45,17 @@ class EquipmentForm(OrganizationRestrictionFormMixin, forms.ModelForm):
         self.user = kwargs.pop('user', None)
         super().__init__(*args, **kwargs)
 
-        # 🎨 Настройка crispy-forms
         self.helper = FormHelper()
         self.helper.form_method = 'post'
         self.helper.layout = Layout(
             Fieldset(
                 'Основная информация',
-                'equipment_name',
-                'inventory_number',
-                'organization',
-                'subdivision',
-                'department',
+                'equipment_name', 'inventory_number',
+                'organization', 'subdivision', 'department',
             ),
             Fieldset(
                 'Техническое обслуживание',
-                'maintenance_period_days',
+                'maintenance_period_months',
                 'last_maintenance_date',
                 'next_maintenance_date',
                 'maintenance_status',
@@ -81,7 +68,6 @@ class EquipmentForm(OrganizationRestrictionFormMixin, forms.ModelForm):
             )
         )
 
-        # Ограничиваем выбор организаций по профилю пользователя 🔒
         if self.user and hasattr(self.user, 'profile'):
             user_orgs = self.user.profile.organizations.all()
             self.fields['organization'].queryset = user_orgs
@@ -91,20 +77,4 @@ class EquipmentForm(OrganizationRestrictionFormMixin, forms.ModelForm):
                 self.fields['subdivision'].queryset = org.subdivisions.all()
             else:
                 self.fields['subdivision'].queryset = Equipment.objects.none()
-
             self.fields['department'].queryset = Equipment.objects.none()
-
-    def clean(self):
-        cleaned_data = super().clean()
-
-        # Если указана дата последнего ТО, но не указана дата следующего -
-        # рассчитываем её автоматически
-        last_maintenance = cleaned_data.get('last_maintenance_date')
-        next_maintenance = cleaned_data.get('next_maintenance_date')
-        maintenance_period = cleaned_data.get('maintenance_period_days')
-
-        if last_maintenance and not next_maintenance and maintenance_period:
-            from datetime import timedelta
-            cleaned_data['next_maintenance_date'] = last_maintenance + timedelta(days=maintenance_period)
-
-        return cleaned_data

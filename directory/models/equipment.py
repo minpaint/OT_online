@@ -1,9 +1,8 @@
 # directory/models/equipment.py
+import calendar
+from datetime import timedelta
 from django.db import models
 from django.utils import timezone
-from datetime import timedelta
-import json
-
 
 class Equipment(models.Model):
     """
@@ -37,8 +36,13 @@ class Equipment(models.Model):
     # Поля для технического обслуживания
     last_maintenance_date = models.DateField("Дата последнего ТО", null=True, blank=True)
     next_maintenance_date = models.DateField("Дата следующего ТО", null=True, blank=True)
-    maintenance_period_days = models.PositiveIntegerField("Периодичность ТО (дней)", default=365)
-    maintenance_history = models.JSONField("История ТО", default=list, blank=True)
+    maintenance_period_months = models.PositiveIntegerField("Периодичность ТО (месяцев)", default=12)
+    maintenance_history = models.JSONField(
+        "История ТО",
+        default=list,
+        blank=True,
+        help_text="Список записей: {'date': 'YYYY-MM-DD', 'comment': '...'}"
+    )
 
     MAINTENANCE_STATUS_CHOICES = [
         ('operational', 'Исправно'),
@@ -56,51 +60,54 @@ class Equipment(models.Model):
     def __str__(self):
         return f"{self.equipment_name} (инв.№ {self.inventory_number})"
 
-    def update_maintenance(self, new_date=None):
+    @staticmethod
+    def _add_months(source_date, months):
         """
-        Обновляет информацию о ТО оборудования.
-        Если дата не указана, используется текущая.
+        Прибавляет к дате заданное число месяцев, корректно обрабатывая конец месяца.
         """
-        # Если дата не передана, используем текущую
+        month = source_date.month - 1 + months
+        year = source_date.year + month // 12
+        month = month % 12 + 1
+        day = min(source_date.day, calendar.monthrange(year, month)[1])
+        return source_date.replace(year=year, month=month, day=day)
+
+    def update_maintenance(self, new_date=None, comment=''):
+        """
+        Обновляет информацию о ТО оборудования:
+        - сохраняет предыдущую дату + комментарий в history,
+        - записывает новую last_maintenance_date,
+        - вычисляет next_maintenance_date, прибавляя months.
+        """
         maintenance_date = new_date or timezone.now().date()
 
-        # Если была предыдущая дата ТО, добавляем её в историю
         if self.last_maintenance_date:
-            # Преобразуем в список, если поле было None или пустым
             history = self.maintenance_history if isinstance(self.maintenance_history, list) else []
-            # Добавляем дату в формате ISO (YYYY-MM-DD)
-            history.append(self.last_maintenance_date.isoformat())
-            # Ограничиваем историю 10 последними записями
+            history.append({
+                'date': self.last_maintenance_date.isoformat(),
+                'comment': comment or ''
+            })
             self.maintenance_history = history[-10:]
 
-        # Обновляем даты
         self.last_maintenance_date = maintenance_date
-
-        # Вычисляем дату следующего ТО
-        self.next_maintenance_date = maintenance_date + timedelta(days=self.maintenance_period_days)
-
-        # Обновляем статус
+        self.next_maintenance_date = self._add_months(
+            maintenance_date, self.maintenance_period_months
+        )
         self.maintenance_status = 'operational'
-
         self.save()
 
     def is_maintenance_required(self):
-        """Проверяет, требуется ли оборудованию ТО"""
+        """Проверяет, требуется ли ТО (за 7 дней до)"""
         today = timezone.now().date()
-
-        # Если дата следующего ТО установлена и она уже прошла или наступает в следующие 7 дней
-        if self.next_maintenance_date and self.next_maintenance_date <= (today + timedelta(days=7)):
-            return True
-        return False
+        return bool(
+            self.next_maintenance_date and
+            self.next_maintenance_date <= (today + timedelta(days=7))
+        )
 
     def days_until_maintenance(self):
         """Возвращает количество дней до следующего ТО"""
         if not self.next_maintenance_date:
             return None
-
-        today = timezone.now().date()
-        delta = self.next_maintenance_date - today
-        return delta.days
+        return (self.next_maintenance_date - timezone.now().date()).days
 
     class Meta:
         verbose_name = "Оборудование"
