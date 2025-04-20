@@ -10,7 +10,10 @@ from directory.forms.equipment import EquipmentForm
 
 
 class EquipmentTreeViewMixin(TreeViewMixin):
+    """Расширяет TreeViewMixin, добавляя данные о ТО."""
+
     change_list_template = "admin/directory/equipment/change_list_tree.html"
+
     tree_settings = {
         'icons': {
             'organization': '🏢',
@@ -32,7 +35,11 @@ class EquipmentTreeViewMixin(TreeViewMixin):
         }
     }
 
+    # ────────────────────────────────────────────────────────────
+    # ДАННЫЕ ДЛЯ ДЕРЕВА
+    # ────────────────────────────────────────────────────────────
     def get_tree_data(self, request):
+        """Добавляем информацию о следующих ТО в каждый `item`."""
         tree = super().get_tree_data(request)
         for org_data in tree.values():
             for item in org_data['items']:
@@ -45,10 +52,35 @@ class EquipmentTreeViewMixin(TreeViewMixin):
                         self._add_maintenance(item)
         return tree
 
+    # ────────────────────────────────────────────────────────────
+    #  МЕТОДЫ ВСПОМОГАТЕЛЬНЫЕ
+    # ────────────────────────────────────────────────────────────
     def _add_maintenance(self, item):
+        """Записываем дату, дни до ТО и статус (только overdue/ok)."""
         obj = item['object']
-        item['next_maintenance_date'] = obj.next_maintenance_date
-        item['days_to_maintenance'] = obj.days_until_maintenance()
+        days = obj.days_until_maintenance()
+        item.update({
+            'next_maintenance_date': obj.next_maintenance_date,
+            'days_to_maintenance': days,
+            'maintenance_state': self._get_state(days),
+        })
+
+    @staticmethod
+    def _get_state(days):
+        """
+        Возвращает статус обслуживания:
+        - "overdue" - просрочено (дни < 0)
+        - "warning" - скоро (0 <= дни <= 7)
+        - "ok" - норма (дни > 7)
+        - "unknown" - неизвестно (дни is None)
+        """
+        if days is None:
+            return 'unknown'
+        if days < 0:
+            return 'overdue'
+        if days <= 7:
+            return 'warning'
+        return 'ok'
 
 
 @admin.register(Equipment)
@@ -64,6 +96,9 @@ class EquipmentAdmin(EquipmentTreeViewMixin, admin.ModelAdmin):
     list_filter = ['organization', 'subdivision', 'department']
     search_fields = ['equipment_name', 'inventory_number']
 
+    # ────────────────────────────────────────────────────────────
+    #  ПЕРЕПРОВЕДЕНИЕ ТО ИЗ СПИСКА
+    # ────────────────────────────────────────────────────────────
     def changelist_view(self, request, extra_context=None):
         # Обработка «Провести ТО» из дерева
         if request.method == 'POST' and 'perform_maintenance' in request.POST:

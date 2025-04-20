@@ -44,7 +44,7 @@
         </thead>
         <tbody>
           {% for org, org_data in tree.items %}
-            {# Организация #}
+            {# ─────────── Организация ─────────── #}
             <tr class="tree-row" data-level="0" data-node-id="org_{{ org.id }}">
               <td></td>
               <td>
@@ -54,9 +54,9 @@
               </td>
               <td></td><td></td><td></td><td></td>
             </tr>
-            {# Оборудование без подразделения #}
+            {# ─────────── Оборудование без подразделения ─────────── #}
             {% for item in org_data.items %}
-              <tr class="tree-row" data-level="1" data-parent-id="org_{{ org.id }}">
+              <tr class="tree-row {% if item.maintenance_state == 'overdue' %}overdue-row{% elif item.maintenance_state == 'warning' %}warning-row{% endif %}" data-level="1" data-parent-id="org_{{ org.id }}">
                 <td>
                   <input type="checkbox" name="_selected_action" value="{{ item.object.pk }}">
                 </td>
@@ -66,8 +66,8 @@
                     {{ item.name }}
                   </a>
                 </td>
-                <td>{{ item.next_maintenance_date|default:"—" }}</td>
-                <td>{{ item.days_to_maintenance|default:"—" }}</td>
+                <td class="date-cell {{ item.maintenance_state }}">{{ item.next_maintenance_date|default:"—" }}</td>
+                <td class="days-cell {{ item.maintenance_state }}">{{ item.days_to_maintenance|default:"—" }}</td>
                 <td>
                   <input type="date" name="maintenance_date_{{ item.object.pk }}"
                          value="{{ item.next_maintenance_date|date:'Y-m-d' }}" style="width: auto;">
@@ -80,7 +80,7 @@
                 </td>
               </tr>
             {% endfor %}
-            {# Подразделения и их оборудование #}
+            {# ─────────── Подразделения и их оборудование ─────────── #}
             {% for sub, sub_data in org_data.subdivisions.items %}
               <tr class="tree-row" data-level="1" data-parent-id="org_{{ org.id }}" data-node-id="sub_{{ sub.id }}">
                 <td></td>
@@ -92,7 +92,7 @@
                 <td></td><td></td><td></td><td></td>
               </tr>
               {% for item in sub_data.items %}
-                <tr class="tree-row" data-level="2" data-parent-id="sub_{{ sub.id }}">
+                <tr class="tree-row {% if item.maintenance_state == 'overdue' %}overdue-row{% elif item.maintenance_state == 'warning' %}warning-row{% endif %}" data-level="2" data-parent-id="sub_{{ sub.id }}">
                   <td><input type="checkbox" name="_selected_action" value="{{ item.object.pk }}"></td>
                   <td>
                     <span class="tree-icon">{{ tree_settings.icons.item }}</span>
@@ -100,8 +100,8 @@
                       {{ item.name }}
                     </a>
                   </td>
-                  <td>{{ item.next_maintenance_date|default:"—" }}</td>
-                  <td>{{ item.days_to_maintenance|default:"—" }}</td>
+                  <td class="date-cell {{ item.maintenance_state }}">{{ item.next_maintenance_date|default:"—" }}</td>
+                  <td class="days-cell {{ item.maintenance_state }}">{{ item.days_to_maintenance|default:"—" }}</td>
                   <td>
                     <input type="date" name="maintenance_date_{{ item.object.pk }}"
                            value="{{ item.next_maintenance_date|date:'Y-m-d' }}" style="width: auto;">
@@ -114,7 +114,7 @@
                   </td>
                 </tr>
               {% endfor %}
-              {# Отделы внутри подразделения #}
+              {# ─────────── Отделы внутри подразделения ─────────── #}
               {% for dept, dept_data in sub_data.departments.items %}
                 <tr class="tree-row" data-level="2" data-parent-id="sub_{{ sub.id }}" data-node-id="dept_{{ dept.id }}">
                   <td></td>
@@ -126,7 +126,7 @@
                   <td></td><td></td><td></td><td></td>
                 </tr>
                 {% for item in dept_data.items %}
-                  <tr class="tree-row" data-level="3" data-parent-id="dept_{{ dept.id }}">
+                  <tr class="tree-row {% if item.maintenance_state == 'overdue' %}overdue-row{% elif item.maintenance_state == 'warning' %}warning-row{% endif %}" data-level="3" data-parent-id="dept_{{ dept.id }}">
                     <td><input type="checkbox" name="_selected_action" value="{{ item.object.pk }}"></td>
                     <td>
                       <span class="tree-icon">{{ tree_settings.icons.item }}</span>
@@ -134,8 +134,8 @@
                         {{ item.name }}
                       </a>
                     </td>
-                    <td>{{ item.next_maintenance_date|default:"—" }}</td>
-                    <td>{{ item.days_to_maintenance|default:"—" }}</td>
+                    <td class="date-cell {{ item.maintenance_state }}">{{ item.next_maintenance_date|default:"—" }}</td>
+                    <td class="days-cell {{ item.maintenance_state }}">{{ item.days_to_maintenance|default:"—" }}</td>
                     <td>
                       <input type="date" name="maintenance_date_{{ item.object.pk }}"
                              value="{{ item.next_maintenance_date|date:'Y-m-d' }}" style="width: auto;">

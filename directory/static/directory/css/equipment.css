@@ -1,0 +1,75 @@
+/* equipment.css — стили для страницы оборудования и ТО */
+
+/* Подсветка просроченных и критически близких ТО */
+td.overdue,
+.date-cell.overdue,
+.days-cell.overdue {
+    color: #dc3545 !important;     /* насыщенный красный */
+    font-weight: 700 !important;
+}
+tr.overdue-row td {
+    background-color: rgba(220,53,69,.09) !important;
+}
+
+td.warning,
+.date-cell.warning,
+.days-cell.warning {
+    color: #fd7e14 !important;     /* оранжевый */
+    font-weight: 700 !important;
+}
+tr.warning-row td {
+    background-color: rgba(253,126,20,.08) !important;
+}
+
+/* Опциональная нейтральная подсветка "ok" (обычно не нужна) */
+td.ok,
+.date-cell.ok,
+.days-cell.ok {}
+
+.table thead th {
+    background-color: #f8f9fa;
+    vertical-align: middle;
+}
+
+.table td, .table th {
+    vertical-align: middle;
+}
+
+.btn-group .btn {
+    min-width: 36px;
+}
+
+.status-badge {
+    font-size: 0.95em;
+    letter-spacing: 0.01em;
+}
+
+.date-cell, .days-cell {
+    text-align: center;
+    font-family: inherit;
+}
+
+@media (max-width: 900px) {
+    .table td, .table th {
+        padding: 0.4rem 0.2rem;
+    }
+    .btn-group .btn {
+        min-width: 30px;
+        padding: 0.3rem 0.6rem;
+        font-size: 0.97em;
+    }
+}
+
+@media (max-width: 575px) {
+    .table-responsive {
+        overflow-x: auto;
+        -webkit-overflow-scrolling: touch;
+    }
+    .table thead {
+        font-size: .92em;
+    }
+}
+
+.form-control[readonly] {
+    background-color: #eee !important;
+}

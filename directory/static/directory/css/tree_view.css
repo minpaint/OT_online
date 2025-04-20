@@ -158,3 +158,29 @@
         margin-bottom: 4px;
     }
 }
+/* ────────────────────────────────────────────────────────────
+   Подсветка просроченных дат ТО
+   ──────────────────────────────────────────────────────────── */
+td.overdue,
+.date-cell.overdue,
+.days-cell.overdue {
+    color: #dc3545 !important;      /* красный */
+    font-weight: 700 !important;    /* жирный */
+}
+
+/* Подсветка дат ТО, которые скоро наступят */
+td.warning,
+.date-cell.warning,
+.days-cell.warning {
+    color: #fd7e14 !important;      /* оранжевый */
+    font-weight: 700 !important;    /* жирный */
+}
+
+/* Опционально: подсветка фона строк */
+tr.overdue-row td {
+    background-color: rgba(220,53,69,.12) !important;
+}
+
+tr.warning-row td {
+    background-color: rgba(253,126,20,.12) !important;
+}
