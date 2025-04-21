@@ -34,6 +34,8 @@ def generate_knowledge_protocol(
 
         # 2) Базовый контекст
         context = prepare_employee_context(employee)
+        # Базовый контекст уже содержит правильные значения для должности/работы по договору подряда
+        # в полях position_nominative, position_genitive и т.д.
 
         # 3) Номер и дата протокола
         now = datetime.datetime.now()
@@ -60,7 +62,7 @@ def generate_knowledge_protocol(
         members = cdata.get('members_formatted', [])
         context.setdefault('members_formatted', members)
 
-        # 4.4) Параграфы «ФИО – должность»
+        # 4.4) Параграфы «ФИО – должность»
         members_paragraphs = [
             f"{m['name']} - {m['position'].lower()}"
             for m in members

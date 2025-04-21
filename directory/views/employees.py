@@ -1,13 +1,16 @@
-from django.views.generic import ListView, CreateView, UpdateView, DeleteView, FormView
+from django.views.generic import ListView, CreateView, UpdateView, DeleteView, FormView, DetailView
 from django.contrib.auth.mixins import LoginRequiredMixin
-from django.urls import reverse_lazy
+from django.urls import reverse_lazy, reverse
 from django.http import JsonResponse
 from django.shortcuts import render, redirect
 from django.contrib import messages
+from django.utils.translation import gettext_lazy as _
+from django.utils import timezone
 
 from directory.models import Employee, StructuralSubdivision, Position
 from directory.forms import EmployeeForm
 from directory.forms.employee_hiring import EmployeeHiringForm
+from directory.utils.declension import decline_full_name
 
 
 class EmployeeListView(LoginRequiredMixin, ListView):
@@ -45,7 +48,7 @@ class EmployeeCreateView(LoginRequiredMixin, CreateView):
     model = Employee
     form_class = EmployeeForm
     template_name = 'directory/employees/form.html'
-    success_url = reverse_lazy('directory:employee_list')
+    success_url = reverse_lazy('directory:employees:employee_list')
 
     def get_context_data(self, **kwargs):
         context = super().get_context_data(**kwargs)
@@ -57,7 +60,10 @@ class EmployeeUpdateView(LoginRequiredMixin, UpdateView):
     model = Employee
     form_class = EmployeeForm
     template_name = 'directory/employees/form.html'
-    success_url = reverse_lazy('directory:employee_list')
+
+    def get_success_url(self):
+        """Перенаправляем на профиль сотрудника после обновления"""
+        return reverse('directory:employees:employee_profile', kwargs={'pk': self.object.pk})
 
     def get_context_data(self, **kwargs):
         context = super().get_context_data(**kwargs)
@@ -68,7 +74,7 @@ class EmployeeUpdateView(LoginRequiredMixin, UpdateView):
 class EmployeeDeleteView(LoginRequiredMixin, DeleteView):
     model = Employee
     template_name = 'directory/employees/confirm_delete.html'
-    success_url = reverse_lazy('directory:employee_list')
+    success_url = reverse_lazy('directory:employees:employee_list')
 
     def get_context_data(self, **kwargs):
         context = super().get_context_data(**kwargs)
@@ -76,16 +82,44 @@ class EmployeeDeleteView(LoginRequiredMixin, DeleteView):
         return context
 
 
+class EmployeeProfileView(LoginRequiredMixin, DetailView):
+    """
+    👤 Представление для просмотра профиля сотрудника с возможностью
+    выполнения дополнительных действий
+    """
+    model = Employee
+    template_name = 'directory/employees/profile.html'
+    context_object_name = 'employee'
+
+    def get_context_data(self, **kwargs):
+        context = super().get_context_data(**kwargs)
+        context['title'] = f'Профиль сотрудника: {self.object.full_name_nominative}'
+
+        # Проверяем, новый ли это сотрудник (для показа уведомления)
+        context['is_new_employee'] = self.request.GET.get('new', False)
+
+        # Проверяем, есть ли у сотрудника СИЗ
+        if hasattr(self.object, 'position') and self.object.position:
+            from directory.models.siz import SIZNorm
+            context['has_siz_norms'] = SIZNorm.objects.filter(
+                position=self.object.position
+            ).exists()
+
+        # Проверяем, есть ли у сотрудника выданные СИЗ
+        context['has_issued_siz'] = hasattr(self.object, 'issued_siz') and self.object.issued_siz.exists()
+
+        return context
+
+
 class EmployeeHiringView(LoginRequiredMixin, FormView):
     """
     👥 Представление для страницы найма сотрудника
 
-    Отображает форму найма сотрудника с сохранением логики
+    Отображает единую форму найма сотрудника с сохранением логики
     ограничения по организациям из профиля пользователя.
     """
     template_name = 'directory/employees/hire.html'
     form_class = EmployeeHiringForm
-    success_url = reverse_lazy('directory:employees:employee_list')
 
     def get_form_kwargs(self):
         """
@@ -102,11 +136,12 @@ class EmployeeHiringView(LoginRequiredMixin, FormView):
         """
         context = super().get_context_data(**kwargs)
         context['title'] = '📝 Прием на работу'
+        context['current_date'] = timezone.now().date()
 
         # Получаем недавно принятых сотрудников, с учетом доступных организаций
         user = self.request.user
 
-        # 🔄 ИСПРАВЛЕНИЕ: сначала создаем базовый запрос без среза
+        # 🔄 Создаем базовый запрос без среза
         recent_employees_query = Employee.objects.all()
 
         # Ограничиваем по организациям из профиля пользователя
@@ -118,6 +153,8 @@ class EmployeeHiringView(LoginRequiredMixin, FormView):
         recent_employees_query = recent_employees_query.order_by('-id')[:5]
 
         context['recent_employees'] = recent_employees_query
+        # Добавляем типы договоров для отображения в шаблоне
+        context['contract_types'] = Employee.CONTRACT_TYPE_CHOICES
 
         return context
 
@@ -133,6 +170,14 @@ class EmployeeHiringView(LoginRequiredMixin, FormView):
                 'data': form.cleaned_data
             })
 
+        # Получаем данные из формы
+        employee_data = form.cleaned_data
+
+        # Автоматически генерируем ФИО в дательном падеже с помощью pymorphy2
+        if employee_data.get('full_name_nominative'):
+            full_name_dative = decline_full_name(employee_data['full_name_nominative'], 'datv')
+            form.instance.full_name_dative = full_name_dative
+
         # Сохраняем данные формы
         employee = form.save()
 
@@ -142,7 +187,10 @@ class EmployeeHiringView(LoginRequiredMixin, FormView):
             f"✅ Сотрудник {employee.full_name_nominative} успешно принят на работу"
         )
 
-        return super().form_valid(form)
+        # Перенаправляем на профиль сотрудника с указанием, что он новый
+        return redirect(
+            reverse('directory:employees:employee_profile', kwargs={'pk': employee.pk}) + '?new=true'
+        )
 
 
 def get_subdivisions(request):

@@ -1,0 +1,197 @@
+{% extends 'base.html' %}
+{% load static %}
+
+{% block title %}{{ title }}{% endblock %}
+
+{% block content %}
+<div class="container mt-4">
+    {% if is_new_employee %}
+    <div class="alert alert-success">
+        <i class="fas fa-check-circle"></i> Сотрудник успешно принят на работу! Теперь вы можете:
+        <ul class="mt-2 mb-0">
+            <li>Сгенерировать необходимые документы</li>
+            <li>Выдать направление на медосмотр</li>
+            <li>Настроить выдачу СИЗ</li>
+        </ul>
+    </div>
+    {% endif %}
+
+    <div class="row">
+        <!-- Информация о сотруднике -->
+        <div class="col-lg-8">
+            <div class="card shadow mb-4">
+                <div class="card-header bg-primary text-white d-flex justify-content-between align-items-center">
+                    <h5 class="mb-0"><i class="fas fa-user mr-2"></i>Информация о сотруднике</h5>
+                    <div>
+                        <a href="{% url 'directory:employees:employee_update' employee.id %}" class="btn btn-light btn-sm">
+                            <i class="fas fa-edit"></i> Редактировать
+                        </a>
+                    </div>
+                </div>
+                <div class="card-body">
+                    <div class="row">
+                        <div class="col-md-6">
+                            <h6>Основная информация</h6>
+                            <table class="table table-sm">
+                                <tr>
+                                    <th style="width: 40%">ФИО:</th>
+                                    <td>{{ employee.full_name_nominative }}</td>
+                                </tr>
+                                <tr>
+                                    <th>Дата приема:</th>
+                                    <td>{{ employee.hire_date|date:"d.m.Y" }}</td>
+                                </tr>
+                                <tr>
+                                    <th>Дата начала:</th>
+                                    <td>{{ employee.start_date|date:"d.m.Y" }}</td>
+                                </tr>
+                                <tr>
+                                    <th>Тип договора:</th>
+                                    <td>{{ employee.get_contract_type_display }}</td>
+                                </tr>
+                                <tr>
+                                    <th>Дата рождения:</th>
+                                    <td>{{ employee.date_of_birth|date:"d.m.Y" }}</td>
+                                </tr>
+                                <tr>
+                                    <th>Место проживания:</th>
+                                    <td>{{ employee.place_of_residence }}</td>
+                                </tr>
+                            </table>
+                        </div>
+                        <div class="col-md-6">
+                            <h6>Организационная структура</h6>
+                            <table class="table table-sm">
+                                <tr>
+                                    <th style="width: 40%">Организация:</th>
+                                    <td>{{ employee.organization.short_name_ru }}</td>
+                                </tr>
+                                <tr>
+                                    <th>Подразделение:</th>
+                                    <td>{{ employee.subdivision.name|default:"-" }}</td>
+                                </tr>
+                                <tr>
+                                    <th>Отдел:</th>
+                                    <td>{{ employee.department.name|default:"-" }}</td>
+                                </tr>
+                                <tr>
+                                    <th>Должность:</th>
+                                    <td>{{ employee.position.position_name }}</td>
+                                </tr>
+                            </table>
+
+                            <h6 class="mt-4">Размеры для СИЗ</h6>
+                            <table class="table table-sm">
+                                <tr>
+                                    <th style="width: 40%">Рост:</th>
+                                    <td>{{ employee.height|default:"-" }}</td>
+                                </tr>
+                                <tr>
+                                    <th>Размер одежды:</th>
+                                    <td>{{ employee.clothing_size|default:"-" }}</td>
+                                </tr>
+                                <tr>
+                                    <th>Размер обуви:</th>
+                                    <td>{{ employee.shoe_size|default:"-" }}</td>
+                                </tr>
+                            </table>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Доступные действия -->
+        <div class="col-lg-4">
+            <div class="card shadow mb-4">
+                <div class="card-header bg-success text-white">
+                    <h5 class="mb-0"><i class="fas fa-tasks mr-2"></i>Действия</h5>
+                </div>
+                <div class="card-body">
+                    <div class="list-group">
+                        <a href="{% url 'directory:documents:document_selection' employee.id %}" class="list-group-item list-group-item-action">
+                            <div class="d-flex w-100 justify-content-between">
+                                <h5 class="mb-1"><i class="fas fa-file-alt mr-2"></i>Документы</h5>
+                            </div>
+                            <p class="mb-1">Сгенерировать документы приема на работу, распоряжения, протоколы</p>
+                        </a>
+
+                        {% if has_siz_norms %}
+                        <a href="{% url 'directory:siz:siz_personal_card' employee.id %}" class="list-group-item list-group-item-action">
+                            <div class="d-flex w-100 justify-content-between">
+                                <h5 class="mb-1"><i class="fas fa-shield-alt mr-2"></i>Карточка СИЗ</h5>
+                            </div>
+                            <p class="mb-1">Оформить выдачу средств индивидуальной защиты</p>
+                        </a>
+                        {% endif %}
+
+                        <button disabled class="list-group-item list-group-item-action disabled">
+                            <div class="d-flex w-100 justify-content-between">
+                                <h5 class="mb-1"><i class="fas fa-stethoscope mr-2"></i>Медосмотр</h5>
+                                <small class="text-muted">В разработке</small>
+                            </div>
+                            <p class="mb-1">Выдать направление на предварительный медосмотр</p>
+                        </button>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Информация о статусе -->
+            <div class="card shadow">
+                <div class="card-header bg-info text-white">
+                    <h5 class="mb-0"><i class="fas fa-info-circle mr-2"></i>Статус</h5>
+                </div>
+                <div class="card-body">
+                    <div class="d-flex align-items-center mb-3">
+                        <div class="mr-3">
+                            <span class="badge badge-success p-2">
+                                <i class="fas fa-check-circle fa-lg"></i>
+                            </span>
+                        </div>
+                        <div>
+                            <h6 class="mb-0">Принят на работу</h6>
+                            <small class="text-muted">{{ employee.hire_date|date:"d.m.Y" }}</small>
+                        </div>
+                    </div>
+
+                    <div class="d-flex align-items-center mb-3">
+                        <div class="mr-3">
+                            {% if has_siz_norms and has_issued_siz %}
+                            <span class="badge badge-success p-2">
+                                <i class="fas fa-check-circle fa-lg"></i>
+                            </span>
+                            {% else %}
+                            <span class="badge badge-secondary p-2">
+                                <i class="fas fa-clock fa-lg"></i>
+                            </span>
+                            {% endif %}
+                        </div>
+                        <div>
+                            <h6 class="mb-0">СИЗ оформлены</h6>
+                            <small class="text-muted">
+                                {% if has_siz_norms and has_issued_siz %}
+                                Да
+                                {% else %}
+                                Нет
+                                {% endif %}
+                            </small>
+                        </div>
+                    </div>
+
+                    <div class="d-flex align-items-center">
+                        <div class="mr-3">
+                            <span class="badge badge-secondary p-2">
+                                <i class="fas fa-clock fa-lg"></i>
+                            </span>
+                        </div>
+                        <div>
+                            <h6 class="mb-0">Медосмотр пройден</h6>
+                            <small class="text-muted">Нет</small>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}

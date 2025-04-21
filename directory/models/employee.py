@@ -1,5 +1,7 @@
 from django.db import models
 from django.core.exceptions import ValidationError
+from django.utils import timezone
+
 
 class Employee(models.Model):
     """
@@ -20,6 +22,15 @@ class Employee(models.Model):
         ("64-66", "64-66"),
     ]
     SHOE_SIZE_CHOICES = [(str(i), str(i)) for i in range(36, 49)]
+
+    # Добавляем константы для типов договоров
+    CONTRACT_TYPE_CHOICES = [
+        ('standard', 'Трудовой договор'),
+        ('contractor', 'Договор подряда'),
+        ('part_time', 'Совмещение'),
+        ('transfer', 'Перевод'),
+        ('return', 'Выход из ДО'),
+    ]
 
     full_name_nominative = models.CharField(
         max_length=255,
@@ -78,9 +89,31 @@ class Employee(models.Model):
         blank=True,
         verbose_name="Размер обуви"
     )
+
+    # Заменяем булево поле на поле с выбором типа договора
+    contract_type = models.CharField(
+        verbose_name="Вид договора",
+        max_length=20,
+        choices=CONTRACT_TYPE_CHOICES,
+        default='standard'
+    )
+
+    # Новые поля для дат
+    hire_date = models.DateField(
+        verbose_name="Дата приема",
+        default=timezone.now
+    )
+    start_date = models.DateField(
+        verbose_name="Дата начала работы",
+        default=timezone.now
+    )
+
+    # Сохраняем поле is_contractor для обратной совместимости
+    # Будем заполнять его автоматически на основе contract_type
     is_contractor = models.BooleanField(
         default=False,
-        verbose_name="Договор подряда"
+        verbose_name="Договор подряда",
+        help_text="Устаревшее поле, используйте contract_type"
     )
 
     def clean(self):
@@ -124,8 +157,18 @@ class Employee(models.Model):
                 })
 
     def save(self, *args, **kwargs):
+        # Синхронизация is_contractor с contract_type для обратной совместимости
+        self.is_contractor = (self.contract_type == 'contractor')
+
+        # При необходимости, автоматическое заполнение full_name_dative (не делаем здесь,
+        # так как для этого используем pymorphy2 в другом месте)
+
         self.clean()
         super().save(*args, **kwargs)
+
+    def get_contract_type_display(self):
+        """Возвращает человекопонятное название типа договора"""
+        return dict(self.CONTRACT_TYPE_CHOICES).get(self.contract_type, "Неизвестно")
 
     @property
     def name_with_position(self):

@@ -63,10 +63,8 @@ def get_document_template(document_type, employee=None) -> Optional[DocumentTemp
 def prepare_employee_context(employee) -> Dict[str, Any]:
     """
     Подготавливает контекст с данными сотрудника для шаблона документа.
-    Args:
-        employee: Объект модели Employee
-    Returns:
-        Dict[str, Any]: Словарь с данными для заполнения шаблона
+    Перешли с булева is_contractor на поле contract_type с возможными значениями
+    'contractor', 'standard', 'part_time' и т.д.
     """
     # Получаем текущую дату в разных форматах
     now = datetime.datetime.now()
@@ -76,10 +74,27 @@ def prepare_employee_context(employee) -> Dict[str, Any]:
     year = now.strftime("%Y")
     year_short = now.strftime("%y")
 
+    # Получаем тип договора
+    contract_type = getattr(employee, 'contract_type', 'standard')
+    # Для обратной совместимости оставляем флаг
+    is_contractor = (contract_type == 'contractor')
+
+    # Определяем, какое значение использовать для должности/работы
+    position_name = ""
+    if employee.position:
+        if contract_type == 'contractor' and hasattr(employee.position, 'contract_work_name') and employee.position.contract_work_name:
+            position_name = employee.position.contract_work_name
+            logger.info(f"Используется наименование работы по договору подряда: {position_name}")
+        else:
+            position_name = employee.position.position_name
+            logger.info(f"Используется должность: {position_name}")
+
     # Основной контекст данных сотрудника
     context = {
-        # Основные данные сотрудника
-        'employee': employee,  # Добавляем объект сотрудника в контекст для возможного использования
+        'employee': employee,
+        'contract_type': contract_type,    # добавлено
+        'is_contractor': is_contractor,    # для совместимости, если шаблоны ещё используют
+
         # ФИО в разных падежах
         'fio_nominative': employee.full_name_nominative,
         'fio_genitive': decline_full_name(employee.full_name_nominative, 'gent'),
@@ -87,48 +102,41 @@ def prepare_employee_context(employee) -> Dict[str, Any]:
         'fio_accusative': decline_full_name(employee.full_name_nominative, 'accs'),
         'fio_instrumental': decline_full_name(employee.full_name_nominative, 'ablt'),
         'fio_prepositional': decline_full_name(employee.full_name_nominative, 'loct'),
-        # Сокращенное ФИО (Фамилия И.О.)
+
+        # Сокращенное ФИО
         'fio_initials': get_initials_from_name(employee.full_name_nominative),
-        # Должность в разных падежах
-        'position_nominative': employee.position.position_name if employee.position else "",
-        'position_genitive': decline_phrase(employee.position.position_name, 'gent') if employee.position else "",
-        'position_dative': decline_phrase(employee.position.position_name, 'datv') if employee.position else "",
-        'position_accusative': decline_phrase(employee.position.position_name, 'accs') if employee.position else "",
-        'position_instrumental': decline_phrase(employee.position.position_name, 'ablt') if employee.position else "",
-        'position_prepositional': decline_phrase(employee.position.position_name, 'loct') if employee.position else "",
+
+        # Должность/работа в разных падежах
+        'position_nominative': position_name,
+        'position_genitive': decline_phrase(position_name, 'gent'),
+        'position_dative': decline_phrase(position_name, 'datv'),
+        'position_accusative': decline_phrase(position_name, 'accs'),
+        'position_instrumental': decline_phrase(position_name, 'ablt'),
+        'position_prepositional': decline_phrase(position_name, 'loct'),
+
         # Подразделение и отдел
         'department': employee.department.name if employee.department else "",
         'department_genitive': decline_phrase(employee.department.name, 'gent') if employee.department else "",
         'department_dative': decline_phrase(employee.department.name, 'datv') if employee.department else "",
+
         'subdivision': employee.subdivision.name if employee.subdivision else "",
         'subdivision_genitive': decline_phrase(employee.subdivision.name, 'gent') if employee.subdivision else "",
         'subdivision_dative': decline_phrase(employee.subdivision.name, 'datv') if employee.subdivision else "",
+
         # Организация
         'organization_name': employee.organization.short_name_ru if employee.organization else "",
-        # Оставляем именительный падеж
-        'organization_name_genitive': decline_phrase(employee.organization.short_name_ru,
-                                                     'gent') if employee.organization else "",
-        'organization_name_dative': decline_phrase(employee.organization.short_name_ru,
-                                                   'datv') if employee.organization else "",
-        'organization_name_accusative': decline_phrase(employee.organization.short_name_ru,
-                                                       'accs') if employee.organization else "",
-        'organization_name_instrumental': decline_phrase(employee.organization.short_name_ru,
-                                                         'ablt') if employee.organization else "",
-        'organization_name_prepositional': decline_phrase(employee.organization.short_name_ru,
-                                                          'loct') if employee.organization else "",
+        'organization_name_genitive': decline_phrase(employee.organization.short_name_ru, 'gent') if employee.organization else "",
+        'organization_name_dative': decline_phrase(employee.organization.short_name_ru, 'datv') if employee.organization else "",
+        'organization_name_accusative': decline_phrase(employee.organization.short_name_ru, 'accs') if employee.organization else "",
+        'organization_name_instrumental': decline_phrase(employee.organization.short_name_ru, 'ablt') if employee.organization else "",
+        'organization_name_prepositional': decline_phrase(employee.organization.short_name_ru, 'loct') if employee.organization else "",
 
         'organization_full_name': employee.organization.full_name_ru if employee.organization else "",
-        # Оставляем именительный падеж
-        'organization_full_name_genitive': decline_phrase(employee.organization.full_name_ru,
-                                                          'gent') if employee.organization else "",
-        'organization_full_name_dative': decline_phrase(employee.organization.full_name_ru,
-                                                        'datv') if employee.organization else "",
-        'organization_full_name_accusative': decline_phrase(employee.organization.full_name_ru,
-                                                            'accs') if employee.organization else "",
-        'organization_full_name_instrumental': decline_phrase(employee.organization.full_name_ru,
-                                                              'ablt') if employee.organization else "",
-        'organization_full_name_prepositional': decline_phrase(employee.organization.full_name_ru,
-                                                               'loct') if employee.organization else "",
+        'organization_full_name_genitive': decline_phrase(employee.organization.full_name_ru, 'gent') if employee.organization else "",
+        'organization_full_name_dative': decline_phrase(employee.organization.full_name_ru, 'datv') if employee.organization else "",
+        'organization_full_name_accusative': decline_phrase(employee.organization.full_name_ru, 'accs') if employee.organization else "",
+        'organization_full_name_instrumental': decline_phrase(employee.organization.full_name_ru, 'ablt') if employee.organization else "",
+        'organization_full_name_prepositional': decline_phrase(employee.organization.full_name_ru, 'loct') if employee.organization else "",
 
         # Даты и номера документов
         'current_date': date_str,
@@ -136,31 +144,28 @@ def prepare_employee_context(employee) -> Dict[str, Any]:
         'current_month': month,
         'current_year': year,
         'current_year_short': year_short,
-        # Поля для номеров документов - заполняются отдельно
+
         'order_number': "",
+
         # Дополнительные поля
-        'internship_duration': getattr(employee.position, 'internship_period_days', 2) if employee.position else "2",
-        # Место нахождения (из организации)
-        'location': employee.organization.location if employee.organization and hasattr(employee.organization,
-                                                                                        'location') and employee.organization.location else "г. Минск",
-        # Поля для отображения в шаблоне
+        'internship_duration': getattr(employee.position, 'internship_period_days', 2) if employee.position else 2,
+
+        'location': employee.organization.location if employee.organization and hasattr(employee.organization, 'location') and employee.organization.location else "г. Минск",
+
         'employee_name_initials': get_initials_from_name(employee.full_name_nominative),
     }
 
-    # Добавляем поиск подписанта распоряжений
-    # TODO: Переместить эту логику во views или специфичный генератор, если нужно
+    # Подписание
     from directory.views.documents.utils import get_document_signer
-
     signer, level, found = get_document_signer(employee)
     if found and signer:
         context.update({
             'director_position': signer.position.position_name if signer.position else "Директор",
             'director_name': signer.full_name_nominative,
             'director_name_initials': get_initials_from_name(signer.full_name_nominative),
-            'director_level': level,  # Может пригодиться для отладки
+            'director_level': level,
         })
     else:
-        # Значения по умолчанию, если подписант не найден
         context.update({
             'director_position': "Директор",
             'director_name': "Иванов Иван Иванович",
@@ -168,7 +173,6 @@ def prepare_employee_context(employee) -> Dict[str, Any]:
         })
 
     return context
-
 
 def generate_docx_from_template(template: DocumentTemplate, context: Dict[str, Any],
                                 employee, user=None, post_processor: Optional[Callable] = None) -> Optional[

@@ -1,67 +1,181 @@
 {% extends 'base.html' %}
+{% load static %}
 
 {% block title %}{{ title }}{% endblock %}
 
 {% block content %}
-<h1>{{ title }}</h1>
-
-<form method="get">
-    <div class="mb-3">
-        <label for="subdivision" class="form-label">Подразделение:</label>
-        <select name="subdivision" id="subdivision" class="form-select">
-            <option value="">Все</option>
-            {% for subdivision in subdivisions %}
-                <option value="{{ subdivision.id }}"
-                    {% if request.GET.subdivision == subdivision.id|string %} selected{% endif %}>
-                    {{ subdivision.name }}
-                </option>
-            {% endfor %}
-        </select>
+<div class="container-fluid mt-4">
+    <div class="row mb-4">
+        <div class="col-md-8">
+            <h2>{{ title }}</h2>
+        </div>
+        <div class="col-md-4 text-right">
+            <a href="{% url 'directory:employees:employee_create' %}" class="btn btn-primary">
+                <i class="fas fa-user-plus"></i> Добавить сотрудника
+            </a>
+            <a href="{% url 'directory:employees:employee_hire' %}" class="btn btn-success">
+                <i class="fas fa-briefcase"></i> Принять на работу
+            </a>
+        </div>
     </div>
-    <div class="mb-3">
-        <label for="position" class="form-label">Должность:</label>
-        <select name="position" id="position" class="form-select">
-            <option value="">Все</option>
-            {% for position in positions %}
-                <option value="{{ position.id }}"
-                    {% if request.GET.position == position.id|string %} selected{% endif %}>
-                    {{ position.position_name }}
-                </option>
-            {% endfor %}
-        </select>
+
+    <!-- Фильтры -->
+    <div class="card mb-4 shadow-sm">
+        <div class="card-header bg-light">
+            <h5 class="mb-0">Фильтры</h5>
+        </div>
+        <div class="card-body">
+            <form method="get" class="row">
+                <div class="form-group col-md-3">
+                    <label for="subdivision">Подразделение</label>
+                    <select name="subdivision" id="subdivision" class="form-control">
+                        <option value="">Все подразделения</option>
+                        {% for subdivision in subdivisions %}
+                        <option value="{{ subdivision.id }}" {% if request.GET.subdivision == subdivision.id|stringformat:"i" %}selected{% endif %}>
+                            {{ subdivision.name }}
+                        </option>
+                        {% endfor %}
+                    </select>
+                </div>
+                <div class="form-group col-md-3">
+                    <label for="position">Должность</label>
+                    <select name="position" id="position" class="form-control">
+                        <option value="">Все должности</option>
+                        {% for position in positions %}
+                        <option value="{{ position.id }}" {% if request.GET.position == position.id|stringformat:"i" %}selected{% endif %}>
+                            {{ position.position_name }}
+                        </option>
+                        {% endfor %}
+                    </select>
+                </div>
+                <div class="form-group col-md-3">
+                    <label for="search">Поиск по ФИО</label>
+                    <input type="text" name="search" id="search" class="form-control" value="{{ request.GET.search }}">
+                </div>
+                <div class="form-group col-md-3 d-flex align-items-end">
+                    <button type="submit" class="btn btn-primary mr-2">
+                        <i class="fas fa-search"></i> Применить
+                    </button>
+                    <a href="{% url 'directory:employees:employee_list' %}" class="btn btn-secondary">
+                        <i class="fas fa-undo"></i> Сбросить
+                    </a>
+                </div>
+            </form>
+        </div>
     </div>
-    <div class="mb-3">
-        <label for="search" class="form-label">Поиск:</label>
-        <input type="text" name="search" id="search" class="form-control" value="{{ request.GET.search }}">
+
+    <!-- Таблица сотрудников -->
+    <div class="card shadow">
+        <div class="card-body p-0">
+            <div class="table-responsive">
+                <table class="table table-hover mb-0">
+                    <thead class="thead-light">
+                        <tr>
+                            <th>ФИО</th>
+                            <th>Должность</th>
+                            <th>Подразделение</th>
+                            <th>Отдел</th>
+                            <th>Дата приема</th>
+                            <th>Действия</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {% for employee in employees %}
+                        <tr>
+                            <td>{{ employee.full_name_nominative }}</td>
+                            <td>{{ employee.position.position_name }}</td>
+                            <td>{{ employee.subdivision.name|default:"-" }}</td>
+                            <td>{{ employee.department.name|default:"-" }}</td>
+                            <td>{{ employee.hire_date|date:"d.m.Y"|default:"-" }}</td>
+                            <td>
+                                <div class="btn-group btn-group-sm">
+                                    <a href="{% url 'directory:employees:employee_update' employee.id %}" class="btn btn-primary" title="Редактировать">
+                                        <i class="fas fa-edit"></i>
+                                    </a>
+                                    <a href="{% url 'directory:documents:document_selection' employee.id %}" class="btn btn-info" title="Документы">
+                                        <i class="fas fa-file-alt"></i>
+                                    </a>
+                                    {% if employee.position.department %}
+                                    <a href="{% url 'directory:siz:siz_personal_card' employee.id %}" class="btn btn-warning" title="Карточка СИЗ">
+                                        <i class="fas fa-shield-alt"></i>
+                                    </a>
+                                    {% endif %}
+                                    <a href="{% url 'directory:employees:employee_delete' employee.id %}" class="btn btn-danger" title="Удалить">
+                                        <i class="fas fa-trash"></i>
+                                    </a>
+                                </div>
+                            </td>
+                        </tr>
+                        {% empty %}
+                        <tr>
+                            <td colspan="6" class="text-center p-4">
+                                <i class="fas fa-search fa-2x mb-3 text-muted"></i>
+                                <p class="text-muted">Сотрудники не найдены</p>
+                            </td>
+                        </tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+            </div>
+        </div>
     </div>
-    <button type="submit" class="btn btn-primary">Применить</button>
-</form>
 
-<a href="{% url 'directory:employee_create' %}" class="btn btn-success mt-3">Добавить сотрудника</a>
+    <!-- Пагинация -->
+    {% if is_paginated %}
+    <div class="mt-4 d-flex justify-content-center">
+        <nav>
+            <ul class="pagination">
+                {% if page_obj.has_previous %}
+                <li class="page-item">
+                    <a class="page-link" href="?{% if request.GET.subdivision %}subdivision={{ request.GET.subdivision }}&{% endif %}{% if request.GET.position %}position={{ request.GET.position }}&{% endif %}{% if request.GET.search %}search={{ request.GET.search }}&{% endif %}page=1">
+                        <i class="fas fa-angle-double-left"></i>
+                    </a>
+                </li>
+                <li class="page-item">
+                    <a class="page-link" href="?{% if request.GET.subdivision %}subdivision={{ request.GET.subdivision }}&{% endif %}{% if request.GET.position %}position={{ request.GET.position }}&{% endif %}{% if request.GET.search %}search={{ request.GET.search }}&{% endif %}page={{ page_obj.previous_page_number }}">
+                        <i class="fas fa-angle-left"></i>
+                    </a>
+                </li>
+                {% endif %}
 
-<table class="table table-striped mt-3">
-    <thead>
-        <tr>
-            <th>ФИО</th>
-            <th>Должность</th>
-            <th>Подразделение</th>
-            <th>Действия</th>
-        </tr>
-    </thead>
-    <tbody>
-        {% for employee in employees %}
-            <tr>
-                <td>{{ employee.full_name_nominative }}</td>
-                <td>{{ employee.position.position_name }}</td>
-                <td>{{ employee.subdivision.name|default:"—" }}</td>
-                <td>
-                    <a href="{% url 'directory:employee_update' employee.pk %}" class="btn btn-warning btn-sm">Редактировать</a>
-                    <a href="{% url 'directory:employee_delete' employee.pk %}" class="btn btn-danger btn-sm">Удалить</a>
-                </td>
-            </tr>
-        {% endfor %}
-    </tbody>
-</table>
+                {% for num in paginator.page_range %}
+                {% if page_obj.number == num %}
+                <li class="page-item active">
+                    <span class="page-link">{{ num }}</span>
+                </li>
+                {% elif num > page_obj.number|add:'-3' and num < page_obj.number|add:'3' %}
+                <li class="page-item">
+                    <a class="page-link" href="?{% if request.GET.subdivision %}subdivision={{ request.GET.subdivision }}&{% endif %}{% if request.GET.position %}position={{ request.GET.position }}&{% endif %}{% if request.GET.search %}search={{ request.GET.search }}&{% endif %}page={{ num }}">{{ num }}</a>
+                </li>
+                {% endif %}
+                {% endfor %}
 
-{% include 'directory/pagination.html' %}
+                {% if page_obj.has_next %}
+                <li class="page-item">
+                    <a class="page-link" href="?{% if request.GET.subdivision %}subdivision={{ request.GET.subdivision }}&{% endif %}{% if request.GET.position %}position={{ request.GET.position }}&{% endif %}{% if request.GET.search %}search={{ request.GET.search }}&{% endif %}page={{ page_obj.next_page_number }}">
+                        <i class="fas fa-angle-right"></i>
+                    </a>
+                </li>
+                <li class="page-item">
+                    <a class="page-link" href="?{% if request.GET.subdivision %}subdivision={{ request.GET.subdivision }}&{% endif %}{% if request.GET.position %}position={{ request.GET.position }}&{% endif %}{% if request.GET.search %}search={{ request.GET.search }}&{% endif %}page={{ paginator.num_pages }}">
+                        <i class="fas fa-angle-double-right"></i>
+                    </a>
+                </li>
+                {% endif %}
+            </ul>
+        </nav>
+    </div>
+    {% endif %}
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+    $(document).ready(function() {
+        // Автоматическая отправка формы при изменении селектов
+        $('#subdivision, #position').on('change', function() {
+            $(this).closest('form').submit();
+        });
+    });
+</script>
 {% endblock %}

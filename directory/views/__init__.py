@@ -20,7 +20,8 @@ from .employees import (
     EmployeeCreateView,
     EmployeeUpdateView,
     EmployeeDeleteView,
-    EmployeeHiringView,  # 🆕 Добавляем импорт нового представления
+    EmployeeHiringView,
+    EmployeeProfileView,  # Добавляем новое представление
     get_subdivisions
 )
 
@@ -149,7 +150,8 @@ __all__ = [
     'EmployeeCreateView',
     'EmployeeUpdateView',
     'EmployeeDeleteView',
-    'EmployeeHiringView',  # 🆕 Добавляем в список экспорта
+    'EmployeeHiringView',
+    'EmployeeProfileView',  # Добавляем в список экспорта
     'PositionListView',
     'PositionCreateView',
     'PositionUpdateView',
@@ -159,8 +161,7 @@ __all__ = [
     'get_departments',
     'UserRegistrationView',
     'DocumentSelectionView',
-     'GeneratedDocumentListView',
-    'GeneratedDocumentDetailView',
+    'GeneratedDocumentListView',
     'document_download',
     'SIZIssueFormView',
     'SIZPersonalCardView',

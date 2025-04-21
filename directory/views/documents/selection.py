@@ -3,7 +3,7 @@ from django.views.generic import FormView
 from django.contrib.auth.mixins import LoginRequiredMixin
 from django.shortcuts import get_object_or_404, redirect
 from django.contrib import messages
-from django.http import HttpResponse, HttpRequest # Добавлен HttpRequest
+from django.http import HttpResponse, HttpRequest  # Добавлен HttpRequest
 import os
 import tempfile
 import zipfile
@@ -13,16 +13,16 @@ import datetime
 from directory.models import Employee
 from directory.models.document_template import DocumentTemplate, GeneratedDocument
 from directory.forms.document_forms import DocumentSelectionForm
-# --- Обновленные импорты --- 
-from directory.document_generators.base import get_document_template # Базовая функция для получения шаблона
-from directory.utils.docx_generator import analyze_template # Для проверки шаблона
+# --- Обновленные импорты ---
+from directory.document_generators.base import get_document_template  # Базовая функция для получения шаблона
+from directory.utils.docx_generator import analyze_template  # Для проверки шаблона
 from directory.document_generators.order_generator import generate_all_orders
 from directory.document_generators.protocol_generator import generate_knowledge_protocol
 from directory.document_generators.familiarization_generator import generate_familiarization_document
 from directory.document_generators.ot_card_generator import generate_personal_ot_card
 from directory.document_generators.journal_example_generator import generate_journal_example
-from directory.views.siz_issued import export_personal_card_pdf # Импорт для PDF карточки СИЗ
-# --- --- --- 
+from directory.views.siz_issued import export_personal_card_pdf  # Импорт для PDF карточки СИЗ
+# --- --- ---
 
 from django.conf import settings
 
@@ -39,6 +39,7 @@ def get_auto_selected_document_types(employee):
     2. Если срок стажировки > 0 и есть договор подряда: только Протокол проверки знаний
     3. Если у должности есть связанные документы: Лист ознакомления
     4. Если у должности есть нормы СИЗ: Карточка учета СИЗ
+    5. Для всех подрядчиков добавляем Личную карточку по ОТ
 
     Args:
         employee (Employee): Объект сотрудника
@@ -53,9 +54,11 @@ def get_auto_selected_document_types(employee):
         logger.warning(f"У сотрудника {employee.full_name_nominative} не указана должность")
         return document_types
 
+    # Получаем флаг договора подряда
+    is_contractor = getattr(employee, 'is_contractor', False)
+
     # Проверяем срок стажировки и договор подряда
     internship_period = getattr(employee.position, 'internship_period_days', 0)
-    is_contractor = getattr(employee, 'is_contractor', False)
 
     if internship_period > 0:
         # Если это не договор подряда, добавляем распоряжение о стажировке
@@ -82,9 +85,9 @@ def get_auto_selected_document_types(employee):
     if has_siz_norms:
         document_types.append('siz_card')
 
-    # Добавляем другие обязательные документы, если нужно
-    # document_types.append('personal_ot_card')
-    # document_types.append('journal_example')
+    # Если есть договор подряда, добавляем Личную карточку по ОТ
+    if is_contractor:
+        document_types.append('personal_ot_card')
 
     logger.info(f"Автоматически выбранные типы документов для {employee.full_name_nominative}: {document_types}")
     # Убираем дубликаты на всякий случай
@@ -165,9 +168,10 @@ class DocumentSelectionView(LoginRequiredMixin, FormView):
             messages.error(self.request, "Сотрудник не найден")
             return self.form_invalid(form)
 
-        # Генерируем документы и собираем их для архива
+        # Генерируем все выбранные документы и собираем их для архива
         generated_documents = []
         files_to_archive = []
+        has_siz_card = False
 
         logger.info(f"Начинается генерация документов для {employee.full_name_nominative}, типы: {document_types}")
 
@@ -180,8 +184,6 @@ class DocumentSelectionView(LoginRequiredMixin, FormView):
             logger.info(f"Найден шаблон для {doc_type_check}: {template.name}, ID: {template.id}")
             # analyze_template(template.id) # Можно раскомментировать для отладки переменных
             return True
-
-        has_siz_card = False
 
         for doc_type in document_types:
             # Обрабатываем карточку СИЗ отдельно
@@ -197,10 +199,11 @@ class DocumentSelectionView(LoginRequiredMixin, FormView):
             # Генерируем документ с помощью соответствующего генератора
             try:
                 generated_doc = self._generate_document(doc_type, employee)
-                if generated_doc and isinstance(generated_doc, GeneratedDocument) and hasattr(generated_doc, 'document_file'):
+                if generated_doc and isinstance(generated_doc, GeneratedDocument) and hasattr(generated_doc,
+                                                                                              'document_file'):
                     generated_documents.append(generated_doc)
                     # Добавляем файл в список для архивирования
-                    file_path = generated_doc.document_file.path # Используем path для прямого пути
+                    file_path = generated_doc.document_file.path  # Используем path для прямого пути
                     if os.path.exists(file_path):
                         file_name = os.path.basename(generated_doc.document_file.name)
                         files_to_archive.append((file_path, file_name))
@@ -208,38 +211,43 @@ class DocumentSelectionView(LoginRequiredMixin, FormView):
                     else:
                         logger.warning(f"Файл не найден по пути: {file_path}")
                 elif generated_doc:
-                     logger.warning(f"Генератор для {doc_type} вернул неожиданный тип: {type(generated_doc)}")
+                    logger.warning(f"Генератор для {doc_type} вернул неожиданный тип: {type(generated_doc)}")
                 # Если generated_doc is None, значит была ошибка внутри генератора
                 # (он должен залогировать и вернуть None)
-                
+
             except Exception as e:
                 logger.error(f"Критическая ошибка при вызове генератора для типа {doc_type}: {str(e)}", exc_info=True)
                 messages.warning(self.request, f"Ошибка при генерации документа типа {doc_type}: {str(e)}")
+                continue  # Переходим к следующему документу
 
-        # --- Обработка карточки СИЗ (PDF) --- 
+        # --- Обработка карточки СИЗ (PDF) ---
         if has_siz_card:
             try:
+                # Используем сохраненный employee_id, а не переменную из цикла
                 logger.info(f"Начинаем генерацию карточки СИЗ (PDF) для сотрудника ID: {employee_id}")
+
                 # Создаем временный файл для PDF
                 with tempfile.NamedTemporaryFile(delete=False, suffix='.pdf') as tmp_file:
                     # Подготавливаем фиктивный request, т.к. export_personal_card_pdf его ожидает
                     fake_request = HttpRequest()
                     fake_request.user = self.request.user
-                    fake_request.method = 'GET' # Укажем метод
+                    fake_request.method = 'GET'  # Укажем метод
 
-                    # Вызываем функцию генерации PDF
+                    # Вызываем функцию генерации PDF, используя сохраненный employee_id
                     pdf_response = export_personal_card_pdf(fake_request, employee_id)
 
                     # Проверяем, что вернулся успешный HttpResponse с содержимым
                     if isinstance(pdf_response, HttpResponse) and pdf_response.status_code == 200:
-                         # Сохраняем содержимое PDF в файл
-                        pdf_content = b''.join(pdf_response.streaming_content) if pdf_response.streaming else pdf_response.content
+                        # Сохраняем содержимое PDF в файл
+                        pdf_content = b''.join(pdf_response.streaming_content) if hasattr(pdf_response,
+                                                                                          'streaming_content') else pdf_response.content
                         if pdf_content:
                             tmp_file.write(pdf_content)
-                            logger.info(f"PDF СИЗ записан во временный файл: {tmp_file.name}, размер: {len(pdf_content)}")
+                            logger.info(
+                                f"PDF СИЗ записан во временный файл: {tmp_file.name}, размер: {len(pdf_content)}")
                         else:
-                             logger.error("Содержимое PDF ответа для СИЗ пустое.")
-                             raise ValueError("Содержимое PDF ответа для СИЗ пустое.")
+                            logger.error("Содержимое PDF ответа для СИЗ пустое.")
+                            raise ValueError("Содержимое PDF ответа для СИЗ пустое.")
                     else:
                         status = pdf_response.status_code if isinstance(pdf_response, HttpResponse) else 'N/A'
                         logger.error(f"Функция export_personal_card_pdf вернула ошибку. Статус: {status}")
@@ -254,15 +262,15 @@ class DocumentSelectionView(LoginRequiredMixin, FormView):
                 else:
                     logger.error("PDF-файл СИЗ имеет нулевой размер после записи.")
                     messages.warning(self.request, "Ошибка при генерации PDF-файла СИЗ: файл пуст")
-                    try: # Удаляем пустой временный файл
+                    try:  # Удаляем пустой временный файл
                         os.unlink(tmp_file.name)
                     except OSError:
-                        pass 
+                        pass
             except Exception as e:
                 logger.error(f"Ошибка при генерации карточки СИЗ (PDF): {str(e)}", exc_info=True)
                 messages.warning(self.request, f"Ошибка при генерации карточки СИЗ (PDF): {str(e)}")
 
-        # --- Создание и отправка архива --- 
+        # --- Создание и отправка архива ---
         if not files_to_archive:
             messages.error(self.request, "Не удалось сгенерировать ни один документ для добавления в архив")
             return self.form_invalid(form)
@@ -286,11 +294,11 @@ class DocumentSelectionView(LoginRequiredMixin, FormView):
                         logger.info(f"Файл {file_path} добавлен в архив как {file_name}")
                     else:
                         logger.warning(f"Файл {file_path} не существует или пуст, пропускаем")
-            
+
             # Проверяем, добавился ли хотя бы один файл в архив
             if added_files_count == 0:
-                 raise ValueError("Ни один файл не был добавлен в архив.")
-                 
+                raise ValueError("Ни один файл не был добавлен в архив.")
+
             # Проверяем архив на наличие и размер
             if not os.path.exists(zip_path) or os.path.getsize(zip_path) == 0:
                 raise ValueError("Созданный архив пуст или отсутствует, хотя файлы для добавления были.")
@@ -304,14 +312,14 @@ class DocumentSelectionView(LoginRequiredMixin, FormView):
 
             # Сообщение об успехе
             messages.success(self.request, f"Успешно сгенерировано и добавлено в архив документов: {added_files_count}")
-            
+
             # Удаляем архив после отправки
             os.unlink(zip_path)
 
             # Очищаем временные файлы (PDF СИЗ)
             for file_path, _ in files_to_archive:
-                 # Удаляем только временные PDF файлы, созданные в tempfile
-                 if file_path.startswith(tempfile.gettempdir()) and file_path.endswith('.pdf'): 
+                # Удаляем только временные PDF файлы, созданные в tempfile
+                if file_path.startswith(tempfile.gettempdir()) and file_path.endswith('.pdf'):
                     try:
                         os.unlink(file_path)
                     except OSError as e:
@@ -322,11 +330,13 @@ class DocumentSelectionView(LoginRequiredMixin, FormView):
         except Exception as e:
             logger.error(f"Ошибка при создании или отправке архива: {str(e)}", exc_info=True)
             messages.error(self.request, f"Ошибка при создании архива: {str(e)}")
-             # Попытка удалить временные файлы даже при ошибке архивации
+            # Попытка удалить временные файлы даже при ошибке архивации
             for file_path, _ in files_to_archive:
                 if file_path.startswith(tempfile.gettempdir()) and file_path.endswith('.pdf'):
-                     try: os.unlink(file_path)
-                     except OSError: pass
+                    try:
+                        os.unlink(file_path)
+                    except OSError:
+                        pass
             return self.form_invalid(form)
 
     def _generate_document(self, doc_type, employee) -> Optional[GeneratedDocument]:
@@ -347,10 +357,10 @@ class DocumentSelectionView(LoginRequiredMixin, FormView):
             # Для generate_familiarization_document может потребоваться document_list, но здесь его нет
             # Если он нужен, логику нужно усложнить
             if doc_type == 'doc_familiarization':
-                 # document_list=None - будет получен внутри генератора
-                 return generator_func(employee=employee, user=self.request.user, document_list=None)
+                # document_list=None - будет получен внутри генератора
+                return generator_func(employee=employee, user=self.request.user, document_list=None)
             else:
-                 return generator_func(employee=employee, user=self.request.user)
+                return generator_func(employee=employee, user=self.request.user)
         else:
             logger.error(f"Генератор для типа документа '{doc_type}' не найден в _generate_document")
             return None

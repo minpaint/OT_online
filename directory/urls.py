@@ -12,6 +12,7 @@ from directory.views import (
     EmployeeCreateView,
     EmployeeUpdateView,
     EmployeeDeleteView,
+    EmployeeProfileView,   # ← добавлено
     EmployeeHiringView,
     PositionListView,
     PositionCreateView,
@@ -65,6 +66,7 @@ employee_patterns = [
     path('', EmployeeListView.as_view(), name='employee_list'),
     path('create/', EmployeeCreateView.as_view(), name='employee_create'),
     path('hire/', EmployeeHiringView.as_view(), name='employee_hire'),
+    path('<int:pk>/', EmployeeProfileView.as_view(), name='employee_profile'),  # ← добавлено
     path('<int:pk>/update/', EmployeeUpdateView.as_view(), name='employee_update'),
     path('<int:pk>/delete/', EmployeeDeleteView.as_view(), name='employee_delete'),
 ]
@@ -134,16 +136,13 @@ auth_patterns = [
         email_template_name='registration/password_reset_email.html',
         success_url=reverse_lazy('directory:auth:password_reset_done')
     ), name='password_reset'),
-
     path('password_reset/done/', auth_views.PasswordResetDoneView.as_view(
         template_name='registration/password_reset_done.html'
     ), name='password_reset_done'),
-
     path('reset/<uidb64>/<token>/', auth_views.PasswordResetConfirmView.as_view(
         template_name='registration/password_reset_confirm.html',
         success_url=reverse_lazy('directory:auth:password_reset_complete')
     ), name='password_reset_confirm'),
-
     path('reset/done/', auth_views.PasswordResetCompleteView.as_view(
         template_name='registration/password_reset_complete.html'
     ), name='password_reset_complete'),
@@ -157,7 +156,7 @@ urlpatterns = [
     path('employees/', include((employee_patterns, 'employees'))),
     path('positions/', include((position_patterns, 'positions'))),
     path('documents/', include((document_patterns, 'documents'))),
-    path('equipment/', include((equipment_patterns, 'equipment'))),  # 🆕 добавлено
+    path('equipment/', include((equipment_patterns, 'equipment'))),
     path('positions/<int:position_id>/siz-norms/', siz.position_siz_norms, name='position_siz_norms'),
     path('siz/', include((siz_patterns, 'siz'))),
     path('commissions/', include((commission_patterns, 'commissions'))),
