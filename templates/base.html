@@ -63,6 +63,11 @@
                                 </a>
                             </li>
                             <!-- другие пункты меню -->
+                            <li class="nav-item">
+    <a class="nav-link {% if 'hiring' in request.path %}active{% endif %}" href="{% url 'directory:hiring:hiring_tree' %}">
+        <i class="fas fa-user-plus"></i> Приемы на работу
+    </a>
+</li>
                         </ul>
                     </li>
                     {% endif %}

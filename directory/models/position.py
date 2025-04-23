@@ -1,6 +1,7 @@
 from django.db import models
 from django.core.exceptions import ValidationError
 from django.db.models import Count
+from directory.models.medical_examination import HarmfulFactor
 
 
 class Position(models.Model):
@@ -116,6 +117,13 @@ class Position(models.Model):
         related_name="positions",
         verbose_name="Оборудование"
     )
+    medical_harmful_factors = models.ManyToManyField(
+        HarmfulFactor,
+        through='directory.PositionMedicalFactor',
+        related_name='positions',
+        verbose_name="Вредные факторы медосмотров",
+        blank=True
+    )
 
     class Meta:
         verbose_name = "Профессия/должность"
@@ -126,7 +134,6 @@ class Position(models.Model):
         ]
 
     def clean(self):
-        # Проверка логики: отдел не может быть указан без подразделения, и т.д.
         if self.department:
             if not self.subdivision:
                 raise ValidationError({
@@ -151,13 +158,7 @@ class Position(models.Model):
         super().save(*args, **kwargs)
 
     def __str__(self):
-        """
-        🏷️ Возвращаем название должности. Если нет отдела,
-        добавляем в скобках подразделение или организацию.
-        """
         parts = [self.position_name]
-        # Убираем вывод (Отдел ...), если department существует
-        # => ничего не добавляем
         if not self.department:
             if self.subdivision:
                 parts.append(f"({self.subdivision.name})")
@@ -166,39 +167,17 @@ class Position(models.Model):
         return " ".join(parts)
 
     def get_full_path(self):
-        """
-        📍 Получение полного пути размещения должности
-
-        Возвращает строку вида "Организация → Подразделение → Отдел → Должность"
-        """
         parts = [self.organization.short_name_ru or self.organization.full_name_ru]
-
         if self.subdivision:
             parts.append(self.subdivision.name)
-
         if self.department:
             parts.append(self.department.name)
-
         parts.append(self.position_name)
         return " → ".join(parts)
 
     @classmethod
     def find_reference_norms(cls, position_name):
-        """
-        🔍 Ищет эталонные нормы СИЗ для должности ТОЛЬКО по точному совпадению названия
-
-        Используется в исключительных случаях, когда в разных организациях
-        для одинаковых профессий выдаются разные СИЗ
-
-        Возвращает QuerySet с нормами СИЗ
-        """
-        # Найти все должности с точно таким же названием
         positions = cls.objects.filter(position_name__exact=position_name)
-
-        # Импортируем модель SIZNorm
         from directory.models.siz import SIZNorm
-
-        # Получаем нормы для найденных должностей
         norms = SIZNorm.objects.filter(position__in=positions).select_related('siz')
-
         return norms

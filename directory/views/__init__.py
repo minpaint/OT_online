@@ -21,7 +21,7 @@ from .employees import (
     EmployeeUpdateView,
     EmployeeDeleteView,
     EmployeeHiringView,
-    EmployeeProfileView,  # Добавляем новое представление
+    EmployeeProfileView, # Добавляем новое представление
     get_subdivisions
 )
 
@@ -50,6 +50,9 @@ from .siz_issued import (
     SIZIssueReturnView,
     employee_siz_issued_list,
 )
+
+# Импорт представлений для медосмотров
+from directory.views import medical_examination
 
 
 class HomePageView(LoginRequiredMixin, TemplateView):
@@ -151,7 +154,7 @@ __all__ = [
     'EmployeeUpdateView',
     'EmployeeDeleteView',
     'EmployeeHiringView',
-    'EmployeeProfileView',  # Добавляем в список экспорта
+    'EmployeeProfileView', # Добавляем в список экспорта
     'PositionListView',
     'PositionCreateView',
     'PositionUpdateView',
@@ -167,4 +170,5 @@ __all__ = [
     'SIZPersonalCardView',
     'SIZIssueReturnView',
     'employee_siz_issued_list',
+    'medical_examination',  # Добавляем medical_examination в экспорт
 ]

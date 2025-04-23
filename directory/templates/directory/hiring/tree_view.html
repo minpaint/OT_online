@@ -1,0 +1,266 @@
+{% extends "base.html" %}
+{% load static %}
+{% load i18n %}
+{% load document_filters %}
+{% block content %}
+<div class="container-fluid">
+    <h1>{{ title }}</h1>
+
+    <!-- Фильтры -->
+    <div class="card mb-4">
+        <div class="card-header bg-light">
+            <h5 class="mb-0">
+                <i class="fas fa-filter"></i> Фильтры
+            </h5>
+        </div>
+        <div class="card-body">
+            <form method="get" class="form-inline">
+                <div class="row">
+                    <div class="col-md-3 mb-2">
+                        <label for="hiring_type">Вид приема:</label>
+                        <select name="hiring_type" id="hiring_type" class="form-control">
+                            <option value="">Все виды</option>
+                           {% for value, label in hiring_types.items %}
+                                <option value="{{ value }}" {% if current_hiring_type == value %}selected{% endif %}>{{ label }}</option>
+                            {% endfor %}
+                        </select>
+                    </div>
+                    <div class="col-md-3 mb-2">
+                        <label for="is_active">Статус:</label>
+                        <select name="is_active" id="is_active" class="form-control">
+                            <option value="">Все</option>
+                            <option value="true" {% if current_is_active == 'true' %}selected{% endif %}>Активные</option>
+                            <option value="false" {% if current_is_active == 'false' %}selected{% endif %}>Неактивные</option>
+                        </select>
+                    </div>
+                    <div class="col-md-4 mb-2">
+                        <label for="search">Поиск:</label>
+                        <input type="text" name="search" id="search" class="form-control" value="{{ search_query }}" placeholder="ФИО, должность...">
+                    </div>
+                    <div class="col-md-2 mb-2 d-flex align-items-end">
+                        <button type="submit" class="btn btn-primary mr-2"><i class="fas fa-search"></i> Применить</button>
+                        <a href="{% url 'directory:hiring:hiring_tree' %}" class="btn btn-secondary"><i class="fas fa-undo"></i> Сбросить</a>
+                    </div>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <!-- Кнопки действий -->
+    <div class="mb-3">
+        <a href="{% url 'directory:hiring:hiring_create' %}" class="btn btn-success">
+            <i class="fas fa-plus"></i> Новый прием на работу
+        </a>
+        <a href="{% url 'directory:hiring:hiring_list' %}" class="btn btn-info">
+            <i class="fas fa-list"></i> Табличное представление
+        </a>
+    </div>
+
+    <!-- Древовидная структура -->
+    <div class="card">
+        <div class="card-header bg-light">
+            <h5 class="mb-0">
+                <i class="fas fa-sitemap"></i> Структура приемов на работу
+            </h5>
+        </div>
+        <div class="card-body p-0">
+            {% if tree_data %}
+                <div class="tree-container">
+                    <ul class="tree">
+                        {% for org in tree_data %}
+                            <li>
+                                <span class="tree-toggle" data-toggle="collapse" data-target="#org-{{ org.id }}">
+                                    <i class="fas fa-building text-primary"></i> {{ org.name }}
+                                </span>
+                                <div id="org-{{ org.id }}" class="collapse show">
+                                    <!-- Сотрудники на уровне организации -->
+                                    {% if org.hirings %}
+                                        <ul class="hiring-items">
+                                            {% for hiring in org.hirings %}
+                                                <li>
+                                                    <a href="{% url 'directory:hiring:hiring_detail' hiring.pk %}" class="hiring-item{% if not hiring.is_active %} text-muted{% endif %}">
+                                                        <span class="badge badge-{{ hiring.hiring_type }}">
+                                                            {{ hiring_types|get_item:hiring.hiring_type }}
+                                                        </span>
+                                                        {{ hiring.employee.full_name_nominative }}
+                                                        <span class="text-secondary">— {{ hiring.position.position_name }}</span>
+                                                        <small class="text-muted ml-2">({{ hiring.hiring_date|date:"d.m.Y" }})</small>
+                                                        {% if hiring.documents.exists %}
+                                                            <span class="badge badge-info" title="Прикрепленные документы">
+                                                                <i class="fas fa-file-alt"></i> {{ hiring.documents.count }}
+                                                            </span>
+                                                        {% endif %}
+                                                    </a>
+                                                </li>
+                                            {% endfor %}
+                                        </ul>
+                                    {% endif %}
+
+                                    <!-- Подразделения -->
+                                    {% if org.subdivisions %}
+                                        <ul>
+                                            {% for sub in org.subdivisions %}
+                                                <li>
+                                                    <span class="tree-toggle" data-toggle="collapse" data-target="#sub-{{ sub.id }}">
+                                                        <i class="fas fa-industry text-success"></i> {{ sub.name }}
+                                                    </span>
+                                                    <div id="sub-{{ sub.id }}" class="collapse show">
+                                                        <!-- Сотрудники на уровне подразделения -->
+                                                        {% if sub.hirings %}
+                                                            <ul class="hiring-items">
+                                                                {% for hiring in sub.hirings %}
+                                                                    <li>
+                                                                        <a href="{% url 'directory:hiring:hiring_detail' hiring.pk %}" class="hiring-item{% if not hiring.is_active %} text-muted{% endif %}">
+                                                                            <span class="badge badge-{{ hiring.hiring_type }}">
+                                                                                {{ hiring_types|get_item:hiring.hiring_type }}
+                                                                            </span>
+                                                                            {{ hiring.employee.full_name_nominative }}
+                                                                            <span class="text-secondary">— {{ hiring.position.position_name }}</span>
+                                                                            <small class="text-muted ml-2">({{ hiring.hiring_date|date:"d.m.Y" }})</small>
+                                                                            {% if hiring.documents.exists %}
+                                                                                <span class="badge badge-info" title="Прикрепленные документы">
+                                                                                    <i class="fas fa-file-alt"></i> {{ hiring.documents.count }}
+                                                                                </span>
+                                                                            {% endif %}
+                                                                        </a>
+                                                                    </li>
+                                                                {% endfor %}
+                                                            </ul>
+                                                        {% endif %}
+
+                                                        <!-- Отделы -->
+                                                        {% if sub.departments %}
+                                                            <ul>
+                                                                {% for dept in sub.departments %}
+                                                                    <li>
+                                                                        <span class="tree-toggle" data-toggle="collapse" data-target="#dept-{{ dept.id }}">
+                                                                            <i class="fas fa-folder text-warning"></i> {{ dept.name }}
+                                                                        </span>
+                                                                        <div id="dept-{{ dept.id }}" class="collapse show">
+                                                                            <!-- Сотрудники на уровне отдела -->
+                                                                            {% if dept.hirings %}
+                                                                                <ul class="hiring-items">
+                                                                                    {% for hiring in dept.hirings %}
+                                                                                        <li>
+                                                                                            <a href="{% url 'directory:hiring:hiring_detail' hiring.pk %}" class="hiring-item{% if not hiring.is_active %} text-muted{% endif %}">
+                                                                                                <span class="badge badge-{{ hiring.hiring_type }}">
+                                                                                                    {{ hiring_types|get_item:hiring.hiring_type }}
+                                                                                                </span>
+                                                                                                {{ hiring.employee.full_name_nominative }}
+                                                                                                <span class="text-secondary">— {{ hiring.position.position_name }}</span>
+                                                                                                <small class="text-muted ml-2">({{ hiring.hiring_date|date:"d.m.Y" }})</small>
+                                                                                                {% if hiring.documents.exists %}
+                                                                                                    <span class="badge badge-info" title="Прикрепленные документы">
+                                                                                                        <i class="fas fa-file-alt"></i> {{ hiring.documents.count }}
+                                                                                                    </span>
+                                                                                                {% endif %}
+                                                                                            </a>
+                                                                                        </li>
+                                                                                    {% endfor %}
+                                                                                </ul>
+                                                                            {% endif %}
+                                                                        </div>
+                                                                    </li>
+                                                                {% endfor %}
+                                                            </ul>
+                                                        {% endif %}
+                                                    </div>
+                                                </li>
+                                            {% endfor %}
+                                        </ul>
+                                    {% endif %}
+                                </div>
+                            </li>
+                        {% endfor %}
+                    </ul>
+                </div>
+            {% else %}
+                <div class="alert alert-info m-3">
+                    <i class="fas fa-info-circle"></i> Нет данных для отображения или все записи отфильтрованы.
+                </div>
+            {% endif %}
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block extra_css %}
+<style>
+    .tree {
+        list-style: none;
+        padding-left: 0;
+    }
+
+    .tree ul {
+        list-style: none;
+        padding-left: 30px;
+    }
+
+    .tree-toggle {
+        cursor: pointer;
+        font-weight: bold;
+        display: inline-block;
+        padding: 5px;
+    }
+
+    .tree-toggle:hover {
+        background-color: #f8f9fa;
+        border-radius: 4px;
+    }
+
+    .hiring-items {
+        margin-top: 5px;
+    }
+
+    .hiring-item {
+        display: block;
+        padding: 5px 10px;
+        margin-bottom: 5px;
+        border-radius: 4px;
+        text-decoration: none;
+        color: #333;
+    }
+
+    .hiring-item:hover {
+        background-color: #f0f0f0;
+        text-decoration: none;
+    }
+
+    .badge-new {
+        background-color: #28a745;
+        color: white;
+    }
+
+    .badge-transfer {
+        background-color: #007bff;
+        color: white;
+    }
+
+    .badge-return {
+        background-color: #6f42c1;
+        color: white;
+    }
+
+    .badge-contractor {
+        background-color: #fd7e14;
+        color: white;
+    }
+
+    .badge-part_time {
+        background-color: #17a2b8;
+        color: white;
+    }
+</style>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+    $(document).ready(function() {
+        // Переключение вложенных элементов
+        $('.tree-toggle').click(function() {
+            var target = $(this).data('target');
+            $(target).collapse('toggle');
+        });
+    });
+</script>
+{% endblock %}

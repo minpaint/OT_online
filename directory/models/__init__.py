@@ -1,18 +1,17 @@
-# 📁 directory/models/__init__.py
+# directory/models/__init__.py
 from .organization import Organization
 from .subdivision import StructuralSubdivision
 from .department import Department
 from .document import Document
 from .equipment import Equipment
 from .position import Position
-from .commission import Commission, CommissionMember
 from .employee import Employee
 from .profile import Profile
 from .siz_issued import SIZIssued
-from .siz import SIZ, SIZNorm  # 👈 Добавляем импорт моделей SIZ и SIZNorm
-# Импортируем модели документов
+from .siz import SIZ, SIZNorm
 from .document_template import DocumentTemplate, GeneratedDocument
-from .commission import Commission, CommissionMember  # 👈 Добавляем новые модели
+from .commission import Commission, CommissionMember
+from .hiring import EmployeeHiring  # Добавляем новую модель
 
 __all__ = [
     'Organization',
@@ -30,4 +29,6 @@ __all__ = [
     'GeneratedDocument',
     'Commission',
     'CommissionMember',
+    'EmployeeHiring',  # Добавляем в список экспорта
 ]
+

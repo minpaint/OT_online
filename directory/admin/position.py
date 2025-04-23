@@ -15,6 +15,8 @@ from directory.models import Position
 from directory.forms.position import PositionForm
 from directory.admin.mixins.tree_view import TreeViewMixin
 from directory.models.siz import SIZNorm, SIZ
+from directory.models.medical_norm import PositionMedicalFactor
+from directory.models.medical_examination import HarmfulFactor
 
 
 # Обновленный инлайн для СИЗ
@@ -76,6 +78,54 @@ class SIZNormInlineForPosition(admin.TabularInline):
         if db_field.name == 'order':
             form_field.widget.attrs['style'] = 'width: 60px;'
         return form_field
+
+
+# Новый инлайн для вредных факторов медосмотров
+class PositionMedicalFactorInline(admin.TabularInline):
+    """🏥 Встроенные вредные факторы для должности"""
+    model = PositionMedicalFactor
+    extra = 0
+    fields = ('harmful_factor', 'examination_type', 'periodicity', 'periodicity_override', 'is_disabled', 'notes')
+    readonly_fields = ('examination_type', 'periodicity')
+    verbose_name = "Вредный фактор медосмотра"
+    verbose_name_plural = "Вредные факторы медосмотров"
+    autocomplete_fields = ['harmful_factor']
+
+    def get_extra(self, request, obj=None, **kwargs):
+        """Возвращает 0 для существующих объектов, 1 для новых"""
+        return 0 if obj else 1
+
+    def get_queryset(self, request):
+        """Оптимизированный запрос"""
+        return super().get_queryset(request).select_related(
+            'harmful_factor', 'harmful_factor__examination_type'
+        ).filter(
+            harmful_factor__isnull=False
+        ).order_by('harmful_factor__short_name')
+
+    def examination_type(self, obj):
+        """🏥 Отображение типа медосмотра"""
+        return obj.harmful_factor.examination_type.name if obj.harmful_factor and obj.harmful_factor.examination_type else ""
+
+    examination_type.short_description = "Вид медосмотра"
+
+    def periodicity(self, obj):
+        """⏱️ Отображение базовой периодичности"""
+        if obj.harmful_factor:
+            return f"{obj.harmful_factor.periodicity} мес."
+        return ""
+
+    periodicity.short_description = "Базовая периодичность"
+
+    def formfield_for_dbfield(self, db_field, **kwargs):
+        """Настройка полей формы"""
+        form_field = super().formfield_for_dbfield(db_field, **kwargs)
+        if db_field.name == 'periodicity_override':
+            form_field.widget.attrs['style'] = 'width: 80px;'
+        if db_field.name == 'notes':
+            form_field.widget.attrs['style'] = 'width: 200px;'
+        return form_field
+
 
 @admin.register(Position)
 class PositionAdmin(TreeViewMixin, admin.ModelAdmin):
@@ -148,9 +198,10 @@ class PositionAdmin(TreeViewMixin, admin.ModelAdmin):
         }
     }
 
-    # Добавляем инлайны для СИЗ
+    # Добавляем инлайны для СИЗ и вредных факторов медосмотров
     inlines = [
         SIZNormInlineForPosition,
+        PositionMedicalFactorInline,  # Добавляем инлайн для вредных факторов
     ]
 
     class Media:
@@ -298,7 +349,8 @@ class PositionAdmin(TreeViewMixin, admin.ModelAdmin):
         ).prefetch_related(
             'documents',
             'equipment',
-            'siz_norms'  # Добавляем предзагрузку СИЗ для оптимизации
+            'siz_norms',  # Добавляем предзагрузку СИЗ для оптимизации
+            'medical_factors'  # Добавляем предзагрузку вредных факторов
         )
         if not request.user.is_superuser and hasattr(request.user, 'profile'):
             allowed_orgs = request.user.profile.organizations.all()
@@ -354,6 +406,9 @@ class PositionAdmin(TreeViewMixin, admin.ModelAdmin):
         # Подсчитываем количество норм, но не разделяем по условиям
         total_norms_count = obj.siz_norms.count()
 
+        # Подсчитываем количество вредных факторов для медосмотров
+        medical_factors_count = obj.medical_factors.count()
+
         return {
             # Основные атрибуты безопасности
             'is_responsible_for_safety': obj.is_responsible_for_safety,
@@ -367,6 +422,9 @@ class PositionAdmin(TreeViewMixin, admin.ModelAdmin):
             # Упрощенная информация о СИЗ
             'total_siz_norms': total_norms_count,
             'has_reference_norms': has_reference_norms,
+
+            # Информация о медосмотрах
+            'medical_factors_count': medical_factors_count,
         }
 
     def has_module_permission(self, request):

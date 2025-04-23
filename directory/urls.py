@@ -12,14 +12,16 @@ from directory.views import (
     EmployeeCreateView,
     EmployeeUpdateView,
     EmployeeDeleteView,
-    EmployeeProfileView,   # ← добавлено
+    EmployeeProfileView,  # ← добавлено
     EmployeeHiringView,
     PositionListView,
     PositionCreateView,
     PositionUpdateView,
     PositionDeleteView,
     UserRegistrationView,
-    equipment  # 🆕 Импортируем модуль с представлениями оборудования
+    equipment,  # 🆕 Импортируем модуль с представлениями оборудования
+    hiring,  # 📑 Импортируем модуль с представлениями приемов на работу
+    medical_examination,  # 🏥 Импортируем модуль с представлениями медосмотров
 )
 
 from directory.views.documents import (
@@ -43,9 +45,11 @@ from directory.autocomplete_views import (
 
 app_name = 'directory'
 
+
 def logout_view(request):
     logout(request)
     return redirect('directory:auth:login')
+
 
 # 🔍 URL-маршруты для автодополнения (DAL)
 autocomplete_patterns = [
@@ -57,7 +61,8 @@ autocomplete_patterns = [
     path('equipment/', EquipmentAutocomplete.as_view(), name='equipment-autocomplete'),
     path('siz/', SIZAutocomplete.as_view(), name='siz-autocomplete'),
     path('employee/', EmployeeByCommissionAutocomplete.as_view(), name='employee-autocomplete'),
-    path('employee-for-commission/', EmployeeForCommissionAutocomplete.as_view(), name='employee-for-commission-autocomplete'),
+    path('employee-for-commission/', EmployeeForCommissionAutocomplete.as_view(),
+         name='employee-for-commission-autocomplete'),
     path('commission/', CommissionAutocomplete.as_view(), name='commission-autocomplete'),
 ]
 
@@ -94,7 +99,8 @@ commission_patterns = [
     path('<int:pk>/', commissions.CommissionDetailView.as_view(), name='commission_detail'),
     path('<int:pk>/update/', commissions.CommissionUpdateView.as_view(), name='commission_update'),
     path('<int:pk>/delete/', commissions.CommissionDeleteView.as_view(), name='commission_delete'),
-    path('<int:commission_id>/member/add/', commissions.CommissionMemberCreateView.as_view(), name='commission_member_add'),
+    path('<int:commission_id>/member/add/', commissions.CommissionMemberCreateView.as_view(),
+         name='commission_member_add'),
     path('member/<int:pk>/update/', commissions.CommissionMemberUpdateView.as_view(), name='commission_member_update'),
     path('member/<int:pk>/delete/', commissions.CommissionMemberDeleteView.as_view(), name='commission_member_delete'),
 ]
@@ -120,6 +126,60 @@ siz_patterns = [
     path('issue/employee/<int:employee_id>/', siz_issued.SIZIssueFormView.as_view(), name='siz_issue_for_employee'),
     path('personal-card/<int:employee_id>/', siz_issued.SIZPersonalCardView.as_view(), name='siz_personal_card'),
     path('return/<int:siz_issued_id>/', siz_issued.SIZIssueReturnView.as_view(), name='siz_return'),
+]
+
+# 📑 Приемы на работу
+hiring_patterns = [
+    path('', hiring.HiringTreeView.as_view(), name='hiring_tree'),
+    path('list/', hiring.HiringListView.as_view(), name='hiring_list'),
+    path('<int:pk>/', hiring.HiringDetailView.as_view(), name='hiring_detail'),
+    path('create/', hiring.HiringCreateView.as_view(), name='hiring_create'),
+    path('<int:pk>/update/', hiring.HiringUpdateView.as_view(), name='hiring_update'),
+    path('<int:pk>/delete/', hiring.HiringDeleteView.as_view(), name='hiring_delete'),
+    path('create-from-employee/<int:employee_id>/', hiring.CreateHiringFromEmployeeView.as_view(),
+         name='create_from_employee'),
+]
+
+# 🏥 Медосмотры
+medical_patterns = [
+    # Виды медосмотров
+    path('exam-types/', medical_examination.MedicalExaminationTypeListView.as_view(), name='medical_examination_types'),
+    path('exam-types/add/', medical_examination.MedicalExaminationTypeCreateView.as_view(),
+         name='medical_examination_type_create'),
+    path('exam-types/<int:pk>/edit/', medical_examination.MedicalExaminationTypeUpdateView.as_view(),
+         name='medical_examination_type_update'),
+    path('exam-types/<int:pk>/delete/', medical_examination.MedicalExaminationTypeDeleteView.as_view(),
+         name='medical_examination_type_delete'),
+
+    # Вредные факторы
+    path('harmful-factors/', medical_examination.HarmfulFactorListView.as_view(), name='harmful_factors'),
+    path('harmful-factors/<int:pk>/', medical_examination.HarmfulFactorDetailView.as_view(),
+         name='harmful_factor_detail'),
+    path('harmful-factors/add/', medical_examination.HarmfulFactorCreateView.as_view(), name='harmful_factor_create'),
+    path('harmful-factors/<int:pk>/edit/', medical_examination.HarmfulFactorUpdateView.as_view(),
+         name='harmful_factor_update'),
+    path('harmful-factors/<int:pk>/delete/', medical_examination.HarmfulFactorDeleteView.as_view(),
+         name='harmful_factor_delete'),
+
+    # Нормы медосмотров
+    path('norms/', medical_examination.MedicalNormListView.as_view(), name='medical_norms'),
+    path('norms/add/', medical_examination.MedicalNormCreateView.as_view(), name='medical_norm_create'),
+    path('norms/<int:pk>/edit/', medical_examination.MedicalNormUpdateView.as_view(), name='medical_norm_update'),
+    path('norms/<int:pk>/delete/', medical_examination.MedicalNormDeleteView.as_view(), name='medical_norm_delete'),
+    path('norms/import/', medical_examination.MedicalNormImportView.as_view(), name='medical_norm_import'),
+    path('norms/export/', medical_examination.MedicalNormExportView.as_view(), name='medical_norm_export'),
+
+    # Медосмотры сотрудников
+    path('exams/', medical_examination.EmployeeMedicalExaminationListView.as_view(), name='employee_exams'),
+    path('exams/<int:pk>/', medical_examination.EmployeeMedicalExaminationDetailView.as_view(),
+         name='employee_exam_detail'),
+    path('exams/add/', medical_examination.EmployeeMedicalExaminationCreateView.as_view(), name='employee_exam_create'),
+    path('exams/<int:pk>/edit/', medical_examination.EmployeeMedicalExaminationUpdateView.as_view(),
+         name='employee_exam_update'),
+    path('exams/<int:pk>/delete/', medical_examination.EmployeeMedicalExaminationDeleteView.as_view(),
+         name='employee_exam_delete'),
+    path('tabs/employee/<int:employee_id>/exams/', medical_examination.EmployeeMedicalExaminationTabView.as_view(),
+         name='employee_exams_tab'),
 ]
 
 # 🔐 Аутентификация
@@ -160,10 +220,19 @@ urlpatterns = [
     path('positions/<int:position_id>/siz-norms/', siz.position_siz_norms, name='position_siz_norms'),
     path('siz/', include((siz_patterns, 'siz'))),
     path('commissions/', include((commission_patterns, 'commissions'))),
+    path('hiring/', include((hiring_patterns, 'hiring'))),
+    path('medical/', include((medical_patterns, 'medical'))),  # 🏥 Добавляем маршруты для медосмотров
 
     # API для СИЗ
     path('api/positions/<int:position_id>/siz-norms/', siz.get_position_siz_norms, name='api_position_siz_norms'),
     path('api/employees/<int:employee_id>/issued-siz/', siz.get_employee_issued_siz, name='api_employee_issued_siz'),
     path('api/siz/<int:siz_id>/', siz.get_siz_details, name='api_siz_details'),
-    path('api/employees/<int:employee_id>/issued-siz/', siz_issued.employee_siz_issued_list, name='api_employee_issued_siz'),
+    path('api/employees/<int:employee_id>/issued-siz/', siz_issued.employee_siz_issued_list,
+         name='api_employee_issued_siz'),
+
+    # API для медосмотров
+    path('api/medical/employee/<int:employee_id>/status/', medical_examination.api_employee_medical_status,
+         name='api_employee_medical_status'),
+    path('api/medical/position/<int:position_id>/norms/', medical_examination.api_position_medical_norms,
+         name='api_position_medical_norms'),
 ]

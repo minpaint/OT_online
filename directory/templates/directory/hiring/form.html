@@ -1,0 +1,69 @@
+{% extends "base.html" %}
+{% load static %}
+{% load i18n %}
+{% load crispy_forms_tags %}
+
+{% block content %}
+<div class="container-fluid">
+    <h1>{{ title }}</h1>
+
+    <div class="card">
+        <div class="card-header bg-primary text-white">
+            <h5 class="mb-0">
+                <i class="fas fa-edit"></i>
+                {% if form.instance.pk %}Редактирование{% else %}Создание{% endif %} записи о приеме
+            </h5>
+        </div>
+        <div class="card-body">
+            <form method="post" action="">
+                {% csrf_token %}
+                {% crispy form %}
+            </form>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+    $(document).ready(function() {
+        // Инициализация Select2 для красивых выпадающих списков
+        $('.select2').select2({
+            theme: 'bootstrap4',
+            width: '100%'
+        });
+
+        // Инициализация DatePicker для полей даты (если используется не нативный)
+        $('.datepicker').datepicker({
+            format: 'yyyy-mm-dd',
+            autoclose: true,
+            todayHighlight: true
+        });
+
+        // Обработка зависимостей полей
+        $('#id_organization').change(function() {
+            var organizationId = $(this).val();
+            if (organizationId) {
+                $('#id_subdivision').val(null).trigger('change');
+                $('#id_department').val(null).trigger('change');
+                $('#id_position').val(null).trigger('change');
+            }
+        });
+
+        $('#id_subdivision').change(function() {
+            var subdivisionId = $(this).val();
+            if (subdivisionId) {
+                $('#id_department').val(null).trigger('change');
+                $('#id_position').val(null).trigger('change');
+            }
+        });
+
+        $('#id_department').change(function() {
+            var departmentId = $(this).val();
+            if (departmentId) {
+                $('#id_position').val(null).trigger('change');
+            }
+        });
+    });
+</script>
+{% endblock %}

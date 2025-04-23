@@ -1,0 +1,40 @@
+{% extends "base.html" %}
+{% load static %}
+{% load i18n %}
+
+{% block content %}
+<div class="container-fluid">
+    <h1>{{ title }}</h1>
+
+    <div class="card border-danger">
+        <div class="card-header bg-danger text-white">
+            <h5 class="mb-0">
+                <i class="fas fa-exclamation-triangle"></i> Подтверждение удаления
+            </h5>
+        </div>
+        <div class="card-body">
+            <p class="lead">
+                Вы действительно хотите удалить запись о приеме на работу:
+                <strong>{{ hiring.employee.full_name_nominative }} ({{ hiring.get_hiring_type_display }}) от {{ hiring.hiring_date|date:"d.m.Y" }}</strong>?
+            </p>
+
+            <div class="alert alert-warning">
+                <i class="fas fa-info-circle"></i> <strong>Внимание!</strong>
+                Удаление записи о приеме может повлиять на связанные данные и документы. Это действие невозможно отменить.
+            </div>
+
+            <form method="post" action="">
+                {% csrf_token %}
+                <div class="d-flex justify-content-between mt-4">
+                    <a href="{% url 'directory:hiring:hiring_detail' hiring.pk %}" class="btn btn-secondary">
+                        <i class="fas fa-times"></i> Отмена
+                    </a>
+                    <button type="submit" class="btn btn-danger">
+                        <i class="fas fa-trash"></i> Удалить
+                    </button>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
+{% endblock %}
