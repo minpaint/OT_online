@@ -11,6 +11,10 @@ from django.utils.translation import ngettext
 from django.contrib import messages
 from django.shortcuts import redirect, render
 from django.urls import path, reverse
+from django.utils.html import format_html
+from django.db.models import Exists, OuterRef, Count
+from django import forms
+
 from directory.models import Position
 from directory.forms.position import PositionForm
 from directory.admin.mixins.tree_view import TreeViewMixin
@@ -28,6 +32,8 @@ class SIZNormInlineForPosition(admin.TabularInline):
     readonly_fields = ('classification', 'unit', 'wear_period')
     verbose_name = "Норма СИЗ"
     verbose_name_plural = "Нормы СИЗ"
+
+    # Восстанавливаем autocomplete_fields с добавлением формы
     autocomplete_fields = ['siz']
 
     # Предотвращаем отображение пустых форм
@@ -74,6 +80,10 @@ class SIZNormInlineForPosition(admin.TabularInline):
             form_field.widget.attrs['style'] = 'width: 200px;'
         if db_field.name == 'order':
             form_field.widget.attrs['style'] = 'width: 60px;'
+        # Добавляем стили для виджета siz, если он уже настроен
+        if db_field.name == 'siz' and hasattr(form_field.widget, 'attrs'):
+            form_field.widget.attrs['style'] = 'min-width: 260px;'
+            form_field.widget.attrs['class'] = 'select2-siz-field'
         return form_field
 
 
@@ -82,7 +92,8 @@ class PositionMedicalFactorInline(admin.TabularInline):
     """🏥 Встроенные вредные факторы для должности"""
     model = PositionMedicalFactor
     extra = 0
-    fields = ('harmful_factor', 'examination_type', 'periodicity', 'periodicity_override', 'is_disabled', 'notes')
+    # Удалено поле notes из списка полей
+    fields = ('harmful_factor', 'examination_type', 'periodicity', 'periodicity_override', 'is_disabled')
     readonly_fields = ('examination_type', 'periodicity')
     verbose_name = "Вредный фактор медосмотра"
     verbose_name_plural = "Вредные факторы медосмотров"
@@ -119,8 +130,7 @@ class PositionMedicalFactorInline(admin.TabularInline):
         form_field = super().formfield_for_dbfield(db_field, **kwargs)
         if db_field.name == 'periodicity_override':
             form_field.widget.attrs['style'] = 'width: 80px;'
-        if db_field.name == 'notes':
-            form_field.widget.attrs['style'] = 'width: 200px;'
+        # Удалена настройка стиля для поля notes
         return form_field
 
 
@@ -203,15 +213,22 @@ class PositionAdmin(TreeViewMixin, admin.ModelAdmin):
 
     class Media:
         css = {
-            'all': ('admin/css/widgets.css', 'admin/css/position_siz_norms.css',)
+            'all': ('admin/css/widgets.css', 'admin/css/tree_view.css')
         }
         js = [
             'admin/js/jquery.init.js',
             'admin/js/core.js',
             'admin/js/SelectBox.js',
             'admin/js/SelectFilter2.js',
-            'admin/js/position_siz_norms.js',  # JS файл для управления нормами СИЗ
         ]
+
+    def change_view(self, request, object_id, form_url='', extra_context=None):
+        """Добавляем в контекст информацию о наличии медицинских факторов"""
+        extra_context = extra_context or {}
+        obj = self.get_object(request, object_id)
+        if obj:
+            extra_context['has_medical_factors'] = obj.medical_factors.exists()
+        return super().change_view(request, object_id, form_url, extra_context)
 
     def get_profession_icon(self, position_name):
         """
@@ -455,7 +472,7 @@ class PositionAdmin(TreeViewMixin, admin.ModelAdmin):
 
     def get_additional_node_data(self, obj):
         """
-        ➕ Добавляем иконку профессии, определенную на основе названия
+        ➕ Добавляем иконку профессии и индикатор переопределения медицинских норм
         """
         # Определяем иконку профессии на основе названия
         profession_icon = self.get_profession_icon(obj.position_name)
@@ -469,8 +486,15 @@ class PositionAdmin(TreeViewMixin, admin.ModelAdmin):
         # Подсчитываем количество вредных факторов для медосмотров
         medical_factors_count = obj.medical_factors.count()
 
+        # Определяем, есть ли переопределения медицинских норм
+        has_medical_overrides = medical_factors_count > 0
+
+        # Статус и стиль для медицинских норм
+        medical_status = "Переопределено" if has_medical_overrides else "Стандартные нормы"
+        medical_status_class = "" if has_medical_overrides else "standard"
+
         return {
-            # Иконка профессии (новое!)
+            # Иконка профессии
             'profession_icon': profession_icon,
 
             # Основные атрибуты безопасности
@@ -488,7 +512,28 @@ class PositionAdmin(TreeViewMixin, admin.ModelAdmin):
 
             # Информация о медосмотрах
             'medical_factors_count': medical_factors_count,
+            'has_medical_overrides': has_medical_overrides,
+            'medical_status': medical_status,
+            'medical_status_class': medical_status_class
         }
+
+    def medical_overrides_indicator(self, obj):
+        """
+        Индикатор наличия переопределений медицинских норм для отображения в списке должностей
+        """
+        medical_factors_count = obj.medical_factors.count()
+        if medical_factors_count > 0:
+            return format_html(
+                '<span class="medical-overrides-indicator" title="Переопределены нормы медосмотров">'
+                '🩺 Переопределено<span class="medical-overrides-count">{}</span></span>',
+                medical_factors_count
+            )
+        return format_html(
+            '<span class="medical-overrides-indicator standard" title="Используются стандартные нормы медосмотров">'
+            '🩺 Стандартные нормы</span>'
+        )
+
+    medical_overrides_indicator.short_description = "Медосмотры"
 
     def has_module_permission(self, request):
         """

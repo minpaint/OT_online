@@ -5,97 +5,23 @@
   {{ block.super }}
   <link rel="stylesheet" href="{% static 'admin/css/tree_view.css' %}">
   <script src="{% static 'admin/js/tree_view.js' %}"></script>
-  <style>
-    .profession-icon {
-      margin-right: 8px;
-      display: inline-block;
-    }
-
-    /* Улучшенные стили для дерева */
-    .tree-table tr.hidden-by-search {
-      display: none;
-    }
-
-    .tree-search-container {
-      margin: 10px 0;
-      position: relative;
-    }
-
-    .tree-search {
-      width: 100%;
-      padding: 8px 12px;
-      border: 1px solid #ccc;
-      border-radius: 4px;
-      font-size: 14px;
-    }
-
-    .tree-search-clear {
-      position: absolute;
-      right: 10px;
-      top: 50%;
-      transform: translateY(-50%);
-      cursor: pointer;
-      color: #999;
-      font-size: 16px;
-    }
-  </style>
-  <script>
-    // Улучшенный поиск с поддержкой диакритических знаков
-    document.addEventListener('DOMContentLoaded', function() {
-      const searchInput = document.querySelector('.tree-search');
-
-      if (searchInput) {
-        searchInput.addEventListener('input', function() {
-          const searchTerm = this.value.toLowerCase().trim();
-          const rows = document.querySelectorAll('.tree-row[data-level="0"]');
-
-          rows.forEach(row => {
-            const searchText = row.getAttribute('data-search-text') || '';
-            const isMatch = searchTerm === '' || searchText.includes(searchTerm);
-
-            // Скрываем/показываем строку и связанные дочерние элементы
-            const nodeId = row.getAttribute('data-node-id');
-            const childRows = document.querySelectorAll(`.tree-row[data-parent-id="${nodeId}"]`);
-
-            if (isMatch) {
-              row.classList.remove('hidden-by-search');
-              childRows.forEach(child => child.classList.remove('hidden-by-search'));
-            } else {
-              row.classList.add('hidden-by-search');
-              childRows.forEach(child => child.classList.add('hidden-by-search'));
-            }
-          });
-        });
-
-        // Добавляем кнопку очистки поиска
-        const clearButton = document.createElement('span');
-        clearButton.innerHTML = '✕';
-        clearButton.className = 'tree-search-clear';
-        clearButton.style.display = 'none';
-
-        searchInput.parentNode.appendChild(clearButton);
-
-        searchInput.addEventListener('input', function() {
-          clearButton.style.display = this.value ? 'block' : 'none';
-        });
-
-        clearButton.addEventListener('click', function() {
-          searchInput.value = '';
-          searchInput.dispatchEvent(new Event('input'));
-          this.style.display = 'none';
-        });
-      }
-    });
-  </script>
 {% endblock %}
 
 {% block content %}
 <div id="content-main">
+  <!-- Информационная панель о разделе -->
+  <div class="info-panel">
+    <h2>📑 Эталонные нормы медосмотров</h2>
+    <p>
+      Эталонные нормы содержат общие правила медосмотров для профессий без привязки к конкретным организациям.
+      Для отдельных должностей возможно создание переопределений в административном интерфейсе должностей.
+    </p>
+  </div>
+
   <form id="changelist-form" method="post" novalidate>
     {% csrf_token %}
 
     <div class="object-tools">
-      <!-- Большой зелёный «+» в шапке -->
       <a href="{% url 'admin:directory_medicalexaminationnorm_add' %}" class="addlink">
         Добавить норму медосмотра
       </a>
@@ -121,19 +47,18 @@
         <tbody>
         {% for prof in professions %}
           {# Строка с именем профессии #}
-          <tr class="tree-row" data-level="0" data-node-id="prof_{{ forloop.counter }}" data-search-text="{{ prof.name|lower }}">
+          <tr class="tree-row {% if prof.has_overrides %}has-overrides{% endif %}" data-level="0" data-node-id="prof_{{ forloop.counter }}">
             <td>
-              <span class="tree-toggle"></span>
-              <span class="profession-icon">{{ prof.icon|default:"👔" }}</span>
-              <strong>{{ prof.name }}</strong>
+              <a href="{% url 'admin:directory_medicalexaminationnorm_add' %}?position={{ prof.reference_position.id }}">
+                <strong>{{ prof.name }}</strong>
+              </a>
+              {% if prof.has_overrides %}
+              <span class="override-indicator" title="Имеются переопределения для некоторых должностей">⚠️</span>
+              {% endif %}
             </td>
             <td>{{ prof.norms|length }}</td>
             <td>
-              {% if prof.reference_position %}
-                <a href="{% url 'admin:directory_medicalexaminationnorm_add' %}?position={{ prof.reference_position.id }}" class="add-link" title="Добавить норму для {{ prof.name }}">+</a>
-              {% else %}
-                <a href="{% url 'admin:directory_medicalexaminationnorm_add' %}?position_name={{ prof.name|urlencode }}" class="add-link" title="Добавить норму для {{ prof.name }}">+</a>
-              {% endif %}
+              {# Убираем маленький «+» #}
             </td>
           </tr>
           {# Вложенная таблица с уже существующими нормами #}

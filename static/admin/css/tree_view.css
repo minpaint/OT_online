@@ -149,3 +149,138 @@ tr:hover td {
     text-align: left !important;
     padding-right: 15px !important;
 }
+
+/* Добавьте эти стили в существующий файл или создайте новый */
+
+/* Информационная панель раздела */
+.info-panel {
+    background-color: #f8f9fa;
+    border-radius: 4px;
+    padding: 15px 20px;
+    margin-bottom: 20px;
+    box-shadow: 0 1px 2px rgba(0,0,0,0.1);
+    border-left: 4px solid #007bff;
+}
+
+.info-panel h2 {
+    margin: 0 0 8px 0;
+    font-size: 20px;
+    color: #444;
+}
+
+.info-panel p {
+    color: #666;
+    margin: 0;
+    font-size: 14px;
+    max-width: 800px;
+    line-height: 1.5;
+}
+
+/* Индикатор переопределений */
+.override-indicator {
+    display: inline-block;
+    margin-left: 8px;
+    cursor: help;
+}
+
+/* Индикатор медицинских норм в древовидной структуре */
+.medical-overrides-indicator {
+    display: inline-flex;
+    align-items: center;
+    margin-left: 8px;
+    padding: 2px 6px;
+    border-radius: 4px;
+    font-size: 12px;
+    background-color: #f8d7da;
+    color: #721c24;
+    cursor: help;
+}
+
+.medical-overrides-indicator.standard {
+    background-color: #e2e3e5;
+    color: #383d41;
+}
+
+.medical-overrides-count {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    margin-left: 4px;
+    height: 16px;
+    min-width: 16px;
+    border-radius: 50%;
+    background-color: rgba(0,0,0,0.15);
+    font-size: 11px;
+    font-weight: bold;
+}
+
+/* Подсветка строк с переопределениями */
+.has-overrides {
+    background-color: rgba(255, 193, 7, 0.1);
+}
+/* Информационная панель раздела */
+.info-panel {
+    background-color: #f8f9fa;
+    border-radius: 4px;
+    padding: 15px 20px;
+    margin-bottom: 20px;
+    box-shadow: 0 1px 2px rgba(0,0,0,0.1);
+    border-left: 4px solid #007bff;
+}
+
+.info-panel h2 {
+    margin: 0 0 8px 0;
+    font-size: 20px;
+    color: #444;
+}
+
+.info-panel p {
+    color: #666;
+    margin: 0;
+    font-size: 14px;
+    max-width: 800px;
+    line-height: 1.5;
+}
+
+/* Индикатор переопределений */
+.override-indicator {
+    display: inline-block;
+    margin-left: 8px;
+    cursor: help;
+}
+
+/* Строки с переопределениями */
+.has-overrides {
+    background-color: rgba(255, 193, 7, 0.1);
+}
+
+/* Индикатор медицинских норм в древовидной структуре */
+.medical-overrides-indicator {
+    display: inline-flex;
+    align-items: center;
+    margin-left: 8px;
+    padding: 2px 6px;
+    border-radius: 4px;
+    font-size: 12px;
+    background-color: #f8d7da;
+    color: #721c24;
+    cursor: help;
+}
+
+.medical-overrides-indicator.standard {
+    background-color: #e2e3e5;
+    color: #383d41;
+}
+
+.medical-overrides-count {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    margin-left: 4px;
+    height: 16px;
+    min-width: 16px;
+    border-radius: 50%;
+    background-color: rgba(0,0,0,0.15);
+    font-size: 11px;
+    font-weight: bold;
+}
