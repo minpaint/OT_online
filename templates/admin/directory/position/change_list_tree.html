@@ -5,7 +5,7 @@
 
 <div id="content-main">
  <div class="object-tools">
-        <a href="{% url 'admin:directory_equipment_add' %}" class="addlink">
+        <a href="{% url 'admin:directory_position_add' %}" class="addlink">
             Добавить
         </a>
     </div>
@@ -48,7 +48,7 @@
                         <td class="field-checkbox"></td>
                         <td class="field-name">
                             <button type="button" class="toggle-btn" data-state="expanded">[-]</button>
-                            <span class="tree-icon">{{ tree_settings.icons.organization }}</span>
+                            <span class="tree-icon">{{ tree_settings.icons.organization|default:"🏢" }}</span>
                             <strong>{{ org_data.name }}</strong>
                         </td>
                         <td class="field-roles"></td>
@@ -62,12 +62,32 @@
                             <input type="checkbox" name="_selected_action" value="{{ item.object.pk }}" class="action-select">
                         </td>
                         <td class="field-name">
-                            <span class="tree-icon">{{ tree_settings.icons.item }}</span>
+                            <span class="tree-icon">{{ item.additional_data.profession_icon|default:"👔" }}</span>
                             <a href="{% url 'admin:directory_position_change' item.object.pk %}">
                                 {{ item.name }}
                             </a>
                         </td>
-                        <td class="field-roles"></td>
+                        <td class="field-roles">
+                            {% if item.additional_data.total_siz_norms > 0 %}
+                            <span class="badge badge-success" title="Имеются нормы СИЗ">🛡️ {{ item.additional_data.total_siz_norms }}</span>
+                            {% endif %}
+
+                            {% if item.additional_data.medical_factors_count > 0 %}
+                            <span class="badge badge-info" title="Имеются факторы медосмотров">🏥 {{ item.additional_data.medical_factors_count }}</span>
+                            {% endif %}
+
+                            {% if item.additional_data.is_responsible_for_safety %}
+                            <span class="position-attribute" title="Ответственный за ОТ">🔰</span>
+                            {% endif %}
+
+                            {% if item.additional_data.can_be_internship_leader %}
+                            <span class="position-attribute" title="Может быть руководителем стажировки">👨‍🏫</span>
+                            {% endif %}
+
+                            {% if item.additional_data.is_electrical_personnel %}
+                            <span class="position-attribute" title="Электротехнический персонал">⚡</span>
+                            {% endif %}
+                        </td>
                         <td class="field-actions">
                             <a href="{% url 'admin:directory_position_change' item.object.pk %}" class="edit-link">✏️</a>
                             <a href="{% url 'admin:directory_position_delete' item.object.pk %}" class="delete-link">🗑️</a>
@@ -82,7 +102,7 @@
                         <td class="field-checkbox"></td>
                         <td class="field-name">
                             <button type="button" class="toggle-btn" data-state="expanded">[-]</button>
-                            <span class="tree-icon">{{ tree_settings.icons.subdivision }}</span>
+                            <span class="tree-icon">{{ tree_settings.icons.subdivision|default:"🏭" }}</span>
                             {{ sub_data.name }}
                         </td>
                         <td class="field-roles"></td>
@@ -96,12 +116,32 @@
                                 <input type="checkbox" name="_selected_action" value="{{ item.object.pk }}" class="action-select">
                             </td>
                             <td class="field-name">
-                                <span class="tree-icon">{{ tree_settings.icons.item }}</span>
+                                <span class="tree-icon">{{ item.additional_data.profession_icon|default:"👔" }}</span>
                                 <a href="{% url 'admin:directory_position_change' item.object.pk %}">
                                     {{ item.name }}
                                 </a>
                             </td>
-                            <td class="field-roles"></td>
+                            <td class="field-roles">
+                                {% if item.additional_data.total_siz_norms > 0 %}
+                                <span class="badge badge-success" title="Имеются нормы СИЗ">🛡️ {{ item.additional_data.total_siz_norms }}</span>
+                                {% endif %}
+
+                                {% if item.additional_data.medical_factors_count > 0 %}
+                                <span class="badge badge-info" title="Имеются факторы медосмотров">🏥 {{ item.additional_data.medical_factors_count }}</span>
+                                {% endif %}
+
+                                {% if item.additional_data.is_responsible_for_safety %}
+                                <span class="position-attribute" title="Ответственный за ОТ">🔰</span>
+                                {% endif %}
+
+                                {% if item.additional_data.can_be_internship_leader %}
+                                <span class="position-attribute" title="Может быть руководителем стажировки">👨‍🏫</span>
+                                {% endif %}
+
+                                {% if item.additional_data.is_electrical_personnel %}
+                                <span class="position-attribute" title="Электротехнический персонал">⚡</span>
+                                {% endif %}
+                            </td>
                             <td class="field-actions">
                                 <a href="{% url 'admin:directory_position_change' item.object.pk %}" class="edit-link">✏️</a>
                                 <a href="{% url 'admin:directory_position_delete' item.object.pk %}" class="delete-link">🗑️</a>
@@ -116,7 +156,7 @@
                             <td class="field-checkbox"></td>
                             <td class="field-name">
                                 <button type="button" class="toggle-btn" data-state="expanded">[-]</button>
-                                <span class="tree-icon">{{ tree_settings.icons.department }}</span>
+                                <span class="tree-icon">{{ tree_settings.icons.department|default:"📂" }}</span>
                                 {{ dept_data.name }}
                             </td>
                             <td class="field-roles"></td>
@@ -129,12 +169,32 @@
                                 <input type="checkbox" name="_selected_action" value="{{ item.object.pk }}" class="action-select">
                             </td>
                             <td class="field-name">
-                                <span class="tree-icon">{{ tree_settings.icons.item }}</span>
+                                <span class="tree-icon">{{ item.additional_data.profession_icon|default:"👔" }}</span>
                                 <a href="{% url 'admin:directory_position_change' item.object.pk %}">
                                     {{ item.name }}
                                 </a>
                             </td>
-                            <td class="field-roles"></td>
+                            <td class="field-roles">
+                                {% if item.additional_data.total_siz_norms > 0 %}
+                                <span class="badge badge-success" title="Имеются нормы СИЗ">🛡️ {{ item.additional_data.total_siz_norms }}</span>
+                                {% endif %}
+
+                                {% if item.additional_data.medical_factors_count > 0 %}
+                                <span class="badge badge-info" title="Имеются факторы медосмотров">🏥 {{ item.additional_data.medical_factors_count }}</span>
+                                {% endif %}
+
+                                {% if item.additional_data.is_responsible_for_safety %}
+                                <span class="position-attribute" title="Ответственный за ОТ">🔰</span>
+                                {% endif %}
+
+                                {% if item.additional_data.can_be_internship_leader %}
+                                <span class="position-attribute" title="Может быть руководителем стажировки">👨‍🏫</span>
+                                {% endif %}
+
+                                {% if item.additional_data.is_electrical_personnel %}
+                                <span class="position-attribute" title="Электротехнический персонал">⚡</span>
+                                {% endif %}
+                            </td>
                             <td class="field-actions">
                                 <a href="{% url 'admin:directory_position_change' item.object.pk %}" class="edit-link">✏️</a>
                                 <a href="{% url 'admin:directory_position_delete' item.object.pk %}" class="delete-link">🗑️</a>
@@ -157,4 +217,32 @@
     <link rel="stylesheet" href="{% static 'admin/css/tree_view.css' %}">
     <script src="{% static 'admin/js/tree_view.js' %}"></script>
     <script src="{% static 'admin/js/tree_search.js' %}"></script>
+    <style>
+        /* Стили для бейджей и иконок */
+        .badge {
+            display: inline-block;
+            padding: 3px 7px;
+            font-size: 12px;
+            font-weight: 600;
+            line-height: 1;
+            border-radius: 10px;
+            margin-right: 5px;
+        }
+
+        .badge-success { background-color: #28a745; color: white; }
+        .badge-info { background-color: #17a2b8; color: white; }
+
+        .position-attribute {
+            display: inline-block;
+            margin-right: 5px;
+            font-size: 16px;
+        }
+
+        /* Увеличиваем размер иконок профессий */
+        .tree-icon {
+            display: inline-block;
+            margin-right: 8px;
+            font-size: 18px;
+        }
+    </style>
 {% endblock %}

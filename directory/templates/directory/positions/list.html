@@ -13,7 +13,7 @@
                 <select name="organization" id="organization" class="form-select">
                     <option value="">Все</option>
                     {% for org in organizations %}
-                        <option value="{{ org.id }}" 
+                        <option value="{{ org.id }}"
                             {% if selected_organization == org.id %}selected{% endif %}>
                             {{ org.full_name_ru }}
                         </option>
@@ -27,7 +27,7 @@
                 <select name="subdivision" id="subdivision" class="form-select">
                     <option value="">Все</option>
                     {% for subdivision in subdivisions %}
-                        <option value="{{ subdivision.id }}" 
+                        <option value="{{ subdivision.id }}"
                             {% if selected_subdivision == subdivision.id %}selected{% endif %}>
                             {{ subdivision.name }}
                         </option>

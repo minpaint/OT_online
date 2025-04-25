@@ -199,7 +199,7 @@ class MedicalNormExportForm(forms.Form):
 class UniquePositionMedicalNormForm(forms.ModelForm):
     """
     Используется в админке MedicalExaminationNormAdmin: выбор «Профессия (должность)»
-    из уникальных Position.position_name.  При сохранении заполняет `position_name`.
+    из уникальных Position.position_name. При сохранении заполняет `position_name`.
     """
     unique_position_name = forms.ChoiceField(
         label="Профессия (должность)",
@@ -221,11 +221,14 @@ class UniquePositionMedicalNormForm(forms.ModelForm):
         position_id = kwargs.pop("position_id", None)
         super().__init__(*args, **kwargs)
 
+        # Получаем все уникальные имена должностей
         names = Position.objects.values_list("position_name", flat=True).distinct().order_by("position_name")
-        self.fields["unique_position_name"].choices = [("", "---")] + [(n, n) for n in names]
+        self.fields["unique_position_name"].choices = [("", "-- Выберите профессию/должность --")] + [(n, n) for n in names]
 
+        # Если это существующая запись, берем название из неё
         if self.instance.pk:
             self.fields["unique_position_name"].initial = self.instance.position_name
+        # Если передан ID должности, ищем её и берем название
         elif position_id:
             try:
                 pos = Position.objects.get(pk=position_id)
@@ -250,5 +253,6 @@ class UniquePositionMedicalNormForm(forms.ModelForm):
         return cleaned
 
     def save(self, commit=True):
+        # Сохраняем название должности в поле position_name
         self.instance.position_name = self.cleaned_data["unique_position_name"]
         return super().save(commit)
