@@ -5,244 +5,325 @@
 
 <div id="content-main">
  <div class="object-tools">
-        <a href="{% url 'admin:directory_position_add' %}" class="addlink">
-            Добавить
-        </a>
-    </div>
-    <form id="changelist-form" method="post"
-          {% if cl.formset and cl.formset.is_multipart %} enctype="multipart/form-data"{% endif %}
-          novalidate>
-        {% csrf_token %}
-        {% if action_form and actions_on_top and cl.show_admin_actions %}
-            <div class="actions">
-                {% for field in action_form %}
-                    {% if field.label %}<label>{{ field.label }}</label>{% endif %}
-                    {{ field }}
-                {% endfor %}
-                <button type="submit" class="button" title="Выполнить выбранное действие">Выполнить</button>
-                <span class="action-counter" style="display: none;">0 из {{ cl.result_count }} выбрано</span>
-            </div>
-        {% endif %}
+ <a href="{% url 'admin:directory_position_add' %}" class="addlink">
+ Добавить
+</a>
+ </div>
+ <form id="changelist-form" method="post"
+ {% if cl.formset and cl.formset.is_multipart %} enctype="multipart/form-data"{% endif %}
+novalidate>
+ {% csrf_token %}
+{% if action_form and actions_on_top and cl.show_admin_actions %}
+<div class="actions">
+ {% for field in action_form %}
+{% if field.label %}<label>{{ field.label }}</label>{% endif %}
+{{ field }}
+{% endfor %}
+<button type="submit" class="button" title="Выполнить выбранное действие">Выполнить</button>
+ <span class="action-counter" style="display: none;">0 из {{ cl.result_count }} выбрано</span>
+ </div>
+ {% endif %}
 
-        <div class="tree-controls">
-            <button type="button" class="tree-btn expand-all">↓ Развернуть все</button>
-            <button type="button" class="tree-btn collapse-all">↑ Свернуть все</button>
-            <div class="tree-search-container">
-                <input type="text" class="tree-search" placeholder="🔍 Поиск по дереву...">
-            </div>
-        </div>
+<div class="tree-controls">
+ <button type="button" class="tree-btn expand-all">↓ Развернуть все</button>
+ <button type="button" class="tree-btn collapse-all">↑ Свернуть все</button>
+ <div class="tree-search-container">
+ <input type="text" class="tree-search" placeholder="🔍 Поиск по дереву...">
+ </div>
+ </div>
 
-        <div class="results">
-            <table id="result_list">
-                <thead>
-                    <tr>
-                        <th class="column-checkbox"><input type="checkbox" id="select-all"></th>
-                        <th class="column-name">НАИМЕНОВАНИЕ</th>
-                        <th class="column-roles">АТРИБУТЫ/РОЛИ</th>
-                        <th class="column-actions">ДЕЙСТВИЯ</th>
-                    </tr>
-                </thead>
-                <tbody>
-                    {% for org, org_data in tree.items %}
-                    <tr class="tree-row" data-level="0" data-node-id="org_{{ org.id }}">
-                        <td class="field-checkbox"></td>
-                        <td class="field-name">
-                            <button type="button" class="toggle-btn" data-state="expanded">[-]</button>
-                            <span class="tree-icon">{{ tree_settings.icons.organization|default:"🏢" }}</span>
-                            <strong>{{ org_data.name }}</strong>
-                        </td>
-                        <td class="field-roles"></td>
-                        <td class="field-actions"></td>
-                    </tr>
+ <div class="results">
+ <table id="result_list">
+ <thead>
+ <tr>
+ <th class="column-checkbox"><input type="checkbox" id="select-all"></th>
+ <th class="column-name">НАИМЕНОВАНИЕ</th>
+ <th class="column-roles">АТРИБУТЫ/РОЛИ</th>
+ <th class="column-actions">ДЕЙСТВИЯ</th>
+ </tr>
+ </thead>
+ <tbody>
+ {% for org, org_data in tree.items %}
+<tr class="tree-row" data-level="0" data-node-id="org_{{ org.id }}">
+ <td class="field-checkbox"></td>
+ <td class="field-name">
+ <button type="button" class="toggle-btn" data-state="expanded">[-]</button>
+ <span class="tree-icon">{{ tree_settings.icons.organization|default:"🏢" }}</span>
+ <strong>{{ org_data.name }}</strong>
+ </td>
+ <td class="field-roles"></td>
+ <td class="field-actions"></td>
+ </tr>
 
-                    {# Элементы без subdivision #}
-                    {% for item in org_data.items %}
-                    <tr class="tree-row" data-level="1" data-parent-id="org_{{ org.id }}">
-                        <td class="field-checkbox">
-                            <input type="checkbox" name="_selected_action" value="{{ item.object.pk }}" class="action-select">
-                        </td>
-                        <td class="field-name">
-                            <span class="tree-icon">{{ item.additional_data.profession_icon|default:"👔" }}</span>
-                            <a href="{% url 'admin:directory_position_change' item.object.pk %}">
-                                {{ item.name }}
-                            </a>
-                        </td>
-                        <td class="field-roles">
-                            {% if item.additional_data.total_siz_norms > 0 %}
-                            <span class="badge badge-success" title="Имеются нормы СИЗ">🛡️ {{ item.additional_data.total_siz_norms }}</span>
-                            {% endif %}
+ {# Элементы без subdivision #}
+ {% for item in org_data.items %}
+<tr class="tree-row" data-level="1" data-parent-id="org_{{ org.id }}">
+ <td class="field-checkbox">
+ <input type="checkbox" name="_selected_action" value="{{ item.object.pk }}" class="action-select">
+ </td>
+ <td class="field-name">
+ <span class="tree-icon">{{ item.additional_data.profession_icon|default:"👔" }}</span>
+ <a href="{% url 'admin:directory_position_change' item.object.pk %}">
+ {{ item.name }}
+</a>
+ </td>
+ <td class="field-roles">
+ {% if item.additional_data.total_siz_norms > 0 %}
+<span class="badge badge-success" title="Имеются нормы СИЗ">🛡️ {{ item.additional_data.total_siz_norms }}</span>
+ {% endif %}
 
-                            {% if item.additional_data.medical_factors_count > 0 %}
-                            <span class="badge badge-info" title="Имеются факторы медосмотров">🏥 {{ item.additional_data.medical_factors_count }}</span>
-                            {% endif %}
+{% if item.additional_data.medical_factors_count > 0 %}
+<span class="badge badge-info" title="Имеются факторы медосмотров">🏥 {{ item.additional_data.medical_factors_count }}</span>
+ {% endif %}
 
-                            {% if item.additional_data.is_responsible_for_safety %}
-                            <span class="position-attribute" title="Ответственный за ОТ">🔰</span>
-                            {% endif %}
+{% if item.additional_data.is_responsible_for_safety %}
+<span class="position-attribute" title="Ответственный за ОТ">🔰</span>
+ {% endif %}
 
-                            {% if item.additional_data.can_be_internship_leader %}
-                            <span class="position-attribute" title="Может быть руководителем стажировки">👨‍🏫</span>
-                            {% endif %}
+{% if item.additional_data.can_be_internship_leader %}
+<span class="position-attribute" title="Может быть руководителем стажировки">👨‍🏫</span>
+ {% endif %}
 
-                            {% if item.additional_data.is_electrical_personnel %}
-                            <span class="position-attribute" title="Электротехнический персонал">⚡</span>
-                            {% endif %}
-                        </td>
-                        <td class="field-actions">
-                            <a href="{% url 'admin:directory_position_change' item.object.pk %}" class="edit-link">✏️</a>
-                            <a href="{% url 'admin:directory_position_delete' item.object.pk %}" class="delete-link">🗑️</a>
-                            <a href="{% url 'admin:directory_position_history' item.object.pk %}" class="history-link">📋</a>
-                        </td>
-                    </tr>
-                    {% endfor %}
+{% if item.additional_data.is_electrical_personnel %}
+<span class="position-attribute" title="Электротехнический персонал">⚡</span>
+ {% endif %}
 
-                    {# Подразделения #}
-                    {% for sub, sub_data in org_data.subdivisions.items %}
-                    <tr class="tree-row" data-level="1" data-parent-id="org_{{ org.id }}" data-node-id="sub_{{ sub.id }}">
-                        <td class="field-checkbox"></td>
-                        <td class="field-name">
-                            <button type="button" class="toggle-btn" data-state="expanded">[-]</button>
-                            <span class="tree-icon">{{ tree_settings.icons.subdivision|default:"🏭" }}</span>
-                            {{ sub_data.name }}
-                        </td>
-                        <td class="field-roles"></td>
-                        <td class="field-actions"></td>
-                    </tr>
+{# Может подписывать распоряжения #}
+{% if item.additional_data.can_sign_orders %}
+<span class="position-attribute" title="Может подписывать распоряжения">📝</span>
+{% endif %}
 
-                        {# Элементы без department #}
-                        {% for item in sub_data.items %}
-                        <tr class="tree-row" data-level="2" data-parent-id="sub_{{ sub.id }}">
-                            <td class="field-checkbox">
-                                <input type="checkbox" name="_selected_action" value="{{ item.object.pk }}" class="action-select">
-                            </td>
-                            <td class="field-name">
-                                <span class="tree-icon">{{ item.additional_data.profession_icon|default:"👔" }}</span>
-                                <a href="{% url 'admin:directory_position_change' item.object.pk %}">
-                                    {{ item.name }}
-                                </a>
-                            </td>
-                            <td class="field-roles">
-                                {% if item.additional_data.total_siz_norms > 0 %}
-                                <span class="badge badge-success" title="Имеются нормы СИЗ">🛡️ {{ item.additional_data.total_siz_norms }}</span>
-                                {% endif %}
+{# Группа по электробезопасности #}
+{% with g=item.additional_data.electrical_group %}
+{% if g %}
+<span class="position-attribute" title="Группа {{ g }} по ЭБ">
+    {% if g == "I" %}1️⃣{% elif g == "II" %}2️⃣
+    {% elif g == "III" %}3️⃣{% elif g == "IV" %}4️⃣
+    {% elif g == "V" %}5️⃣{% endif %}
+</span>
+{% endif %}
+{% endwith %}
 
-                                {% if item.additional_data.medical_factors_count > 0 %}
-                                <span class="badge badge-info" title="Имеются факторы медосмотров">🏥 {{ item.additional_data.medical_factors_count }}</span>
-                                {% endif %}
+{# Роль в комиссии #}
+{% with r=item.additional_data.commission_role %}
+{% if r == "chair" %}
+<span class="position-attribute" title="Председатель комиссии">🗳️</span>
+{% elif r == "member" %}
+<span class="position-attribute" title="Член комиссии">👥</span>
+{% elif r == "secretary" %}
+<span class="position-attribute" title="Секретарь комиссии">📝</span>
+{% endif %}
+{% endwith %}
+</td>
+ <td class="field-actions">
+ <a href="{% url 'admin:directory_position_change' item.object.pk %}" class="edit-link">✏️</a>
+ <a href="{% url 'admin:directory_position_delete' item.object.pk %}" class="delete-link">🗑️</a>
+ <a href="{% url 'admin:directory_position_history' item.object.pk %}" class="history-link">📋</a>
+ </td>
+ </tr>
+ {% endfor %}
 
-                                {% if item.additional_data.is_responsible_for_safety %}
-                                <span class="position-attribute" title="Ответственный за ОТ">🔰</span>
-                                {% endif %}
+{# Подразделения #}
+ {% for sub, sub_data in org_data.subdivisions.items %}
+<tr class="tree-row" data-level="1" data-parent-id="org_{{ org.id }}" data-node-id="sub_{{ sub.id }}">
+ <td class="field-checkbox"></td>
+ <td class="field-name">
+ <button type="button" class="toggle-btn" data-state="expanded">[-]</button>
+ <span class="tree-icon">{{ tree_settings.icons.subdivision|default:"🏭" }}</span>
+ {{ sub_data.name }}
+</td>
+ <td class="field-roles"></td>
+ <td class="field-actions"></td>
+ </tr>
 
-                                {% if item.additional_data.can_be_internship_leader %}
-                                <span class="position-attribute" title="Может быть руководителем стажировки">👨‍🏫</span>
-                                {% endif %}
+ {# Элементы без department #}
+ {% for item in sub_data.items %}
+<tr class="tree-row" data-level="2" data-parent-id="sub_{{ sub.id }}">
+ <td class="field-checkbox">
+ <input type="checkbox" name="_selected_action" value="{{ item.object.pk }}" class="action-select">
+ </td>
+ <td class="field-name">
+ <span class="tree-icon">{{ item.additional_data.profession_icon|default:"👔" }}</span>
+ <a href="{% url 'admin:directory_position_change' item.object.pk %}">
+ {{ item.name }}
+</a>
+ </td>
+ <td class="field-roles">
+ {% if item.additional_data.total_siz_norms > 0 %}
+<span class="badge badge-success" title="Имеются нормы СИЗ">🛡️ {{ item.additional_data.total_siz_norms }}</span>
+ {% endif %}
 
-                                {% if item.additional_data.is_electrical_personnel %}
-                                <span class="position-attribute" title="Электротехнический персонал">⚡</span>
-                                {% endif %}
-                            </td>
-                            <td class="field-actions">
-                                <a href="{% url 'admin:directory_position_change' item.object.pk %}" class="edit-link">✏️</a>
-                                <a href="{% url 'admin:directory_position_delete' item.object.pk %}" class="delete-link">🗑️</a>
-                                <a href="{% url 'admin:directory_position_history' item.object.pk %}" class="history-link">📋</a>
-                            </td>
-                        </tr>
-                        {% endfor %}
+{% if item.additional_data.medical_factors_count > 0 %}
+<span class="badge badge-info" title="Имеются факторы медосмотров">🏥 {{ item.additional_data.medical_factors_count }}</span>
+ {% endif %}
 
-                        {# Отделы #}
-                        {% for dept, dept_data in sub_data.departments.items %}
-                        <tr class="tree-row" data-level="2" data-parent-id="sub_{{ sub.id }}" data-node-id="dept_{{ dept.id }}">
-                            <td class="field-checkbox"></td>
-                            <td class="field-name">
-                                <button type="button" class="toggle-btn" data-state="expanded">[-]</button>
-                                <span class="tree-icon">{{ tree_settings.icons.department|default:"📂" }}</span>
-                                {{ dept_data.name }}
-                            </td>
-                            <td class="field-roles"></td>
-                            <td class="field-actions"></td>
-                        </tr>
+{% if item.additional_data.is_responsible_for_safety %}
+<span class="position-attribute" title="Ответственный за ОТ">🔰</span>
+ {% endif %}
 
-                        {% for item in dept_data.items %}
-                        <tr class="tree-row" data-level="3" data-parent-id="dept_{{ dept.id }}">
-                            <td class="field-checkbox">
-                                <input type="checkbox" name="_selected_action" value="{{ item.object.pk }}" class="action-select">
-                            </td>
-                            <td class="field-name">
-                                <span class="tree-icon">{{ item.additional_data.profession_icon|default:"👔" }}</span>
-                                <a href="{% url 'admin:directory_position_change' item.object.pk %}">
-                                    {{ item.name }}
-                                </a>
-                            </td>
-                            <td class="field-roles">
-                                {% if item.additional_data.total_siz_norms > 0 %}
-                                <span class="badge badge-success" title="Имеются нормы СИЗ">🛡️ {{ item.additional_data.total_siz_norms }}</span>
-                                {% endif %}
+{% if item.additional_data.can_be_internship_leader %}
+<span class="position-attribute" title="Может быть руководителем стажировки">👨‍🏫</span>
+ {% endif %}
 
-                                {% if item.additional_data.medical_factors_count > 0 %}
-                                <span class="badge badge-info" title="Имеются факторы медосмотров">🏥 {{ item.additional_data.medical_factors_count }}</span>
-                                {% endif %}
+{% if item.additional_data.is_electrical_personnel %}
+<span class="position-attribute" title="Электротехнический персонал">⚡</span>
+ {% endif %}
 
-                                {% if item.additional_data.is_responsible_for_safety %}
-                                <span class="position-attribute" title="Ответственный за ОТ">🔰</span>
-                                {% endif %}
+{# Может подписывать распоряжения #}
+{% if item.additional_data.can_sign_orders %}
+<span class="position-attribute" title="Может подписывать распоряжения">📝</span>
+{% endif %}
 
-                                {% if item.additional_data.can_be_internship_leader %}
-                                <span class="position-attribute" title="Может быть руководителем стажировки">👨‍🏫</span>
-                                {% endif %}
+{# Группа по электробезопасности #}
+{% with g=item.additional_data.electrical_group %}
+{% if g %}
+<span class="position-attribute" title="Группа {{ g }} по ЭБ">
+    {% if g == "I" %}1️⃣{% elif g == "II" %}2️⃣
+    {% elif g == "III" %}3️⃣{% elif g == "IV" %}4️⃣
+    {% elif g == "V" %}5️⃣{% endif %}
+</span>
+{% endif %}
+{% endwith %}
 
-                                {% if item.additional_data.is_electrical_personnel %}
-                                <span class="position-attribute" title="Электротехнический персонал">⚡</span>
-                                {% endif %}
-                            </td>
-                            <td class="field-actions">
-                                <a href="{% url 'admin:directory_position_change' item.object.pk %}" class="edit-link">✏️</a>
-                                <a href="{% url 'admin:directory_position_delete' item.object.pk %}" class="delete-link">🗑️</a>
-                                <a href="{% url 'admin:directory_position_history' item.object.pk %}" class="history-link">📋</a>
-                            </td>
-                        </tr>
-                        {% endfor %}
-                        {% endfor %}
-                    {% endfor %}
-                    {% endfor %}
-                </tbody>
-            </table>
-        </div>
-    </form>
+{# Роль в комиссии #}
+{% with r=item.additional_data.commission_role %}
+{% if r == "chair" %}
+<span class="position-attribute" title="Председатель комиссии">🗳️</span>
+{% elif r == "member" %}
+<span class="position-attribute" title="Член комиссии">👥</span>
+{% elif r == "secretary" %}
+<span class="position-attribute" title="Секретарь комиссии">📝</span>
+{% endif %}
+{% endwith %}
+</td>
+ <td class="field-actions">
+ <a href="{% url 'admin:directory_position_change' item.object.pk %}" class="edit-link">✏️</a>
+ <a href="{% url 'admin:directory_position_delete' item.object.pk %}" class="delete-link">🗑️</a>
+ <a href="{% url 'admin:directory_position_history' item.object.pk %}" class="history-link">📋</a>
+ </td>
+ </tr>
+ {% endfor %}
+
+{# Отделы #}
+ {% for dept, dept_data in sub_data.departments.items %}
+<tr class="tree-row" data-level="2" data-parent-id="sub_{{ sub.id }}" data-node-id="dept_{{ dept.id }}">
+ <td class="field-checkbox"></td>
+ <td class="field-name">
+ <button type="button" class="toggle-btn" data-state="expanded">[-]</button>
+ <span class="tree-icon">{{ tree_settings.icons.department|default:"📂" }}</span>
+ {{ dept_data.name }}
+</td>
+ <td class="field-roles"></td>
+ <td class="field-actions"></td>
+ </tr>
+
+ {% for item in dept_data.items %}
+<tr class="tree-row" data-level="3" data-parent-id="dept_{{ dept.id }}">
+ <td class="field-checkbox">
+ <input type="checkbox" name="_selected_action" value="{{ item.object.pk }}" class="action-select">
+ </td>
+ <td class="field-name">
+ <span class="tree-icon">{{ item.additional_data.profession_icon|default:"👔" }}</span>
+ <a href="{% url 'admin:directory_position_change' item.object.pk %}">
+ {{ item.name }}
+</a>
+ </td>
+ <td class="field-roles">
+ {% if item.additional_data.total_siz_norms > 0 %}
+<span class="badge badge-success" title="Имеются нормы СИЗ">🛡️ {{ item.additional_data.total_siz_norms }}</span>
+ {% endif %}
+
+{% if item.additional_data.medical_factors_count > 0 %}
+<span class="badge badge-info" title="Имеются факторы медосмотров">🏥 {{ item.additional_data.medical_factors_count }}</span>
+ {% endif %}
+
+{% if item.additional_data.is_responsible_for_safety %}
+<span class="position-attribute" title="Ответственный за ОТ">🔰</span>
+ {% endif %}
+
+{% if item.additional_data.can_be_internship_leader %}
+<span class="position-attribute" title="Может быть руководителем стажировки">👨‍🏫</span>
+ {% endif %}
+
+{% if item.additional_data.is_electrical_personnel %}
+<span class="position-attribute" title="Электротехнический персонал">⚡</span>
+ {% endif %}
+
+{# Может подписывать распоряжения #}
+{% if item.additional_data.can_sign_orders %}
+<span class="position-attribute" title="Может подписывать распоряжения">📝</span>
+{% endif %}
+
+{# Группа по электробезопасности #}
+{% with g=item.additional_data.electrical_group %}
+{% if g %}
+<span class="position-attribute" title="Группа {{ g }} по ЭБ">
+    {% if g == "I" %}1️⃣{% elif g == "II" %}2️⃣
+    {% elif g == "III" %}3️⃣{% elif g == "IV" %}4️⃣
+    {% elif g == "V" %}5️⃣{% endif %}
+</span>
+{% endif %}
+{% endwith %}
+
+{# Роль в комиссии #}
+{% with r=item.additional_data.commission_role %}
+{% if r == "chair" %}
+<span class="position-attribute" title="Председатель комиссии">🗳️</span>
+{% elif r == "member" %}
+<span class="position-attribute" title="Член комиссии">👥</span>
+{% elif r == "secretary" %}
+<span class="position-attribute" title="Секретарь комиссии">📝</span>
+{% endif %}
+{% endwith %}
+</td>
+ <td class="field-actions">
+ <a href="{% url 'admin:directory_position_change' item.object.pk %}" class="edit-link">✏️</a>
+ <a href="{% url 'admin:directory_position_delete' item.object.pk %}" class="delete-link">🗑️</a>
+ <a href="{% url 'admin:directory_position_history' item.object.pk %}" class="history-link">📋</a>
+ </td>
+ </tr>
+ {% endfor %}
+{% endfor %}
+{% endfor %}
+{% endfor %}
+</tbody>
+ </table>
+ </div>
+ </form>
 </div>
 {% endblock %}
 
 {% block extrahead %}
-    {{ block.super }}
-    <link rel="stylesheet" href="{% static 'admin/css/tree_view.css' %}">
-    <script src="{% static 'admin/js/tree_view.js' %}"></script>
-    <script src="{% static 'admin/js/tree_search.js' %}"></script>
-    <style>
-        /* Стили для бейджей и иконок */
-        .badge {
-            display: inline-block;
-            padding: 3px 7px;
-            font-size: 12px;
-            font-weight: 600;
-            line-height: 1;
-            border-radius: 10px;
-            margin-right: 5px;
-        }
+{{ block.super }}
+<link rel="stylesheet" href="{% static 'admin/css/tree_view.css' %}">
+ <script src="{% static 'admin/js/tree_view.js' %}"></script>
+ <script src="{% static 'admin/js/tree_search.js' %}"></script>
+ <style>
+ /* Стили для бейджей и иконок */
+ .badge {
+display: inline-block;
+padding: 3px 7px;
+font-size: 12px;
+font-weight: 600;
+line-height: 1;
+border-radius: 10px;
+margin-right: 5px;
+}
 
-        .badge-success { background-color: #28a745; color: white; }
-        .badge-info { background-color: #17a2b8; color: white; }
+.badge-success { background-color: #28a745; color: white; }
+.badge-info { background-color: #17a2b8; color: white; }
 
-        .position-attribute {
-            display: inline-block;
-            margin-right: 5px;
-            font-size: 16px;
-        }
+.position-attribute {
+display: inline-block;
+margin-right: 5px;
+font-size: 16px;
+}
 
-        /* Увеличиваем размер иконок профессий */
-        .tree-icon {
-            display: inline-block;
-            margin-right: 8px;
-            font-size: 18px;
-        }
-    </style>
+/* Увеличиваем размер иконок профессий */
+ .tree-icon {
+display: inline-block;
+margin-right: 8px;
+font-size: 18px;
+}
+</style>
 {% endblock %}

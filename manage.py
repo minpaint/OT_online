@@ -1,6 +1,14 @@
 #!/usr/bin/env python
 import os
 import sys
+import inspect
+
+# 📌 Monkeypatch для Python 3.11+ (совместимость pymorphy2 и других библиотек)
+if not hasattr(inspect, 'getargspec'):
+    def getargspec(func):
+        spec = inspect.getfullargspec(func)
+        return spec.args, spec.varargs, spec.varkw, spec.defaults
+    inspect.getargspec = getargspec
 
 def main():
     os.environ.setdefault('DJANGO_SETTINGS_MODULE', 'settings')

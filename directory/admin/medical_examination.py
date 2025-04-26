@@ -1,4 +1,4 @@
-# D:\YandexDisk\OT_online\directory\admin\medical_examination.py
+# 📂 directory/admin/medical_examination.py
 
 from django.contrib import admin
 from django.db.models import Exists, OuterRef
@@ -15,6 +15,7 @@ from directory.models.medical_norm import (
     EmployeeMedicalExamination,
 )
 from directory.forms.medical_examination import UniquePositionMedicalNormForm
+from directory.models.position import Position
 
 
 # ------------------------------------------------------------------
@@ -57,18 +58,26 @@ class MedicalExaminationNormAdmin(admin.ModelAdmin):
 
     def get_form(self, request, obj=None, **kwargs):
         """
-        Если в URL есть ?position=<id>, передаём его в форму,
-        чтобы при клике «+» в дереве должность уже была выбрана.
+        При добавлении новой нормы автоматически подставляем выбранную профессию.
         """
         base_form = super().get_form(request, obj, **kwargs)
         position_id = request.GET.get("position")
         if position_id:
-            class _Wrapper(base_form):
-                def __new__(cls, *args, **kw):
-                    kw["position_id"] = position_id
-                    return base_form(*args, **kw)
+            try:
+                pos = Position.objects.get(pk=position_id)
+                position_name = pos.position_name
+            except Position.DoesNotExist:
+                position_name = None
 
-            return _Wrapper
+            if position_name:
+                class _Wrapper(base_form):
+                    def __new__(cls, *args, **kw):
+                        kw.setdefault("initial", {})
+                        kw["initial"]["unique_position_name"] = position_name  # <-- исправили здесь
+                        return base_form(*args, **kw)
+
+                return _Wrapper
+
         return base_form
 
     def changelist_view(self, request, extra_context=None):
@@ -108,6 +117,18 @@ class MedicalExaminationNormAdmin(admin.ModelAdmin):
 
         extra_context["professions"] = professions
         return super().changelist_view(request, extra_context)
+
+    def response_add(self, request, obj, post_url_continue=None):
+        """
+        После сохранения остаёмся в добавлении новой нормы для той же профессии.
+        """
+        if "_addanother" in request.POST:
+            url = request.path
+            if "position" in request.GET:
+                url += f"?position={request.GET['position']}"
+            from django.http import HttpResponseRedirect
+            return HttpResponseRedirect(url)
+        return super().response_add(request, obj, post_url_continue)
 
 
 # ------------------------------------------------------------------
