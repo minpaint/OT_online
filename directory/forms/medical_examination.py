@@ -7,6 +7,7 @@
   профессии (должности) без привязки к организации.
 """
 
+import logging
 from django import forms
 from django.core.validators import FileExtensionValidator
 from django.utils import timezone
@@ -23,6 +24,9 @@ from directory.models.medical_norm import (
 )
 from directory.models.position import Position
 from directory.models.employee import Employee
+
+# Настройка логирования
+logger = logging.getLogger(__name__)
 
 __all__ = [
     # базовые формы
@@ -41,6 +45,7 @@ __all__ = [
     "UniquePositionMedicalNormForm",
 ]
 
+
 # ---------------------------------------------------------------------------
 # 📋 ВИДЫ МЕДОСМОТРОВ
 # ---------------------------------------------------------------------------
@@ -50,6 +55,7 @@ class MedicalExaminationTypeForm(forms.ModelForm):
         model = MedicalExaminationType
         fields = ["name"]
         widgets = {"name": forms.TextInput(attrs={"class": "form-control"})}
+
 
 # ---------------------------------------------------------------------------
 # ☢️ ВРЕДНЫЕ ФАКТОРЫ
@@ -61,10 +67,11 @@ class HarmfulFactorForm(forms.ModelForm):
         fields = ["examination_type", "short_name", "full_name", "periodicity"]
         widgets = {
             "examination_type": forms.Select(attrs={"class": "form-control"}),
-            "short_name":       forms.TextInput(attrs={"class": "form-control"}),
-            "full_name":        forms.TextInput(attrs={"class": "form-control"}),
-            "periodicity":      forms.NumberInput(attrs={"class": "form-control"}),
+            "short_name": forms.TextInput(attrs={"class": "form-control"}),
+            "full_name": forms.TextInput(attrs={"class": "form-control"}),
+            "periodicity": forms.NumberInput(attrs={"class": "form-control"}),
         }
+
 
 # ---------------------------------------------------------------------------
 # 📑 ЭТАЛОННЫЕ НОРМЫ
@@ -75,11 +82,12 @@ class MedicalExaminationNormForm(forms.ModelForm):
         model = MedicalExaminationNorm
         fields = ["position_name", "harmful_factor", "periodicity_override", "notes"]
         widgets = {
-            "position_name":       forms.TextInput(attrs={"class": "form-control"}),
-            "harmful_factor":      forms.Select(attrs={"class": "form-control"}),
-            "periodicity_override":forms.NumberInput(attrs={"class": "form-control"}),
-            "notes":               forms.Textarea(attrs={"class": "form-control", "rows": 3}),
+            "position_name": forms.TextInput(attrs={"class": "form-control"}),
+            "harmful_factor": forms.Select(attrs={"class": "form-control"}),
+            "periodicity_override": forms.NumberInput(attrs={"class": "form-control"}),
+            "notes": forms.Textarea(attrs={"class": "form-control", "rows": 3}),
         }
+
 
 # ---------------------------------------------------------------------------
 # 🔄 ПЕРЕОПРЕДЕЛЕНИЯ ДЛЯ КОНКРЕТНЫХ ДОЛЖНОСТЕЙ
@@ -90,12 +98,13 @@ class PositionMedicalFactorForm(forms.ModelForm):
         model = PositionMedicalFactor
         fields = ["position", "harmful_factor", "periodicity_override", "is_disabled", "notes"]
         widgets = {
-            "position":            forms.Select(attrs={"class": "form-control"}),
-            "harmful_factor":      forms.Select(attrs={"class": "form-control"}),
-            "periodicity_override":forms.NumberInput(attrs={"class": "form-control"}),
-            "is_disabled":         forms.CheckboxInput(attrs={"class": "form-check-input"}),
-            "notes":               forms.Textarea(attrs={"class": "form-control", "rows": 3}),
+            "position": forms.Select(attrs={"class": "form-control"}),
+            "harmful_factor": forms.Select(attrs={"class": "form-control"}),
+            "periodicity_override": forms.NumberInput(attrs={"class": "form-control"}),
+            "is_disabled": forms.CheckboxInput(attrs={"class": "form-check-input"}),
+            "notes": forms.Textarea(attrs={"class": "form-control", "rows": 3}),
         }
+
 
 # ---------------------------------------------------------------------------
 # 👨‍⚕️ ЖУРНАЛ МЕДОСМОТРОВ СОТРУДНИКОВ
@@ -110,14 +119,14 @@ class EmployeeMedicalExaminationForm(forms.ModelForm):
             "status", "notes",
         ]
         widgets = {
-            "employee":            forms.Select(attrs={"class": "form-control"}),
-            "examination_type":    forms.Select(attrs={"class": "form-control"}),
-            "harmful_factor":      forms.Select(attrs={"class": "form-control"}),
-            "date_completed":      forms.DateInput(attrs={"class": "form-control", "type": "date"}),
-            "next_date":           forms.DateInput(attrs={"class": "form-control", "type": "date"}),
+            "employee": forms.Select(attrs={"class": "form-control"}),
+            "examination_type": forms.Select(attrs={"class": "form-control"}),
+            "harmful_factor": forms.Select(attrs={"class": "form-control"}),
+            "date_completed": forms.DateInput(attrs={"class": "form-control", "type": "date"}),
+            "next_date": forms.DateInput(attrs={"class": "form-control", "type": "date"}),
             "medical_certificate": forms.ClearableFileInput(attrs={"class": "form-control"}),
-            "status":              forms.Select(attrs={"class": "form-control"}),
-            "notes":               forms.Textarea(attrs={"class": "form-control", "rows": 3}),
+            "status": forms.Select(attrs={"class": "form-control"}),
+            "notes": forms.Textarea(attrs={"class": "form-control", "rows": 3}),
         }
 
     def clean(self):
@@ -128,6 +137,7 @@ class EmployeeMedicalExaminationForm(forms.ModelForm):
         if d1 and d1 > timezone.now().date():
             self.add_error("date_completed", "Дата прохождения не может быть в будущем")
         return cd
+
 
 # ---------------------------------------------------------------------------
 # ⚙️ НАСТРОЙКИ
@@ -141,6 +151,7 @@ class MedicalSettingsForm(forms.ModelForm):
             "days_before_issue": forms.NumberInput(attrs={"class": "form-control"}),
             "days_before_email": forms.NumberInput(attrs={"class": "form-control"}),
         }
+
 
 # ---------------------------------------------------------------------------
 # 🔍 ПОИСКОВЫЕ / СЕРВИСНЫЕ ФОРМЫ
@@ -170,6 +181,7 @@ class EmployeeMedicalExaminationSearchForm(forms.Form):
     date_to = forms.DateField(required=False, label="Дата по",
                               widget=forms.DateInput(attrs={"class": "form-control", "type": "date"}))
 
+
 # импорт / экспорт
 
 class MedicalNormImportForm(forms.Form):
@@ -192,6 +204,7 @@ class MedicalNormExportForm(forms.Form):
                                          label="Включить заголовки",
                                          widget=forms.CheckboxInput(attrs={"class": "form-check-input"}))
 
+
 # ---------------------------------------------------------------------------
 # 🆕 ФОРМА ВЫБОРА ОБЩЕЙ ДОЛЖНОСТИ
 # ---------------------------------------------------------------------------
@@ -211,30 +224,42 @@ class UniquePositionMedicalNormForm(forms.ModelForm):
         model = MedicalExaminationNorm
         fields = ("harmful_factor", "periodicity_override", "notes")
         widgets = {
-            "harmful_factor":      forms.Select(attrs={"class": "form-control"}),
-            "periodicity_override":forms.NumberInput(attrs={"class": "form-control"}),
-            "notes":               forms.Textarea(attrs={"class": "form-control", "rows": 3}),
+            "harmful_factor": forms.Select(attrs={"class": "form-control"}),
+            "periodicity_override": forms.NumberInput(attrs={"class": "form-control"}),
+            "notes": forms.Textarea(attrs={"class": "form-control", "rows": 3}),
         }
 
     # заполнение choices + предустановка
     def __init__(self, *args, **kwargs):
+        # Важное изменение: сохраняем position_id перед вызовом super().__init__
         position_id = kwargs.pop("position_id", None)
+
+        # Логирование для отладки
+        logger.debug(
+            f"Инициализация UniquePositionMedicalNormForm с position_id={position_id}, args={args}, kwargs={kwargs}")
+
         super().__init__(*args, **kwargs)
 
         # Получаем все уникальные имена должностей
         names = Position.objects.values_list("position_name", flat=True).distinct().order_by("position_name")
-        self.fields["unique_position_name"].choices = [("", "-- Выберите профессию/должность --")] + [(n, n) for n in names]
+        self.fields["unique_position_name"].choices = [("", "-- Выберите профессию/должность --")] + [(n, n) for n in
+                                                                                                      names]
 
-        # Если это существующая запись, берем название из неё
-        if self.instance.pk:
-            self.fields["unique_position_name"].initial = self.instance.position_name
-        # Если передан ID должности, ищем её и берем название
-        elif position_id:
+        # Изменяем порядок приоритетов:
+        # 1. Если передан position_id, используем его (даже если self.instance.pk существует)
+        if position_id:
             try:
+                position_id = int(position_id)
                 pos = Position.objects.get(pk=position_id)
-                self.fields["unique_position_name"].initial = pos.position_name
-            except Position.DoesNotExist:
-                pass
+                position_name = pos.position_name
+                self.fields["unique_position_name"].initial = position_name
+                logger.debug(f"Установлено начальное значение из position_id: {position_name}")
+            except (ValueError, TypeError, Position.DoesNotExist) as e:
+                logger.error(f"Ошибка при установке position_id={position_id}: {str(e)}")
+        # 2. Если нет position_id, но есть instance.pk, используем значение из instance
+        elif self.instance.pk:
+            self.fields["unique_position_name"].initial = self.instance.position_name
+            logger.debug(f"Установлено начальное значение из instance: {self.instance.position_name}")
 
     # проверяем уникальность (position_name + factor)
     def clean(self):

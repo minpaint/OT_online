@@ -6,14 +6,21 @@
   <script type="text/javascript">
     (function($) {
       $(document).ready(function() {
-        // Подключаем Select2 для поля профессии/должности без маленького крестика
+        // Подключаем Select2 для поля профессии/должности
         var fld = $('#id_unique_position_name');
+
         if ($.fn.select2) {
           fld.select2({
             placeholder: "Выберите профессию (должность)",
             allowClear: false,            // убираем маленький крестик «очистить»
             width: '100%'
           });
+
+          // Вызываем событие change на поле после инициализации,
+          // чтобы Select2 подхватил изначальное значение
+          setTimeout(function() {
+            fld.trigger('change');
+          }, 100);
         }
       });
     })(django.jQuery);
@@ -28,11 +35,23 @@
     .select2-selection__clear {
       display: none !important;
     }
+    /* Улучшаем видимость поля выбора */
+    #id_unique_position_name {
+      font-weight: bold;
+      border: 2px solid #007bff;
+    }
+    /* Стиль для блока справки */
+    .field-help {
+      background-color: #f8f9fa;
+      border-left: 4px solid #6c757d;
+      padding: 10px;
+      margin: 10px 0;
+    }
   </style>
 {% endblock %}
 
 {% block after_field_sets %}
-  <div class="help">
+  <div class="field-help">
     <p><strong>Примечание:</strong> Здесь вы выбираете общее название должности (профессии).
     При сохранении запись будет привязана к эталонной должности без учёта организации.</p>
   </div>

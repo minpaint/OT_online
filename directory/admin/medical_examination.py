@@ -1,8 +1,10 @@
 # 📂 directory/admin/medical_examination.py
 
+import logging
 from django.contrib import admin
 from django.db.models import Exists, OuterRef
 from django.utils.html import format_html
+from django.http import HttpResponseRedirect
 
 from directory.models.medical_examination import (
     MedicalExaminationType,
@@ -16,6 +18,9 @@ from directory.models.medical_norm import (
 )
 from directory.forms.medical_examination import UniquePositionMedicalNormForm
 from directory.models.position import Position
+
+# Настройка логирования
+logger = logging.getLogger(__name__)
 
 
 # ------------------------------------------------------------------
@@ -62,21 +67,40 @@ class MedicalExaminationNormAdmin(admin.ModelAdmin):
         """
         base_form = super().get_form(request, obj, **kwargs)
         position_id = request.GET.get("position")
+
+        logger.debug(f"MedicalExaminationNormAdmin.get_form: position_id из request.GET = {position_id}")
+
         if position_id:
             try:
-                pos = Position.objects.get(pk=position_id)
-                position_name = pos.position_name
-            except Position.DoesNotExist:
-                position_name = None
+                # Проверяем, что position_id действительно существует в базе
+                position_id = int(position_id)  # Преобразуем в int
+                position = Position.objects.get(pk=position_id)
+                position_name = position.position_name
 
-            if position_name:
+                logger.debug(f"Найдена должность: {position_name} (id={position_id})")
+
+                # Создаем обертку, которая будет передавать position_id в форму
                 class _Wrapper(base_form):
                     def __new__(cls, *args, **kw):
+                        # Устанавливаем initial values, если их еще нет
                         kw.setdefault("initial", {})
-                        kw["initial"]["unique_position_name"] = position_name  # <-- исправили здесь
+
+                        # Устанавливаем initial для unique_position_name
+                        kw["initial"]["unique_position_name"] = position_name
+
+                        # Важное изменение - передаем position_id в форму
+                        kw["position_id"] = position_id
+
+                        logger.debug(f"Создание формы с position_id={position_id} и initial={kw['initial']}")
+
                         return base_form(*args, **kw)
 
                 return _Wrapper
+
+            except (ValueError, TypeError) as e:
+                logger.error(f"Ошибка преобразования position_id='{position_id}': {str(e)}")
+            except Position.DoesNotExist:
+                logger.error(f"Должность с position_id={position_id} не найдена")
 
         return base_form
 
@@ -109,10 +133,14 @@ class MedicalExaminationNormAdmin(admin.ModelAdmin):
             # Проверяем, есть ли переопределения
             has_overrides = name in overridden_professions
 
+            # Находим эталонную (первую) должность с таким названием
+            reference_position = Position.objects.filter(position_name=name).first()
+
             professions.append({
                 "name": name,
                 "norms": norms,
-                "has_overrides": has_overrides
+                "has_overrides": has_overrides,
+                "reference_position": reference_position  # Добавляем ссылку на эталонную должность
             })
 
         extra_context["professions"] = professions
@@ -126,7 +154,6 @@ class MedicalExaminationNormAdmin(admin.ModelAdmin):
             url = request.path
             if "position" in request.GET:
                 url += f"?position={request.GET['position']}"
-            from django.http import HttpResponseRedirect
             return HttpResponseRedirect(url)
         return super().response_add(request, obj, post_url_continue)
 
