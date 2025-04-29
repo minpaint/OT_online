@@ -1,0 +1,67 @@
+<tr class="tree-row {% if item.additional_data.contract_type == 'fired' %}status-fired{% endif %}"
+    data-level="{{ level }}" data-parent-id="{{ parent_id }}">
+  <td class="field-checkbox">
+    <input type="checkbox" name="_selected_action" value="{{ item.object.pk }}" class="action-select">
+  </td>
+
+  <td class="field-name">
+    <span class="tree-icon">{{ tree_settings.icons.employee }}</span>
+    <a href="{% url 'admin:directory_employee_change' item.object.pk %}">
+      {{ item.name }}
+    </a>
+  </td>
+
+  <!-- Ответственный за ОТ -->
+  <td class="field-safety">
+    {% if item.additional_data.is_responsible_for_safety %}
+      <span class="employee-icon" title="Ответственный за ОТ">🔰</span>
+    {% endif %}
+  </td>
+
+  <!-- Руководитель стажировки -->
+  <td class="field-internship">
+    {% if item.additional_data.can_be_internship_leader %}
+      <span class="employee-icon" title="Руководитель стажировки">👨‍🏫</span>
+    {% endif %}
+  </td>
+
+  <!-- Роли в комиссиях -->
+  <td class="field-commission">
+    {% for c in item.additional_data.commissions %}
+      <div class="commission-role {{ c.role }}">
+        {% if c.role == 'chairman' %}🗳️
+        {% elif c.role == 'secretary' %}📝
+        {% else %}👥{% endif %}
+        {{ c.role_display }}
+      </div>
+    {% empty %}
+      —
+    {% endfor %}
+  </td>
+
+  <!-- Статус с иконками -->
+  <td class="field-status">
+    {% if item.additional_data.contract_type == 'standard' %}
+      <span class="status-icon">✅</span> Трудовой договор
+    {% elif item.additional_data.contract_type == 'fired' %}
+      <span class="status-icon">⛔</span> Уволен
+    {% elif item.additional_data.contract_type == 'contractor' %}
+      <span class="status-icon">📝</span> Договор подряда
+    {% elif item.additional_data.contract_type == 'part_time' %}
+      <span class="status-icon">⌛</span> Совместитель
+    {% elif item.additional_data.contract_type == 'return' %}
+      <span class="status-icon">🔄</span> Выход из ДО
+    {% elif item.additional_data.contract_type == 'transfer' %}
+      <span class="status-icon">↔️</span> Перевод
+    {% else %}
+      {{ item.additional_data.contract_type_display }}
+    {% endif %}
+  </td>
+
+  <!-- Действия -->
+  <td class="field-actions">
+    <a href="{% url 'admin:directory_employee_change' item.object.pk %}" class="edit-link">✏️</a>
+    <a href="{% url 'admin:directory_employee_delete' item.object.pk %}" class="delete-link">🗑️</a>
+    <a href="{% url 'admin:directory_employee_history' item.object.pk %}" class="history-link">📋</a>
+  </td>
+</tr>

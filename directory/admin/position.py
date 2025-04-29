@@ -22,7 +22,7 @@ from directory.admin.mixins.tree_view import TreeViewMixin
 from directory.models.siz import SIZNorm, SIZ
 from directory.models.medical_norm import PositionMedicalFactor
 from directory.models.medical_examination import HarmfulFactor
-from directory.utils.profession_icons import get_profession_icon  # Импортируем функцию из нового модуля
+from directory.utils.profession_icons import get_profession_icon
 
 
 # Обновленный инлайн для СИЗ

@@ -3,154 +3,304 @@
 
 {% block content %}
 <div id="content-main">
-    <div class="object-tools">
-        <a href="{% url 'admin:directory_employee_add' %}" class="addlink">
-            Добавить
-        </a>
-        <a href="#" id="generate-documents-btn" class="btn">
-            📄 Сгенерировать документы
-        </a>
+  <div class="object-tools">
+    <a href="{% url 'admin:directory_employee_add' %}" class="addlink">Добавить</a>
+  </div>
+  <form id="changelist-form" method="post" novalidate>
+    {% csrf_token %}
+    {% if action_form and actions_on_top and cl.show_admin_actions %}
+      <div class="actions">
+        {% for field in action_form %}
+          {% if field.label %}<label>{{ field.label }}</label>{% endif %}
+          {{ field }}
+        {% endfor %}
+        <button type="submit" class="button" title="Выполнить выбранное действие">Выполнить</button>
+        <span class="action-counter" style="display: none;">0 из {{ cl.result_count }} выбрано</span>
+      </div>
+    {% endif %}
+
+    <div class="tree-controls">
+      <button type="button" class="tree-btn expand-all">↓ Развернуть все</button>
+      <button type="button" class="tree-btn collapse-all">↑ Свернуть все</button>
+      <div class="tree-search-container">
+        <input type="text" class="tree-search" placeholder="🔍 Поиск по дереву...">
+      </div>
     </div>
-    <form id="changelist-form" method="post"
-          {% if cl.formset and cl.formset.is_multipart %} enctype="multipart/form-data"{% endif %}
-          novalidate>
-        {% csrf_token %}
-        {% if action_form and actions_on_top and cl.show_admin_actions %}
-            <div class="actions">
-                {% for field in action_form %}
-                    {% if field.label %}<label>{{ field.label }}</label>{% endif %}
-                    {{ field }}
+
+    <div class="results">
+      <table id="result_list">
+        <thead>
+          <tr>
+            <th class="column-checkbox"><input type="checkbox" id="select-all"></th>
+            <th class="column-name">СОТРУДНИК</th>
+            <th class="column-roles">АТРИБУТЫ/РОЛИ</th>
+            <th class="column-actions">ДЕЙСТВИЯ</th>
+          </tr>
+        </thead>
+        <tbody>
+          {% for org, org_data in tree.items %}
+            <tr class="tree-row" data-level="0" data-node-id="org_{{ org.id }}">
+              <td class="field-checkbox"></td>
+              <td class="field-name">
+                <button type="button" class="toggle-btn" data-state="expanded">[-]</button>
+                <span class="tree-icon">{{ tree_settings.icons.organization|default:"🏢" }}</span>
+                <strong>{{ org_data.name }}</strong>
+              </td>
+              <td class="field-roles"></td>
+              <td class="field-actions"></td>
+            </tr>
+
+            {# Элементы без subdivision #}
+            {% for item in org_data.items %}
+              <tr class="tree-row {% if item.additional_data.contract_type == 'fired' %}status-fired{% endif %}" data-level="1" data-parent-id="org_{{ org.id }}">
+                <td class="field-checkbox">
+                  <input type="checkbox" name="_selected_action" value="{{ item.object.pk }}" class="action-select">
+                </td>
+                <td class="field-name">
+                  <span class="tree-icon">{{ tree_settings.icons.employee }}</span>
+                  <a href="{% url 'admin:directory_employee_change' item.object.pk %}">
+                    {{ item.name }}
+                  </a>
+                </td>
+                <td class="field-roles">
+                  {% if item.additional_data.is_responsible_for_safety %}
+                    <span class="position-attribute" title="Ответственный за ОТ">🔰</span>
+                  {% endif %}
+
+                  {% if item.additional_data.can_be_internship_leader %}
+                    <span class="position-attribute" title="Может быть руководителем стажировки">👨‍🏫</span>
+                  {% endif %}
+
+                  {% if item.additional_data.is_electrical_personnel %}
+                    <span class="position-attribute" title="Электротехнический персонал">⚡</span>
+                  {% endif %}
+
+                  {% with g=item.additional_data.electrical_group %}
+                  {% if g %}
+                    <span class="position-attribute" title="Группа {{ g }} по ЭБ">
+                      {% if g == "I" %}1️⃣{% elif g == "II" %}2️⃣
+                      {% elif g == "III" %}3️⃣{% elif g == "IV" %}4️⃣
+                      {% elif g == "V" %}5️⃣{% endif %}
+                    </span>
+                  {% endif %}
+                  {% endwith %}
+
+                  {% for commission in item.additional_data.commissions %}
+                    <span class="position-attribute" title="{{ commission.role_display }} в комиссии '{{ commission.name }}'">
+                      {% if commission.role == 'chairman' %}🗳️
+                      {% elif commission.role == 'secretary' %}📝
+                      {% else %}👥{% endif %}
+                    </span>
+                  {% endfor %}
+
+                  <span class="contract-type-badge {{ item.additional_data.contract_type }}">
+                    {{ item.additional_data.contract_type_display }}
+                  </span>
+                </td>
+                <td class="field-actions">
+                  <a href="{% url 'admin:directory_employee_change' item.object.pk %}" class="edit-link">✏️</a>
+                  <a href="{% url 'admin:directory_employee_delete' item.object.pk %}" class="delete-link">🗑️</a>
+                  <a href="{% url 'admin:directory_employee_history' item.object.pk %}" class="history-link">📋</a>
+                </td>
+              </tr>
+            {% endfor %}
+
+            {# Подразделения #}
+            {% for sub, sub_data in org_data.subdivisions.items %}
+              <tr class="tree-row" data-level="1" data-parent-id="org_{{ org.id }}" data-node-id="sub_{{ sub.id }}">
+                <td class="field-checkbox"></td>
+                <td class="field-name">
+                  <button type="button" class="toggle-btn" data-state="expanded">[-]</button>
+                  <span class="tree-icon">{{ tree_settings.icons.subdivision }}</span>
+                  {{ sub_data.name }}
+                </td>
+                <td class="field-roles"></td>
+                <td class="field-actions"></td>
+              </tr>
+
+              {# Элементы без department #}
+              {% for item in sub_data.items %}
+                <tr class="tree-row {% if item.additional_data.contract_type == 'fired' %}status-fired{% endif %}" data-level="2" data-parent-id="sub_{{ sub.id }}">
+                  <td class="field-checkbox">
+                    <input type="checkbox" name="_selected_action" value="{{ item.object.pk }}" class="action-select">
+                  </td>
+                  <td class="field-name">
+                    <span class="tree-icon">{{ tree_settings.icons.employee }}</span>
+                    <a href="{% url 'admin:directory_employee_change' item.object.pk %}">
+                      {{ item.name }}
+                    </a>
+                  </td>
+                  <td class="field-roles">
+                    {% if item.additional_data.is_responsible_for_safety %}
+                      <span class="position-attribute" title="Ответственный за ОТ">🔰</span>
+                    {% endif %}
+
+                    {% if item.additional_data.can_be_internship_leader %}
+                      <span class="position-attribute" title="Может быть руководителем стажировки">👨‍🏫</span>
+                    {% endif %}
+
+                    {% if item.additional_data.is_electrical_personnel %}
+                      <span class="position-attribute" title="Электротехнический персонал">⚡</span>
+                    {% endif %}
+
+                    {% with g=item.additional_data.electrical_group %}
+                    {% if g %}
+                      <span class="position-attribute" title="Группа {{ g }} по ЭБ">
+                        {% if g == "I" %}1️⃣{% elif g == "II" %}2️⃣
+                        {% elif g == "III" %}3️⃣{% elif g == "IV" %}4️⃣
+                        {% elif g == "V" %}5️⃣{% endif %}
+                      </span>
+                    {% endif %}
+                    {% endwith %}
+
+                    {% for commission in item.additional_data.commissions %}
+                      <span class="position-attribute" title="{{ commission.role_display }} в комиссии '{{ commission.name }}'">
+                        {% if commission.role == 'chairman' %}🗳️
+                        {% elif commission.role == 'secretary' %}📝
+                        {% else %}👥{% endif %}
+                      </span>
+                    {% endfor %}
+
+                    <span class="contract-type-badge {{ item.additional_data.contract_type }}">
+                      {{ item.additional_data.contract_type_display }}
+                    </span>
+                  </td>
+                  <td class="field-actions">
+                    <a href="{% url 'admin:directory_employee_change' item.object.pk %}" class="edit-link">✏️</a>
+                    <a href="{% url 'admin:directory_employee_delete' item.object.pk %}" class="delete-link">🗑️</a>
+                    <a href="{% url 'admin:directory_employee_history' item.object.pk %}" class="history-link">📋</a>
+                  </td>
+                </tr>
+              {% endfor %}
+
+              {# Отделы #}
+              {% for dept, dept_data in sub_data.departments.items %}
+                <tr class="tree-row" data-level="2" data-parent-id="sub_{{ sub.id }}" data-node-id="dept_{{ dept.id }}">
+                  <td class="field-checkbox"></td>
+                  <td class="field-name">
+                    <button type="button" class="toggle-btn" data-state="expanded">[-]</button>
+                    <span class="tree-icon">{{ tree_settings.icons.department }}</span>
+                    {{ dept_data.name }}
+                  </td>
+                  <td class="field-roles"></td>
+                  <td class="field-actions"></td>
+                </tr>
+
+                {% for item in dept_data.items %}
+                  <tr class="tree-row {% if item.additional_data.contract_type == 'fired' %}status-fired{% endif %}" data-level="3" data-parent-id="dept_{{ dept.id }}">
+                    <td class="field-checkbox">
+                      <input type="checkbox" name="_selected_action" value="{{ item.object.pk }}" class="action-select">
+                    </td>
+                    <td class="field-name">
+                      <span class="tree-icon">{{ tree_settings.icons.employee }}</span>
+                      <a href="{% url 'admin:directory_employee_change' item.object.pk %}">
+                        {{ item.name }}
+                      </a>
+                    </td>
+                    <td class="field-roles">
+                      {% if item.additional_data.is_responsible_for_safety %}
+                        <span class="position-attribute" title="Ответственный за ОТ">🔰</span>
+                      {% endif %}
+
+                      {% if item.additional_data.can_be_internship_leader %}
+                        <span class="position-attribute" title="Может быть руководителем стажировки">👨‍🏫</span>
+                      {% endif %}
+
+                      {% if item.additional_data.is_electrical_personnel %}
+                        <span class="position-attribute" title="Электротехнический персонал">⚡</span>
+                      {% endif %}
+
+                      {% with g=item.additional_data.electrical_group %}
+                      {% if g %}
+                        <span class="position-attribute" title="Группа {{ g }} по ЭБ">
+                          {% if g == "I" %}1️⃣{% elif g == "II" %}2️⃣
+                          {% elif g == "III" %}3️⃣{% elif g == "IV" %}4️⃣
+                          {% elif g == "V" %}5️⃣{% endif %}
+                        </span>
+                      {% endif %}
+                      {% endwith %}
+
+                      {% for commission in item.additional_data.commissions %}
+                        <span class="position-attribute" title="{{ commission.role_display }} в комиссии '{{ commission.name }}'">
+                          {% if commission.role == 'chairman' %}🗳️
+                          {% elif commission.role == 'secretary' %}📝
+                          {% else %}👥{% endif %}
+                        </span>
+                      {% endfor %}
+
+                      <span class="contract-type-badge {{ item.additional_data.contract_type }}">
+                        {{ item.additional_data.contract_type_display }}
+                      </span>
+                    </td>
+                    <td class="field-actions">
+                      <a href="{% url 'admin:directory_employee_change' item.object.pk %}" class="edit-link">✏️</a>
+                      <a href="{% url 'admin:directory_employee_delete' item.object.pk %}" class="delete-link">🗑️</a>
+                      <a href="{% url 'admin:directory_employee_history' item.object.pk %}" class="history-link">📋</a>
+                    </td>
+                  </tr>
                 {% endfor %}
-                <button type="submit" class="button" title="Выполнить выбранное действие">Выполнить</button>
-                <span class="action-counter" style="display: none;">0 из {{ cl.result_count }} выбрано</span>
-            </div>
-        {% endif %}
-        <div class="tree-controls">
-            <button type="button" class="tree-btn expand-all">↓ Развернуть все</button>
-            <button type="button" class="tree-btn collapse-all">↑ Свернуть все</button>
-            <div class="tree-search-container">
-                <input type="text" class="tree-search" placeholder="🔍 Поиск по дереву...">
-            </div>
-        </div>
-        <div class="results">
-            <table id="result_list">
-                <thead>
-                    <tr>
-                        <th class="column-checkbox"><input type="checkbox" id="select-all"></th>
-                        <th class="column-name">НАИМЕНОВАНИЕ</th>
-                        <th class="column-roles">АТРИБУТЫ/РОЛИ</th>
-                        <th class="column-actions">ДЕЙСТВИЯ</th>
-                    </tr>
-                </thead>
-                <tbody>
-                    {% for org, org_data in tree.items %}
-                    <tr class="tree-row" data-level="0" data-node-id="org_{{ org.id }}">
-                        <td class="field-checkbox"></td>
-                        <td class="field-name">
-                            <button type="button" class="toggle-btn" data-state="expanded">[-]</button>
-                            <span class="tree-icon">{{ tree_settings.icons.organization }}</span>
-                            <strong>{{ org_data.name }}</strong>
-                        </td>
-                        <td class="field-roles"></td>
-                        <td class="field-actions"></td>
-                    </tr>
-                    {# Элементы без subdivision #}
-                    {% for item in org_data.items %}
-                    <tr class="tree-row" data-level="1" data-parent-id="org_{{ org.id }}">
-                        <td class="field-checkbox">
-                            <input type="checkbox" name="_selected_action" value="{{ item.object.pk }}" class="action-select">
-                        </td>
-                        <td class="field-name">
-                            <span class="tree-icon">{{ tree_settings.icons.item }}</span>
-                            <a href="{% url 'admin:directory_employee_change' item.object.pk %}">
-                                {{ item.name }}
-                            </a>
-                        </td>
-                        <td class="field-roles"></td>
-                        <td class="field-actions">
-                            <a href="{% url 'admin:directory_employee_change' item.object.pk %}" class="edit-link">✏️</a>
-                            <a href="{% url 'admin:directory_employee_delete' item.object.pk %}" class="delete-link">🗑️</a>
-                            <a href="{% url 'admin:directory_employee_history' item.object.pk %}" class="history-link">📋</a>
-                        </td>
-                    </tr>
-                    {% endfor %}
-                    {# Подразделения #}
-                    {% for sub, sub_data in org_data.subdivisions.items %}
-                    <tr class="tree-row" data-level="1" data-parent-id="org_{{ org.id }}" data-node-id="sub_{{ sub.id }}">
-                        <td class="field-checkbox"></td>
-                        <td class="field-name">
-                            <button type="button" class="toggle-btn" data-state="expanded">[-]</button>
-                            <span class="tree-icon">{{ tree_settings.icons.subdivision }}</span>
-                            {{ sub_data.name }}
-                        </td>
-                        <td class="field-roles"></td>
-                        <td class="field-actions"></td>
-                    </tr>
-                        {# Элементы без department #}
-                        {% for item in sub_data.items %}
-                        <tr class="tree-row" data-level="2" data-parent-id="sub_{{ sub.id }}">
-                            <td class="field-checkbox">
-                                <input type="checkbox" name="_selected_action" value="{{ item.object.pk }}" class="action-select">
-                            </td>
-                            <td class="field-name">
-                                <span class="tree-icon">{{ tree_settings.icons.item }}</span>
-                                <a href="{% url 'admin:directory_employee_change' item.object.pk %}">
-                                    {{ item.name }}
-                                </a>
-                            </td>
-                            <td class="field-roles"></td>
-                            <td class="field-actions">
-                                <a href="{% url 'admin:directory_employee_change' item.object.pk %}" class="edit-link">✏️</a>
-                                <a href="{% url 'admin:directory_employee_delete' item.object.pk %}" class="delete-link">🗑️</a>
-                                <a href="{% url 'admin:directory_employee_history' item.object.pk %}" class="history-link">📋</a>
-                            </td>
-                        </tr>
-                        {% endfor %}
-                        {# Отделы #}
-                        {% for dept, dept_data in sub_data.departments.items %}
-                        <tr class="tree-row" data-level="2" data-parent-id="sub_{{ sub.id }}" data-node-id="dept_{{ dept.id }}">
-                            <td class="field-checkbox"></td>
-                            <td class="field-name">
-                                <button type="button" class="toggle-btn" data-state="expanded">[-]</button>
-                                <span class="tree-icon">{{ tree_settings.icons.department }}</span>
-                                {{ dept_data.name }}
-                            </td>
-                            <td class="field-roles"></td>
-                            <td class="field-actions"></td>
-                        </tr>
-                        {% for item in dept_data.items %}
-                        <tr class="tree-row" data-level="3" data-parent-id="dept_{{ dept.id }}">
-                            <td class="field-checkbox">
-                                <input type="checkbox" name="_selected_action" value="{{ item.object.pk }}" class="action-select">
-                            </td>
-                            <td class="field-name">
-                                <span class="tree-icon">{{ tree_settings.icons.item }}</span>
-                                <a href="{% url 'admin:directory_employee_change' item.object.pk %}">
-                                    {{ item.name }}
-                                </a>
-                            </td>
-                            <td class="field-roles"></td>
-                            <td class="field-actions">
-                                <a href="{% url 'admin:directory_employee_change' item.object.pk %}" class="edit-link">✏️</a>
-                                <a href="{% url 'admin:directory_employee_delete' item.object.pk %}" class="delete-link">🗑️</a>
-                                <a href="{% url 'admin:directory_employee_history' item.object.pk %}" class="history-link">📋</a>
-                            </td>
-                        </tr>
-                        {% endfor %}
-                        {% endfor %}
-                    {% endfor %}
-                    {% endfor %}
-                </tbody>
-            </table>
-        </div>
-    </form>
+              {% endfor %}
+            {% endfor %}
+          {% endfor %}
+        </tbody>
+      </table>
+    </div>
+  </form>
 </div>
 {% endblock %}
 
 {% block extrahead %}
-    {{ block.super }}
-    <link rel="stylesheet" href="{% static 'admin/css/tree_view.css' %}">
-    <script src="{% static 'admin/js/tree_view.js' %}"></script>
-    <script src="{% static 'admin/js/tree_search.js' %}"></script>
-    <script src="{% static 'directory/js/employee_tree_documents.js' %}"></script>
+  {{ block.super }}
+  <link rel="stylesheet" href="{% static 'admin/css/tree_view.css' %}">
+  <script src="{% static 'admin/js/tree_view.js' %}"></script>
+  <script src="{% static 'admin/js/tree_search.js' %}"></script>
+  <style>
+    /* Стили для элементов */
+    .position-attribute {
+      display: inline-block;
+      margin-right: 5px;
+      font-size: 16px;
+    }
+
+    .contract-type-badge {
+      display: inline-block;
+      padding: 2px 6px;
+      border-radius: 3px;
+      font-size: 12px;
+    }
+
+    .contract-type-badge.standard {
+      background-color: #28a745;
+      color: white;
+    }
+
+    .contract-type-badge.contractor {
+      background-color: #fd7e14;
+      color: white;
+    }
+
+    .contract-type-badge.part_time {
+      background-color: #17a2b8;
+      color: white;
+    }
+
+    .contract-type-badge.transfer {
+      background-color: #6f42c1;
+      color: white;
+    }
+
+    .contract-type-badge.return {
+      background-color: #20c997;
+      color: white;
+    }
+
+    .contract-type-badge.fired {
+      background-color: #dc3545;
+      color: white;
+    }
+
+    .status-fired {
+      background-color: #ffeeee;
+    }
+  </style>
 {% endblock %}

@@ -84,13 +84,17 @@ class CommissionTreeViewMixin(TreeViewMixin):
             }
 
             for member in members:
-                elif hasattr(member.employee, 'position_name'):
+                position = ""
+                if hasattr(member.employee, 'position_name'):
                     position = member.employee.position_name
                 elif hasattr(member.employee, 'job_title'):
                     position = member.employee.job_title
+                elif hasattr(member.employee, 'position') and member.employee.position:
+                    position = member.employee.position.position_name
 
                 roles[member.role].append({
                     'name': getattr(member.employee, 'full_name_nominative', str(member.employee)),
+                    'position': position,
                     'role': member.get_role_display(),
                     'role_code': member.role
                 })
@@ -112,3 +116,4 @@ class CommissionTreeViewMixin(TreeViewMixin):
         Оптимизируем запросы, добавляя prefetch_related для участников.
         """
         qs = super()._optimize_queryset(queryset)
+        return qs.prefetch_related('members', 'members__employee')
