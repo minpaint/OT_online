@@ -1,5 +1,3 @@
-# 📁 directory/views/home.py
-
 from django.views.generic import TemplateView
 from django.contrib.auth.mixins import LoginRequiredMixin
 from django.shortcuts import render, redirect
@@ -43,15 +41,50 @@ class HomePageView(LoginRequiredMixin, TemplateView):
 
         # 🔍 Добавляем поддержку поиска сотрудников
         search_query = self.request.GET.get('search', '')
+        selected_status = self.request.GET.get('status', '')
+        show_fired = self.request.GET.get('show_fired') == 'true'
+
+        # 👤 Получаем список кандидатов для отдельного блока
+        candidate_employees = Employee.objects.filter(status='candidate').select_related('position')
+
+        # Применяем ограничения пользователя к кандидатам
+        if not user.is_superuser and hasattr(user, 'profile'):
+            candidate_employees = candidate_employees.filter(
+                organization__in=user.profile.organizations.all()
+            )
+
+        # Если есть поиск, применяем его и к кандидатам
+        if search_query:
+            candidate_employees = candidate_employees.filter(
+                Q(full_name_nominative__icontains=search_query) |
+                Q(position__position_name__icontains=search_query)
+            )
+
+        # Добавляем кандидатов в контекст
+        context['candidate_employees'] = candidate_employees
+        context['statuses'] = Employee.EMPLOYEE_STATUS_CHOICES
+        context['selected_status'] = selected_status
+        context['show_fired'] = show_fired
+
         if search_query:
             # Для поиска сначала получаем все организации
             all_organizations = allowed_orgs
 
             # Фильтруем сотрудников по поисковому запросу
-            filtered_employees = Employee.objects.filter(
-                Q(full_name_nominative__icontains=search_query) |
-                Q(position__position_name__icontains=search_query)
-            ).select_related('organization', 'subdivision', 'department', 'position')
+            # Исключаем кандидатов и уволенных (если show_fired не включено)
+            employee_filter = Q(full_name_nominative__icontains=search_query) | Q(
+                position__position_name__icontains=search_query)
+            status_filter = ~Q(status='candidate')
+            if not show_fired:
+                status_filter &= ~Q(status='fired')
+
+            # Статус фильтр из UI
+            if selected_status:
+                status_filter &= Q(status=selected_status)
+
+            filtered_employees = Employee.objects.filter(status_filter & employee_filter).select_related(
+                'organization', 'subdivision', 'department', 'position'
+            )
 
             # Собираем ID организаций, подразделений и отделов с найденными сотрудниками
             org_ids = set(filtered_employees.values_list('organization_id', flat=True))
@@ -82,11 +115,16 @@ class HomePageView(LoginRequiredMixin, TemplateView):
                 )
             )
 
-            # 👥 Получаем сотрудников без подразделения (напрямую в организации)
-            org_employees = Employee.objects.filter(
-                organization=org,
-                subdivision__isnull=True
-            ).select_related('position')
+            # 👥 Получаем сотрудников без подразделения (напрямую в организации),
+            # исключая кандидатов и уволенных (если show_fired не включено)
+            org_employees_filter = Q(organization=org, subdivision__isnull=True) & ~Q(status='candidate')
+            if not show_fired:
+                org_employees_filter &= ~Q(status='fired')
+
+            if selected_status:
+                org_employees_filter &= Q(status=selected_status)
+
+            org_employees = Employee.objects.filter(org_employees_filter).select_related('position')
 
             # Если есть поисковый запрос, фильтруем сотрудников
             if search_query:
@@ -107,10 +145,15 @@ class HomePageView(LoginRequiredMixin, TemplateView):
             # 🏭 Для каждого подразделения получаем отделы и сотрудников
             for subdivision in subdivisions:
                 # 👥 Сотрудники подразделения без отдела
-                sub_employees = Employee.objects.filter(
-                    subdivision=subdivision,
-                    department__isnull=True
-                ).select_related('position')
+                # исключая кандидатов и уволенных (если show_fired не включено)
+                sub_employees_filter = Q(subdivision=subdivision, department__isnull=True) & ~Q(status='candidate')
+                if not show_fired:
+                    sub_employees_filter &= ~Q(status='fired')
+
+                if selected_status:
+                    sub_employees_filter &= Q(status=selected_status)
+
+                sub_employees = Employee.objects.filter(sub_employees_filter).select_related('position')
 
                 # Если есть поисковый запрос, фильтруем сотрудников
                 if search_query:
@@ -130,9 +173,15 @@ class HomePageView(LoginRequiredMixin, TemplateView):
                 # 📂 Для каждого отдела получаем сотрудников
                 for department in subdivision.departments.all():
                     # 👥 Сотрудники отдела
-                    dept_employees = Employee.objects.filter(
-                        department=department
-                    ).select_related('position')
+                    # исключая кандидатов и уволенных (если show_fired не включено)
+                    dept_employees_filter = Q(department=department) & ~Q(status='candidate')
+                    if not show_fired:
+                        dept_employees_filter &= ~Q(status='fired')
+
+                    if selected_status:
+                        dept_employees_filter &= Q(status=selected_status)
+
+                    dept_employees = Employee.objects.filter(dept_employees_filter).select_related('position')
 
                     # Если есть поисковый запрос, фильтруем сотрудников
                     if search_query:

@@ -4,7 +4,7 @@
 {% block content %}
 <div id="content-main">
   <div class="object-tools">
-    <a href="{% url 'admin:directory_employee_add' %}" class="addlink">Добавить</a>
+    <a href="{% url 'admin:directory_employee_add' %}" class="addlink">Добавить сотрудника</a>
   </div>
   <form id="changelist-form" method="post" novalidate>
     {% csrf_token %}
@@ -33,7 +33,10 @@
           <tr>
             <th class="column-checkbox"><input type="checkbox" id="select-all"></th>
             <th class="column-name">СОТРУДНИК</th>
-            <th class="column-roles">АТРИБУТЫ/РОЛИ</th>
+            <th class="column-safety">ОТВЕТСТВЕННЫЙ ЗА ОТ</th>
+            <th class="column-internship">РУКОВОДИТЕЛЬ СТАЖИРОВКИ</th>
+            <th class="column-commission">РОЛЬ В КОМИССИИ</th>
+            <th class="column-status">СТАТУС</th>
             <th class="column-actions">ДЕЙСТВИЯ</th>
           </tr>
         </thead>
@@ -46,63 +49,16 @@
                 <span class="tree-icon">{{ tree_settings.icons.organization|default:"🏢" }}</span>
                 <strong>{{ org_data.name }}</strong>
               </td>
-              <td class="field-roles"></td>
+              <td class="field-safety"></td>
+              <td class="field-internship"></td>
+              <td class="field-commission"></td>
+              <td class="field-status"></td>
               <td class="field-actions"></td>
             </tr>
 
             {# Элементы без subdivision #}
             {% for item in org_data.items %}
-              <tr class="tree-row {% if item.additional_data.contract_type == 'fired' %}status-fired{% endif %}" data-level="1" data-parent-id="org_{{ org.id }}">
-                <td class="field-checkbox">
-                  <input type="checkbox" name="_selected_action" value="{{ item.object.pk }}" class="action-select">
-                </td>
-                <td class="field-name">
-                  <span class="tree-icon">{{ tree_settings.icons.employee }}</span>
-                  <a href="{% url 'admin:directory_employee_change' item.object.pk %}">
-                    {{ item.name }}
-                  </a>
-                </td>
-                <td class="field-roles">
-                  {% if item.additional_data.is_responsible_for_safety %}
-                    <span class="position-attribute" title="Ответственный за ОТ">🔰</span>
-                  {% endif %}
-
-                  {% if item.additional_data.can_be_internship_leader %}
-                    <span class="position-attribute" title="Может быть руководителем стажировки">👨‍🏫</span>
-                  {% endif %}
-
-                  {% if item.additional_data.is_electrical_personnel %}
-                    <span class="position-attribute" title="Электротехнический персонал">⚡</span>
-                  {% endif %}
-
-                  {% with g=item.additional_data.electrical_group %}
-                  {% if g %}
-                    <span class="position-attribute" title="Группа {{ g }} по ЭБ">
-                      {% if g == "I" %}1️⃣{% elif g == "II" %}2️⃣
-                      {% elif g == "III" %}3️⃣{% elif g == "IV" %}4️⃣
-                      {% elif g == "V" %}5️⃣{% endif %}
-                    </span>
-                  {% endif %}
-                  {% endwith %}
-
-                  {% for commission in item.additional_data.commissions %}
-                    <span class="position-attribute" title="{{ commission.role_display }} в комиссии '{{ commission.name }}'">
-                      {% if commission.role == 'chairman' %}🗳️
-                      {% elif commission.role == 'secretary' %}📝
-                      {% else %}👥{% endif %}
-                    </span>
-                  {% endfor %}
-
-                  <span class="contract-type-badge {{ item.additional_data.contract_type }}">
-                    {{ item.additional_data.contract_type_display }}
-                  </span>
-                </td>
-                <td class="field-actions">
-                  <a href="{% url 'admin:directory_employee_change' item.object.pk %}" class="edit-link">✏️</a>
-                  <a href="{% url 'admin:directory_employee_delete' item.object.pk %}" class="delete-link">🗑️</a>
-                  <a href="{% url 'admin:directory_employee_history' item.object.pk %}" class="history-link">📋</a>
-                </td>
-              </tr>
+              {% include "admin/directory/employee/_employee_row.html" with item=item level=1 parent_id="org_{{ org.id }}" %}
             {% endfor %}
 
             {# Подразделения #}
@@ -114,63 +70,16 @@
                   <span class="tree-icon">{{ tree_settings.icons.subdivision }}</span>
                   {{ sub_data.name }}
                 </td>
-                <td class="field-roles"></td>
+                <td class="field-safety"></td>
+                <td class="field-internship"></td>
+                <td class="field-commission"></td>
+                <td class="field-status"></td>
                 <td class="field-actions"></td>
               </tr>
 
               {# Элементы без department #}
               {% for item in sub_data.items %}
-                <tr class="tree-row {% if item.additional_data.contract_type == 'fired' %}status-fired{% endif %}" data-level="2" data-parent-id="sub_{{ sub.id }}">
-                  <td class="field-checkbox">
-                    <input type="checkbox" name="_selected_action" value="{{ item.object.pk }}" class="action-select">
-                  </td>
-                  <td class="field-name">
-                    <span class="tree-icon">{{ tree_settings.icons.employee }}</span>
-                    <a href="{% url 'admin:directory_employee_change' item.object.pk %}">
-                      {{ item.name }}
-                    </a>
-                  </td>
-                  <td class="field-roles">
-                    {% if item.additional_data.is_responsible_for_safety %}
-                      <span class="position-attribute" title="Ответственный за ОТ">🔰</span>
-                    {% endif %}
-
-                    {% if item.additional_data.can_be_internship_leader %}
-                      <span class="position-attribute" title="Может быть руководителем стажировки">👨‍🏫</span>
-                    {% endif %}
-
-                    {% if item.additional_data.is_electrical_personnel %}
-                      <span class="position-attribute" title="Электротехнический персонал">⚡</span>
-                    {% endif %}
-
-                    {% with g=item.additional_data.electrical_group %}
-                    {% if g %}
-                      <span class="position-attribute" title="Группа {{ g }} по ЭБ">
-                        {% if g == "I" %}1️⃣{% elif g == "II" %}2️⃣
-                        {% elif g == "III" %}3️⃣{% elif g == "IV" %}4️⃣
-                        {% elif g == "V" %}5️⃣{% endif %}
-                      </span>
-                    {% endif %}
-                    {% endwith %}
-
-                    {% for commission in item.additional_data.commissions %}
-                      <span class="position-attribute" title="{{ commission.role_display }} в комиссии '{{ commission.name }}'">
-                        {% if commission.role == 'chairman' %}🗳️
-                        {% elif commission.role == 'secretary' %}📝
-                        {% else %}👥{% endif %}
-                      </span>
-                    {% endfor %}
-
-                    <span class="contract-type-badge {{ item.additional_data.contract_type }}">
-                      {{ item.additional_data.contract_type_display }}
-                    </span>
-                  </td>
-                  <td class="field-actions">
-                    <a href="{% url 'admin:directory_employee_change' item.object.pk %}" class="edit-link">✏️</a>
-                    <a href="{% url 'admin:directory_employee_delete' item.object.pk %}" class="delete-link">🗑️</a>
-                    <a href="{% url 'admin:directory_employee_history' item.object.pk %}" class="history-link">📋</a>
-                  </td>
-                </tr>
+                {% include "admin/directory/employee/_employee_row.html" with item=item level=2 parent_id="sub_{{ sub.id }}" %}
               {% endfor %}
 
               {# Отделы #}
@@ -182,62 +91,15 @@
                     <span class="tree-icon">{{ tree_settings.icons.department }}</span>
                     {{ dept_data.name }}
                   </td>
-                  <td class="field-roles"></td>
+                  <td class="field-safety"></td>
+                  <td class="field-internship"></td>
+                  <td class="field-commission"></td>
+                  <td class="field-status"></td>
                   <td class="field-actions"></td>
                 </tr>
 
                 {% for item in dept_data.items %}
-                  <tr class="tree-row {% if item.additional_data.contract_type == 'fired' %}status-fired{% endif %}" data-level="3" data-parent-id="dept_{{ dept.id }}">
-                    <td class="field-checkbox">
-                      <input type="checkbox" name="_selected_action" value="{{ item.object.pk }}" class="action-select">
-                    </td>
-                    <td class="field-name">
-                      <span class="tree-icon">{{ tree_settings.icons.employee }}</span>
-                      <a href="{% url 'admin:directory_employee_change' item.object.pk %}">
-                        {{ item.name }}
-                      </a>
-                    </td>
-                    <td class="field-roles">
-                      {% if item.additional_data.is_responsible_for_safety %}
-                        <span class="position-attribute" title="Ответственный за ОТ">🔰</span>
-                      {% endif %}
-
-                      {% if item.additional_data.can_be_internship_leader %}
-                        <span class="position-attribute" title="Может быть руководителем стажировки">👨‍🏫</span>
-                      {% endif %}
-
-                      {% if item.additional_data.is_electrical_personnel %}
-                        <span class="position-attribute" title="Электротехнический персонал">⚡</span>
-                      {% endif %}
-
-                      {% with g=item.additional_data.electrical_group %}
-                      {% if g %}
-                        <span class="position-attribute" title="Группа {{ g }} по ЭБ">
-                          {% if g == "I" %}1️⃣{% elif g == "II" %}2️⃣
-                          {% elif g == "III" %}3️⃣{% elif g == "IV" %}4️⃣
-                          {% elif g == "V" %}5️⃣{% endif %}
-                        </span>
-                      {% endif %}
-                      {% endwith %}
-
-                      {% for commission in item.additional_data.commissions %}
-                        <span class="position-attribute" title="{{ commission.role_display }} в комиссии '{{ commission.name }}'">
-                          {% if commission.role == 'chairman' %}🗳️
-                          {% elif commission.role == 'secretary' %}📝
-                          {% else %}👥{% endif %}
-                        </span>
-                      {% endfor %}
-
-                      <span class="contract-type-badge {{ item.additional_data.contract_type }}">
-                        {{ item.additional_data.contract_type_display }}
-                      </span>
-                    </td>
-                    <td class="field-actions">
-                      <a href="{% url 'admin:directory_employee_change' item.object.pk %}" class="edit-link">✏️</a>
-                      <a href="{% url 'admin:directory_employee_delete' item.object.pk %}" class="delete-link">🗑️</a>
-                      <a href="{% url 'admin:directory_employee_history' item.object.pk %}" class="history-link">📋</a>
-                    </td>
-                  </tr>
+                  {% include "admin/directory/employee/_employee_row.html" with item=item level=3 parent_id="dept_{{ dept.id }}" %}
                 {% endfor %}
               {% endfor %}
             {% endfor %}
@@ -255,18 +117,54 @@
   <script src="{% static 'admin/js/tree_view.js' %}"></script>
   <script src="{% static 'admin/js/tree_search.js' %}"></script>
   <style>
-    /* Стили для элементов */
-    .position-attribute {
-      display: inline-block;
-      margin-right: 5px;
+    /* Стили для элементов сотрудников */
+    .employee-attribute {
       font-size: 16px;
+      text-align: center;
+      display: block;
     }
 
+    /* Стили для ролей в комиссии */
+    .commission-role {
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 12px;
+      padding: 2px 4px;
+      border-radius: 4px;
+      margin-bottom: 2px;
+      white-space: nowrap;
+    }
+
+    .commission-role.chairman {
+      background-color: #ffd700;
+      color: #000;
+    }
+
+    .commission-role.secretary {
+      background-color: #d1e7dd;
+      color: #0f5132;
+    }
+
+    .commission-role.member {
+      background-color: #e2e3e5;
+      color: #383d41;
+    }
+
+    .commission-icon {
+      font-style: normal;
+      margin-right: 3px;
+    }
+
+    /* Стили для статусов */
     .contract-type-badge {
       display: inline-block;
-      padding: 2px 6px;
-      border-radius: 3px;
+      padding: 3px 8px;
+      border-radius: 4px;
       font-size: 12px;
+      font-weight: 600;
+      text-align: center;
+      white-space: nowrap;
     }
 
     .contract-type-badge.standard {
@@ -299,8 +197,172 @@
       color: white;
     }
 
+    /* Строка уволенного сотрудника */
     .status-fired {
       background-color: #ffeeee;
     }
+
+    /* Стили для кнопок действий */
+    .action-buttons {
+      display: flex;
+      gap: 5px;
+      justify-content: center;
+    }
+
+    .btn-action {
+      display: inline-block;
+      padding: 2px 5px;
+      border-radius: 3px;
+      text-decoration: none;
+    }
+
+    .btn-action:hover {
+      background-color: #f0f0f0;
+    }
+
+    /* Настройка ширины столбцов */
+    .column-safety, .column-internship {
+      width: 150px;
+      text-align: center;
+    }
+
+    .column-commission {
+      width: 180px;
+      text-align: center;
+    }
+
+    .column-status {
+      width: 120px;
+      text-align: center;
+    }
+
+    .column-actions {
+      width: 120px;
+      text-align: center;
+    }
+
+    .field-safety, .field-internship, .field-commission, .field-status, .field-actions {
+      text-align: center;
+    }
+
+    /* Фикс для кнопок разворачивания дерева */
+    .toggle-btn {
+      border: none;
+      background: transparent;
+      cursor: pointer;
+      font-family: monospace;
+      font-weight: bold;
+      padding: 0 3px;
+      font-size: 14px;
+    }
   </style>
+
+  <script type="text/javascript">
+    // Повторно инициализируем обработчики для сворачивания/разворачивания
+    document.addEventListener('DOMContentLoaded', function() {
+      // Находим все кнопки для сворачивания/разворачивания
+      const toggleButtons = document.querySelectorAll('.toggle-btn');
+
+      // Добавляем обработчик событий для каждой кнопки
+      toggleButtons.forEach(function(button) {
+        button.addEventListener('click', function() {
+          const row = this.closest('tr');
+          const nodeId = row.getAttribute('data-node-id');
+          const currentState = this.getAttribute('data-state');
+
+          // Находим все строки, у которых parent-id равен nodeId текущей строки
+          const childRows = document.querySelectorAll(`tr[data-parent-id="${nodeId}"]`);
+
+          if (currentState === 'expanded') {
+            // Сворачиваем - скрываем все дочерние строки
+            childRows.forEach(function(childRow) {
+              childRow.style.display = 'none';
+
+              // Если у дочернего элемента есть свои дочерние элементы, скрываем и их
+              const childNodeId = childRow.getAttribute('data-node-id');
+              if (childNodeId) {
+                const grandChildRows = document.querySelectorAll(`tr[data-parent-id="${childNodeId}"]`);
+                grandChildRows.forEach(function(grandChildRow) {
+                  grandChildRow.style.display = 'none';
+                });
+
+                // Обновляем состояние кнопки дочернего элемента
+                const childToggleBtn = childRow.querySelector('.toggle-btn');
+                if (childToggleBtn) {
+                  childToggleBtn.textContent = '[+]';
+                  childToggleBtn.setAttribute('data-state', 'collapsed');
+                }
+              }
+            });
+
+            // Обновляем состояние текущей кнопки
+            this.textContent = '[+]';
+            this.setAttribute('data-state', 'collapsed');
+          } else {
+            // Разворачиваем - показываем дочерние строки
+            childRows.forEach(function(childRow) {
+              childRow.style.display = '';
+            });
+
+            // Обновляем состояние текущей кнопки
+            this.textContent = '[-]';
+            this.setAttribute('data-state', 'expanded');
+          }
+        });
+      });
+
+      // Кнопки для разворачивания/сворачивания всего дерева
+      const expandAllBtn = document.querySelector('.expand-all');
+      const collapseAllBtn = document.querySelector('.collapse-all');
+
+      if (expandAllBtn) {
+        expandAllBtn.addEventListener('click', function() {
+          const allRows = document.querySelectorAll('.tree-row');
+          const allToggleButtons = document.querySelectorAll('.toggle-btn');
+
+          allRows.forEach(function(row) {
+            row.style.display = '';
+          });
+
+          allToggleButtons.forEach(function(btn) {
+            btn.textContent = '[-]';
+            btn.setAttribute('data-state', 'expanded');
+          });
+        });
+      }
+
+      if (collapseAllBtn) {
+        collapseAllBtn.addEventListener('click', function() {
+          const parentRows = document.querySelectorAll('.tree-row[data-level="0"]');
+
+          parentRows.forEach(function(parentRow) {
+            const nodeId = parentRow.getAttribute('data-node-id');
+            const toggleBtn = parentRow.querySelector('.toggle-btn');
+
+            // Находим и скрываем все дочерние строки
+            const childRows = document.querySelectorAll(`tr[data-parent-id="${nodeId}"]`);
+            childRows.forEach(function(childRow) {
+              childRow.style.display = 'none';
+
+              // Если у дочернего элемента есть свои дочерние элементы, обновляем их кнопки
+              const childNodeId = childRow.getAttribute('data-node-id');
+              if (childNodeId) {
+                const childToggleBtn = childRow.querySelector('.toggle-btn');
+                if (childToggleBtn) {
+                  childToggleBtn.textContent = '[+]';
+                  childToggleBtn.setAttribute('data-state', 'collapsed');
+                }
+              }
+            });
+
+            // Обновляем состояние кнопки
+            if (toggleBtn) {
+              toggleBtn.textContent = '[+]';
+              toggleBtn.setAttribute('data-state', 'collapsed');
+            }
+          });
+        });
+      }
+    });
+  </script>
 {% endblock %}

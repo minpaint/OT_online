@@ -3,6 +3,17 @@ from django.core.exceptions import ValidationError
 from django.utils import timezone
 
 
+# Добавляем QuerySet для кастомной фильтрации
+class EmployeeQuerySet(models.QuerySet):
+    def tree_visible(self):
+        """Сотрудники, которые должны отображаться в древе (исключая кандидатов и уволенных)"""
+        return self.exclude(status__in=['candidate', 'fired'])
+
+    def candidates(self):
+        """Только кандидаты"""
+        return self.filter(status='candidate')
+
+
 class Employee(models.Model):
     """
     👤 Модель для хранения информации о сотрудниках.
@@ -30,6 +41,15 @@ class Employee(models.Model):
         ('part_time', 'Совмещение'),
         ('transfer', 'Перевод'),
         ('return', 'Выход из ДО'),
+    ]
+
+    # Добавляем константы для статусов сотрудников
+    EMPLOYEE_STATUS_CHOICES = [
+        ('candidate', 'Кандидат'),
+        ('active', 'Оформлен'),
+        ('maternity_leave', 'В декретном отпуске'),
+        ('part_time', 'Совместитель'),
+        ('fired', 'Уволен'),
     ]
 
     full_name_nominative = models.CharField(
@@ -98,6 +118,16 @@ class Employee(models.Model):
         default='standard'
     )
 
+    # Добавляем поле статуса
+    status = models.CharField(
+        verbose_name="Статус сотрудника",
+        max_length=20,
+        choices=EMPLOYEE_STATUS_CHOICES,
+        default='active',
+        db_index=True,  # Индексируем для быстрого поиска
+        help_text="Текущий статус сотрудника в организации"
+    )
+
     # Новые поля для дат
     hire_date = models.DateField(
         verbose_name="Дата приема",
@@ -115,6 +145,14 @@ class Employee(models.Model):
         verbose_name="Договор подряда",
         help_text="Устаревшее поле, используйте contract_type"
     )
+
+    # Назначаем кастомный менеджер
+    objects = EmployeeQuerySet.as_manager()
+
+    class Meta:
+        verbose_name = "Сотрудник"
+        verbose_name_plural = "Сотрудники"
+        ordering = ['full_name_nominative']
 
     def clean(self):
         """
@@ -166,6 +204,20 @@ class Employee(models.Model):
         self.clean()
         super().save(*args, **kwargs)
 
+    def get_status_display_emoji(self):
+        """
+        Возвращает статус с эмодзи для наглядности в интерфейсе
+        """
+        status_emojis = {
+            'candidate': '📝',
+            'active': '✅',
+            'maternity_leave': '👶',
+            'part_time': '⌛',
+            'fired': '🚫',
+        }
+        emoji = status_emojis.get(self.status, '')
+        return f"{emoji} {self.get_status_display()}"
+
     def get_contract_type_display(self):
         """Возвращает человекопонятное название типа договора"""
         return dict(self.CONTRACT_TYPE_CHOICES).get(self.contract_type, "Неизвестно")
@@ -191,8 +243,3 @@ class Employee(models.Model):
         без избыточной информации в скобках.
         """
         return f"{self.full_name_nominative} — {self.position.position_name}"
-
-    class Meta:
-        verbose_name = "Сотрудник"
-        verbose_name_plural = "Сотрудники"
-        ordering = ['full_name_nominative']

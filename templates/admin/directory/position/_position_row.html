@@ -1,66 +1,52 @@
-<tr class="tree-row" data-level="{{ level }}" data-parent-id="{{ parent_id }}">
-    <td class="field-checkbox">
-        <input type="checkbox" name="_selected_action" value="{{ item.object.pk }}" class="action-select">
-    </td>
-    <td class="field-name">
-        <span class="tree-icon">{{ item.additional_data.profession_icon|default:"👔" }}</span>
-        <a href="{% url 'admin:directory_position_change' item.object.pk %}">
-            {{ item.name }}
-        </a>
-    </td>
+<tr class="tree-row {% if item.additional_data.contract_type == 'fired' %}status-fired{% endif %}"
+    data-level="{{ level }}" data-parent-id="{{ parent_id }}">
+  <td class="field-checkbox">
+    <input type="checkbox" name="_selected_action" value="{{ item.object.pk }}" class="action-select">
+  </td>
+  <td class="field-name">
+    <span class="tree-icon">{{ tree_settings.icons.employee }}</span>
+    <a href="{% url 'admin:directory_employee_change' item.object.pk %}">
+      {{ item.name }}
+    </a>
+  </td>
 
-    <!-- 🚩 изменён блок атрибутов -->
-    <td class="field-attributes">
-        {# 🛡 СИЗ #}
-        {% if item.additional_data.has_overridden_siz_norms %}
-            <span class="attribute-icon override" title="Нормы выдачи СИЗ (переопределены)">🛡️</span>
-        {% elif item.additional_data.has_reference_siz %}
-            <span class="attribute-icon" title="Нормы выдачи СИЗ">🛡️</span>
-        {% endif %}
+  <!-- Ответственный за ОТ -->
+  <td class="field-safety">
+    {% if item.additional_data.is_responsible_for_safety %}
+      <span class="employee-attribute" title="Ответственный за ОТ">✅</span>
+    {% else %}
+      <span class="employee-attribute">—</span>
+    {% endif %}
+  </td>
 
-        {# 🏥 Медосмотры #}
-        {% if item.additional_data.has_overridden_medical_factors %}
-            <span class="attribute-icon override" title="Вредные факторы медосмотров (переопределены)">🏥</span>
-        {% elif item.additional_data.has_reference_medical %}
-            <span class="attribute-icon" title="Вредные факторы медосмотров">🏥</span>
-        {% endif %}
+  <!-- Руководитель стажировки -->
+  <td class="field-internship">
+    {% if item.additional_data.can_be_internship_leader %}
+      <span class="employee-attribute" title="Руководитель стажировки">✅</span>
+    {% else %}
+      <span class="employee-attribute">—</span>
+    {% endif %}
+  </td>
 
-        {# --- остальное без изменений --- #}
-        {% if item.additional_data.is_responsible_for_safety %}
-            <span class="attribute-icon" title="Ответственный за ОТ">🔰</span>
-        {% endif %}
-        {% if item.additional_data.can_be_internship_leader %}
-            <span class="attribute-icon" title="Может быть руководителем стажировки">👨‍🏫</span>
-        {% endif %}
-        {% if item.additional_data.is_electrical_personnel %}
-            <span class="attribute-icon" title="Электротехнический персонал">⚡</span>
-        {% endif %}
-        {% if item.additional_data.can_sign_orders %}
-            <span class="attribute-icon" title="Может подписывать распоряжения">📝</span>
-        {% endif %}
+  <!-- Статус сотрудника -->
+  <td class="field-status">
+    <span class="contract-type-badge {{ item.additional_data.contract_type }}">
+      {{ item.additional_data.contract_type_display }}
+    </span>
+  </td>
 
-        {% with g=item.additional_data.electrical_safety_group %}
-        {% if g %}
-            <span class="attribute-icon" title="Группа {{ g }} по электробезопасности">
-                {% if g == "I" %}1️⃣{% elif g == "II" %}2️⃣{% elif g == "III" %}3️⃣{% elif g == "IV" %}4️⃣{% elif g == "V" %}5️⃣{% endif %}
-            </span>
-        {% endif %}
-        {% endwith %}
-
-        {% with r=item.additional_data.commission_role %}
-        {% if r == "chairman" %}
-            <span class="attribute-icon" title="Председатель комиссии">👑</span>
-        {% elif r == "member" %}
-            <span class="attribute-icon" title="Член комиссии">👤</span>
-        {% elif r == "secretary" %}
-            <span class="attribute-icon" title="Секретарь комиссии">📝</span>
-        {% endif %}
-        {% endwith %}
-    </td>
-
-    <td class="field-actions">
-        <a href="{% url 'admin:directory_position_change' item.object.pk %}" class="edit-link">✏️</a>
-        <a href="{% url 'admin:directory_position_delete' item.object.pk %}" class="delete-link">🗑️</a>
-        <a href="{% url 'admin:directory_position_history' item.object.pk %}" class="history-link">📋</a>
-    </td>
+  <!-- Действия -->
+  <td class="field-actions">
+    <div class="action-buttons">
+      <a href="{% url 'admin:directory_employee_change' item.object.pk %}" class="btn-action edit-link" title="Редактировать">
+        ✏️
+      </a>
+      <a href="{% url 'admin:directory_employee_delete' item.object.pk %}" class="btn-action delete-link" title="Удалить">
+        🗑️
+      </a>
+      <a href="{% url 'admin:directory_employee_history' item.object.pk %}" class="btn-action history-link" title="История изменений">
+        📋
+      </a>
+    </div>
+  </td>
 </tr>
