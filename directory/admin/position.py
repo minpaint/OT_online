@@ -1,27 +1,20 @@
-# coding: utf-8
-# D:\YandexDisk\OT_online\directory\admin\position.py
-"""
-👔 Админ-класс для модели Position с древовидным отображением.
-Используем кастомный шаблон для вывода change list в виде таблицы.
-Логика ограничения по организациям (если не суперпользователь) сохраняется.
-"""
-
+# directory/admin/position.py
 from django.contrib import admin
 from django.contrib.admin.widgets import FilteredSelectMultiple
-from django.utils.translation import ngettext
+from django.utils.translation import gettext_lazy as _
 from django.contrib import messages
 from django.shortcuts import redirect, render
 from django.urls import path, reverse
 from django.utils.html import format_html
 from django.db.models import Exists, OuterRef, Count
-from django import forms
 
 from directory.models import Position
 from directory.forms.position import PositionForm
 from directory.admin.mixins.tree_view import TreeViewMixin
 from directory.models.siz import SIZNorm, SIZ
-from directory.models.medical_norm import PositionMedicalFactor
+from directory.models.medical_norm import PositionMedicalFactor, MedicalExaminationNorm
 from directory.models.medical_examination import HarmfulFactor
+from directory.models.commission import CommissionMember
 from directory.utils.profession_icons import get_profession_icon
 
 
@@ -132,16 +125,24 @@ class PositionMedicalFactorInline(admin.TabularInline):
         form_field = super().formfield_for_dbfield(db_field, **kwargs)
         if db_field.name == 'periodicity_override':
             form_field.widget.attrs['style'] = 'width: 80px;'
-        # Удалена настройка стиля для поля notes
         return form_field
 
 
 @admin.register(Position)
 class PositionAdmin(TreeViewMixin, admin.ModelAdmin):
+    """
+    👔 Админ-класс для модели Position.
+
+    Реализует древовидное представление должностей с индикаторами:
+    - Наличия норм СИЗ (🛡️) - проверяет сначала переопределенные, затем эталонные
+    - Наличия медосмотров (🏥) - проверяет сначала переопределенные, затем эталонные
+    - Роли в комиссиях (определяется через связь с CommissionMember)
+    - Прочих атрибутов должности (ответственный за ОТ, ЭБ и др.)
+    """
     form = PositionForm
-    # Указываем путь к шаблону для древовидного отображения
+    # Путь к шаблону для древовидного отображения
     change_list_template = "admin/directory/position/change_list_tree.html"
-    # Указываем кастомный шаблон формы для добавления кнопки подтягивания норм
+    # Шаблон формы для добавления кнопки подтягивания норм
     change_form_template = "admin/directory/position/change_form.html"
 
     # Определяем порядок полей в форме
@@ -152,7 +153,7 @@ class PositionAdmin(TreeViewMixin, admin.ModelAdmin):
                 'organization',
                 'subdivision',
                 'department',
-                'commission_role',
+                'commission_role',  # Оставляем поле, если оно используется где-то еще
                 'is_responsible_for_safety',
                 'can_be_internship_leader',
                 'can_sign_orders',
@@ -210,7 +211,7 @@ class PositionAdmin(TreeViewMixin, admin.ModelAdmin):
     # Добавляем инлайны для СИЗ и вредных факторов медосмотров
     inlines = [
         SIZNormInlineForPosition,
-        PositionMedicalFactorInline,  # Добавляем инлайн для вредных факторов
+        PositionMedicalFactorInline,  # Инлайн для вредных факторов
     ]
 
     class Media:
@@ -231,8 +232,6 @@ class PositionAdmin(TreeViewMixin, admin.ModelAdmin):
         if obj:
             extra_context['has_medical_factors'] = obj.medical_factors.exists()
         return super().change_view(request, object_id, form_url, extra_context)
-
-    # Удаляем метод get_profession_icon, так как теперь используем импортируемую функцию
 
     def get_urls(self):
         """🔗 Добавляем кастомный URL для подтягивания норм СИЗ"""
@@ -263,7 +262,7 @@ class PositionAdmin(TreeViewMixin, admin.ModelAdmin):
 
         if not reference_norms.exists():
             messages.warning(request,
-                f"Эталонные нормы СИЗ для должности '{position.position_name}' не найдены. Проверьте, что существуют должности с точно таким же названием и у них есть нормы СИЗ.")
+                             f"Эталонные нормы СИЗ для должности '{position.position_name}' не найдены. Проверьте, что существуют должности с точно таким же названием и у них есть нормы СИЗ.")
             return redirect('admin:directory_position_change', object_id)
 
         # Сначала удаляем все пустые нормы у этой должности
@@ -359,6 +358,7 @@ class PositionAdmin(TreeViewMixin, admin.ModelAdmin):
     def get_queryset(self, request):
         """
         🔒 Ограничиваем должности по организациям, доступным пользователю.
+        Оптимизируем запрос подгрузкой связанных объектов.
         """
         qs = super().get_queryset(request).select_related(
             'organization',
@@ -367,8 +367,8 @@ class PositionAdmin(TreeViewMixin, admin.ModelAdmin):
         ).prefetch_related(
             'documents',
             'equipment',
-            'siz_norms',  # Добавляем предзагрузку СИЗ для оптимизации
-            'medical_factors'  # Добавляем предзагрузку вредных факторов
+            'siz_norms',  # Предзагрузка СИЗ для оптимизации
+            'medical_factors'  # Предзагрузка вредных факторов
         )
         if not request.user.is_superuser and hasattr(request.user, 'profile'):
             allowed_orgs = request.user.profile.organizations.all()
@@ -416,71 +416,95 @@ class PositionAdmin(TreeViewMixin, admin.ModelAdmin):
 
     def get_node_additional_data(self, obj):
         """
-        ➕ Добавляем иконку профессии и индикатор переопределения медицинских норм
+        Дополнительные данные для каждого узла в древовидном представлении.
+
+        Проверяет наличие:
+        1. Индикаторы СИЗ и медосмотров (сначала переопределения, затем эталонные)
+        2. Роли в комиссиях (из таблицы CommissionMember)
+        3. Прочие атрибуты должности
         """
-        # Используем импортированную функцию вместо собственного метода
+        # Базовая информация
         profession_icon = get_profession_icon(obj.position_name)
-
-        # Проверяем наличие эталонных норм
-        has_reference_norms = Position.find_reference_norms(obj.position_name).exists()
-
-        # Подсчитываем количество норм, но не разделяем по условиям
-        total_norms_count = obj.siz_norms.count()
-
-        # Подсчитываем количество вредных факторов для медосмотров
-        medical_factors_count = obj.medical_factors.count()
-
-        # Определяем, есть ли переопределения медицинских норм
-        has_medical_overrides = medical_factors_count > 0
-
-        # Статус и стиль для медицинских норм
-        medical_status = "Переопределено" if has_medical_overrides else "Стандартные нормы"
-        medical_status_class = "" if has_medical_overrides else "standard"
-
-        return {
+        additional_data = {
             # Иконка профессии
             'profession_icon': profession_icon,
 
             # Основные атрибуты безопасности
             'is_responsible_for_safety': obj.is_responsible_for_safety,
             'can_be_internship_leader': obj.can_be_internship_leader,
-            'can_sign_orders': obj.can_sign_orders,  # Добавлена роль "Может подписывать распоряжения"
+            'can_sign_orders': obj.can_sign_orders,
             'is_electrical_personnel': obj.is_electrical_personnel,
-            'electrical_group': obj.electrical_safety_group,  # Группа по электробезопасности
-            'commission_role': obj.commission_role,  # Роль в комиссии
-
-            # Счетчики связанных объектов
-            'documents_count': obj.documents.count(),
-            'equipment_count': obj.equipment.count(),
-
-            # Упрощенная информация о СИЗ
-            'total_siz_norms': total_norms_count,
-            'has_reference_norms': has_reference_norms,
-
-            # Информация о медосмотрах
-            'medical_factors_count': medical_factors_count,
-            'has_medical_overrides': has_medical_overrides,
-            'medical_status': medical_status,
-            'medical_status_class': medical_status_class
+            'electrical_group': obj.electrical_safety_group,
         }
 
-    def medical_overrides_indicator(self, obj):
-        """
-        Индикатор наличия переопределений медицинских норм для отображения в списке должностей
-        """
-        medical_factors_count = obj.medical_factors.count()
-        if medical_factors_count > 0:
-            return format_html(
-                '<span class="medical-overrides-indicator" title="Переопределены нормы медосмотров">'
-                '🩺 Переопределено<span class="medical-overrides-count">{}</span></span>',
-                medical_factors_count
-            )
-        return format_html(
-            '<span class="medical-overrides-indicator standard" title="Используются стандартные нормы медосмотров">'
-            '🩺 Стандартные нормы</span>'
-        )
+        # ===== СИЗ =====
+        # 1. Проверяем переопределенные нормы СИЗ
+        has_custom_siz_norms = obj.siz_norms.exists()
 
-    medical_overrides_indicator.short_description = "Медосмотры"
+        # 2. Если переопределений нет, проверяем эталонные нормы
+        has_reference_siz_norms = False
+        if not has_custom_siz_norms:
+            has_reference_siz_norms = Position.find_reference_norms(obj.position_name).exists()
+
+        # 3. Заполняем информацию о СИЗ
+        additional_data['has_siz_norms'] = has_custom_siz_norms or has_reference_siz_norms
+        if has_custom_siz_norms:
+            additional_data['siz_norms_type'] = 'custom'
+            additional_data['siz_norms_title'] = 'Переопределенные нормы СИЗ для данной должности'
+        elif has_reference_siz_norms:
+            additional_data['siz_norms_type'] = 'reference'
+            additional_data['siz_norms_title'] = 'Используются стандартные нормы СИЗ'
+        else:
+            additional_data['siz_norms_type'] = 'none'
+            additional_data['siz_norms_title'] = 'Нет норм СИЗ'
+
+        # ===== МЕДОСМОТРЫ =====
+        # 1. Проверяем переопределенные нормы медосмотров
+        has_custom_medical_norms = obj.medical_factors.exists()
+
+        # 2. Если переопределений нет, проверяем эталонные нормы
+        has_reference_medical_norms = False
+        if not has_custom_medical_norms:
+            # Проверяем наличие эталонных норм медосмотров для этого типа должности
+            has_reference_medical_norms = MedicalExaminationNorm.objects.filter(
+                position_name=obj.position_name
+            ).exists()
+
+        # 3. Заполняем информацию о медосмотрах
+        additional_data['has_medical_norms'] = has_custom_medical_norms or has_reference_medical_norms
+        if has_custom_medical_norms:
+            additional_data['medical_norms_type'] = 'custom'
+            additional_data['medical_norms_title'] = 'Переопределенные нормы медосмотров для данной должности'
+        elif has_reference_medical_norms:
+            additional_data['medical_norms_type'] = 'reference'
+            additional_data['medical_norms_title'] = 'Используются стандартные нормы медосмотров'
+        else:
+            additional_data['medical_norms_type'] = 'none'
+            additional_data['medical_norms_title'] = 'Нет норм медосмотров'
+
+        # ===== РОЛИ В КОМИССИЯХ =====
+        # Получаем роли в комиссиях через CommissionMember
+        # Находим всех сотрудников с этой должностью
+        from directory.models import Employee
+        employees_with_position = Employee.objects.filter(position=obj)
+
+        # Находим все роли в комиссиях для этих сотрудников
+        commission_roles = CommissionMember.objects.filter(
+            employee__in=employees_with_position,
+            is_active=True
+        ).select_related('commission')
+
+        # Группируем роли для отображения
+        additional_data['commission_roles'] = []
+        for role in commission_roles:
+            additional_data['commission_roles'].append({
+                'commission_name': role.commission.name,
+                'role': role.role,
+                'role_display': role.get_role_display(),
+                'employee_name': role.employee.full_name_nominative
+            })
+
+        return additional_data
 
     def has_module_permission(self, request):
         """
