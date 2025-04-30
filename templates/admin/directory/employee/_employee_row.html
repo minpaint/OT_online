@@ -1,75 +1,28 @@
-<tr class="tree-row {% if item.additional_data.contract_type == 'fired' %}status-fired{% endif %}"
-    data-level="{{ level }}" data-parent-id="{{ parent_id }}">
-  <td class="field-checkbox">
-    <input type="checkbox" name="_selected_action" value="{{ item.object.pk }}" class="action-select">
-  </td>
-  <td class="field-name">
-    <span class="tree-icon">{{ tree_settings.icons.employee }}</span>
-    <a href="{% url 'admin:directory_employee_change' item.object.pk %}">
-      {{ item.name }}
-    </a>
-  </td>
-
+<tr class="tree-row" data-level="{{ level }}" data-parent-id="{{ parent_id }}">
   <!-- Ответственный за ОТ -->
-  <td class="field-safety">
+  <td class="field-safety" style="text-align:center;">
     {% if item.additional_data.is_responsible_for_safety %}
-      <span class="employee-attribute" title="Ответственный за ОТ">✅</span>
+      ✅
     {% else %}
-      <span class="employee-attribute">—</span>
+      —
     {% endif %}
   </td>
-
   <!-- Руководитель стажировки -->
-  <td class="field-internship">
+  <td class="field-internship" style="text-align:center;">
     {% if item.additional_data.can_be_internship_leader %}
-      <span class="employee-attribute" title="Руководитель стажировки">✅</span>
+      ✅
     {% else %}
-      <span class="employee-attribute">—</span>
+      —
     {% endif %}
   </td>
-
-  <!-- Роль в комиссии -->
-  <td class="field-commission">
-    {% for commission in item.additional_data.commissions %}
-      {% if forloop.first %}
-        {% if commission.role == 'chairman' %}
-          <span class="commission-role chairman" title="{{ commission.name }}">
-            <i class="commission-icon">👑</i> Председатель
-          </span>
-        {% elif commission.role == 'secretary' %}
-          <span class="commission-role secretary" title="{{ commission.name }}">
-            <i class="commission-icon">📝</i> Секретарь
-          </span>
-        {% elif commission.role == 'member' %}
-          <span class="commission-role member" title="{{ commission.name }}">
-            <i class="commission-icon">👤</i> Член комиссии
-          </span>
-        {% endif %}
-      {% endif %}
-    {% empty %}
-      <span class="employee-attribute">—</span>
-    {% endfor %}
+  <!-- Статус с эмодзи -->
+  <td class="field-status" style="text-align:center;">
+    {{ item.object.get_status_display_emoji }}
   </td>
-
-  <!-- Статус сотрудника -->
-  <td class="field-status">
-    <span class="contract-type-badge {{ item.additional_data.contract_type }}">
-      {{ item.additional_data.contract_type_display }}
-    </span>
-  </td>
-
   <!-- Действия -->
-  <td class="field-actions">
-    <div class="action-buttons">
-      <a href="{% url 'admin:directory_employee_change' item.object.pk %}" class="btn-action edit-link" title="Редактировать">
-        ✏️
-      </a>
-      <a href="{% url 'admin:directory_employee_delete' item.object.pk %}" class="btn-action delete-link" title="Удалить">
-        🗑️
-      </a>
-      <a href="{% url 'admin:directory_employee_history' item.object.pk %}" class="btn-action history-link" title="История изменений">
-        📋
-      </a>
-    </div>
+  <td class="field-actions" style="text-align:center;">
+    <a href="{% url 'admin:directory_employee_change' item.object.pk %}" class="btn-action edit-link" title="Редактировать">✏️</a>
+    <a href="{% url 'admin:directory_employee_delete' item.object.pk %}" class="btn-action delete-link" title="Удалить">🗑️</a>
+    <a href="{% url 'admin:directory_employee_history' item.object.pk %}" class="btn-action history-link" title="История">📋</a>
   </td>
 </tr>

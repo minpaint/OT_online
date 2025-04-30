@@ -105,7 +105,7 @@ class TreeViewMixin:
                 # Иначе получаем название объекта из заданного поля или используем str(obj)
                 item_name = getattr(obj, name_field, str(obj)) if name_field else str(obj)
 
-            # Получаем дополнительные данные с помощью специального метода, если он существует
+            # Получаем дополнительные данные для объекта, если метод существует
             if hasattr(self, 'get_node_additional_data'):
                 additional_data = self.get_node_additional_data(obj)
             else:

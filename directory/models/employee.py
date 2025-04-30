@@ -2,22 +2,19 @@ from django.db import models
 from django.core.exceptions import ValidationError
 from django.utils import timezone
 
-
-# Добавляем QuerySet для кастомной фильтрации
 class EmployeeQuerySet(models.QuerySet):
     def tree_visible(self):
         """Сотрудники, которые должны отображаться в древе (исключая кандидатов и уволенных)"""
         return self.exclude(status__in=['candidate', 'fired'])
-
     def candidates(self):
         """Только кандидаты"""
         return self.filter(status='candidate')
-
 
 class Employee(models.Model):
     """
     👤 Модель для хранения информации о сотрудниках.
     """
+
     HEIGHT_CHOICES = [
         ("158-164 см", "158-164 см"),
         ("170-176 см", "170-176 см"),
@@ -34,7 +31,7 @@ class Employee(models.Model):
     ]
     SHOE_SIZE_CHOICES = [(str(i), str(i)) for i in range(36, 49)]
 
-    # Добавляем константы для типов договоров
+    # Типы договоров
     CONTRACT_TYPE_CHOICES = [
         ('standard', 'Трудовой договор'),
         ('contractor', 'Договор подряда'),
@@ -43,7 +40,7 @@ class Employee(models.Model):
         ('return', 'Выход из ДО'),
     ]
 
-    # Добавляем константы для статусов сотрудников
+    # Статус сотрудника
     EMPLOYEE_STATUS_CHOICES = [
         ('candidate', 'Кандидат'),
         ('active', 'Оформлен'),
@@ -62,7 +59,6 @@ class Employee(models.Model):
     )
     date_of_birth = models.DateField(verbose_name="Дата рождения")
     place_of_residence = models.TextField(verbose_name="Место проживания")
-
     organization = models.ForeignKey(
         'directory.Organization',
         on_delete=models.PROTECT,
@@ -90,7 +86,6 @@ class Employee(models.Model):
         on_delete=models.PROTECT,
         verbose_name="Должность"
     )
-
     height = models.CharField(
         max_length=15,
         choices=HEIGHT_CHOICES,
@@ -109,26 +104,21 @@ class Employee(models.Model):
         blank=True,
         verbose_name="Размер обуви"
     )
-
-    # Заменяем булево поле на поле с выбором типа договора
     contract_type = models.CharField(
         verbose_name="Вид договора",
         max_length=20,
         choices=CONTRACT_TYPE_CHOICES,
         default='standard'
     )
-
-    # Добавляем поле статуса
+    # ✅ Новое поле статуса сотрудника
     status = models.CharField(
         verbose_name="Статус сотрудника",
         max_length=20,
         choices=EMPLOYEE_STATUS_CHOICES,
         default='active',
-        db_index=True,  # Индексируем для быстрого поиска
+        db_index=True,
         help_text="Текущий статус сотрудника в организации"
     )
-
-    # Новые поля для дат
     hire_date = models.DateField(
         verbose_name="Дата приема",
         default=timezone.now
@@ -137,16 +127,12 @@ class Employee(models.Model):
         verbose_name="Дата начала работы",
         default=timezone.now
     )
-
-    # Сохраняем поле is_contractor для обратной совместимости
-    # Будем заполнять его автоматически на основе contract_type
     is_contractor = models.BooleanField(
         default=False,
         verbose_name="Договор подряда",
         help_text="Устаревшее поле, используйте contract_type"
     )
 
-    # Назначаем кастомный менеджер
     objects = EmployeeQuerySet.as_manager()
 
     class Meta:
@@ -155,16 +141,11 @@ class Employee(models.Model):
         ordering = ['full_name_nominative']
 
     def clean(self):
-        """
-        Валидация соответствия организации, подразделения, отдела и должности.
-        """
-        # Проверка, что должность принадлежит выбранной организации
+        """Валидация соответствия организации, подразделения, отдела и должности."""
         if self.position.organization != self.organization:
             raise ValidationError({
                 'position': 'Должность должна принадлежать выбранной организации'
             })
-
-        # Проверка подразделения
         if self.subdivision:
             if self.subdivision.organization != self.organization:
                 raise ValidationError({
@@ -174,8 +155,6 @@ class Employee(models.Model):
                 raise ValidationError({
                     'position': 'Должность должна соответствовать выбранному подразделению'
                 })
-
-        # Проверка отдела
         if self.department:
             if not self.subdivision:
                 raise ValidationError({
@@ -197,17 +176,11 @@ class Employee(models.Model):
     def save(self, *args, **kwargs):
         # Синхронизация is_contractor с contract_type для обратной совместимости
         self.is_contractor = (self.contract_type == 'contractor')
-
-        # При необходимости, автоматическое заполнение full_name_dative (не делаем здесь,
-        # так как для этого используем pymorphy2 в другом месте)
-
         self.clean()
         super().save(*args, **kwargs)
 
     def get_status_display_emoji(self):
-        """
-        Возвращает статус с эмодзи для наглядности в интерфейсе
-        """
+        """Возвращает статус с эмодзи для наглядности в интерфейсе"""
         status_emojis = {
             'candidate': '📝',
             'active': '✅',
@@ -224,22 +197,15 @@ class Employee(models.Model):
 
     @property
     def name_with_position(self):
-        """
-        👷 Возвращаем строку "ФИО (именительный) – Название должности".
-        Если должность не указана (маловероятно), просто ФИО.
-        """
+        """👷 Возвращает строку "ФИО (именительный) – Название должности"."""
         if self.position:
             return f"{self.full_name_nominative} — {self.position}"
         return self.full_name_nominative
 
     def __str__(self):
-        # По умолчанию __str__ оставляем старый вариант: "ФИО - Должность"
         parts = [self.full_name_nominative, "-", str(self.position)]
         return " ".join(parts)
 
     def tree_display_name(self):
-        """
-        👤 Метод для отображения имени сотрудника в древовидной структуре
-        без избыточной информации в скобках.
-        """
+        """👤 Отображение имени сотрудника в древовидной структуре."""
         return f"{self.full_name_nominative} — {self.position.position_name}"
