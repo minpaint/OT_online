@@ -5,7 +5,7 @@
 <div id="content-main">
   <div class="object-tools">
     <a href="{% url 'admin:directory_employee_add' %}" class="addlink">
-      Добавить
+      Добавить сотрудника
     </a>
   </div>
   <form id="changelist-form" method="post"
@@ -27,7 +27,7 @@
       <button type="button" class="tree-btn expand-all">↓ Развернуть все</button>
       <button type="button" class="tree-btn collapse-all">↑ Свернуть все</button>
       <div class="tree-search-container">
-        <input type="text" class="tree-search" placeholder="🔍 Поиск по дереву...">
+        <input type="text" class="tree-search" placeholder="🔍 Поиск по сотрудникам...">
       </div>
     </div>
 
@@ -37,7 +37,10 @@
           <tr>
             <th class="column-checkbox"><input type="checkbox" id="select-all"></th>
             <th class="column-name">СОТРУДНИК</th>
-            <th class="column-roles">АТРИБУТЫ/РОЛИ</th>
+            <th class="column-safety">ОТВЕТСТВЕННЫЙ ПО ОТ</th>
+            <th class="column-internship">РУКОВОДИТЕЛЬ СТАЖИРОВКИ</th>
+            <th class="column-commission">РОЛЬ В КОМИССИИ</th>
+            <th class="column-status">СТАТУС</th>
             <th class="column-actions">ДЕЙСТВИЯ</th>
           </tr>
         </thead>
@@ -50,8 +53,7 @@
                 <span class="tree-icon">{{ tree_settings.icons.organization|default:"🏢" }}</span>
                 <strong>{{ org_data.name }}</strong>
               </td>
-              <td class="field-roles"></td>
-              <td class="field-actions"></td>
+              <td colspan="5"></td>
             </tr>
 
             {# Элементы без subdivision #}
@@ -61,50 +63,53 @@
                   <input type="checkbox" name="_selected_action" value="{{ item.object.pk }}" class="action-select">
                 </td>
                 <td class="field-name">
-                  <span class="tree-icon">{{ tree_settings.icons.employee }}</span>
+                  <span class="tree-icon">{{ tree_settings.icons.employee|default:"👤" }}</span>
                   <a href="{% url 'admin:directory_employee_change' item.object.pk %}">
                     {{ item.name }}
                   </a>
                 </td>
-                <td class="field-roles">
+
+                <!-- Ответственный по ОТ -->
+                <td class="field-safety text-center">
                   {% if item.additional_data.is_responsible_for_safety %}
-                    <span class="position-attribute" title="Ответственный за ОТ">🔰</span>
+                    <span class="safety-indicator">✅</span>
+                  {% else %}
+                    <span class="empty-indicator">—</span>
                   {% endif %}
+                </td>
 
+                <!-- Руководитель стажировки -->
+                <td class="field-internship text-center">
                   {% if item.additional_data.can_be_internship_leader %}
-                    <span class="position-attribute" title="Может быть руководителем стажировки">👨‍🏫</span>
+                    <span class="internship-indicator">✅</span>
+                  {% else %}
+                    <span class="empty-indicator">—</span>
                   {% endif %}
+                </td>
 
-                  {% if item.additional_data.is_electrical_personnel %}
-                    <span class="position-attribute" title="Электротехнический персонал">⚡</span>
-                  {% endif %}
-
-                  {% with g=item.additional_data.electrical_group %}
-                  {% if g %}
-                    <span class="position-attribute" title="Группа {{ g }} по ЭБ">
-                      {% if g == "I" %}1️⃣{% elif g == "II" %}2️⃣
-                      {% elif g == "III" %}3️⃣{% elif g == "IV" %}4️⃣
-                      {% elif g == "V" %}5️⃣{% endif %}
+                <!-- Роль в комиссии -->
+                <td class="field-commission">
+                  {% for role in item.additional_data.commission_roles %}
+                    <span class="commission-role" title="{{ role.commission_name }}: {{ role.role_display }}">
+                      {{ role.role_emoji }}
                     </span>
-                  {% endif %}
-                  {% endwith %}
-
-                  {% for commission in item.additional_data.commissions %}
-                    <span class="position-attribute" title="{{ commission.role_display }} в комиссии '{{ commission.name }}'">
-                      {% if commission.role == 'chairman' %}🗳️
-                      {% elif commission.role == 'secretary' %}📝
-                      {% else %}👥{% endif %}
-                    </span>
+                  {% empty %}
+                    <span class="empty-indicator">—</span>
                   {% endfor %}
+                </td>
 
-                  <span class="contract-type-badge {{ item.additional_data.contract_type }}">
-                    {{ item.additional_data.contract_type_display }}
+                <!-- Статус -->
+                <td class="field-status">
+                  <span class="status-badge status-{{ item.additional_data.status }}">
+                    {{ item.additional_data.status_emoji }} {{ item.additional_data.status_display }}
                   </span>
                 </td>
+
+                <!-- Действия -->
                 <td class="field-actions">
-                  <a href="{% url 'admin:directory_employee_change' item.object.pk %}" class="edit-link">✏️</a>
-                  <a href="{% url 'admin:directory_employee_delete' item.object.pk %}" class="delete-link">🗑️</a>
-                  <a href="{% url 'admin:directory_employee_history' item.object.pk %}" class="history-link">📋</a>
+                  <a href="{% url 'admin:directory_employee_change' item.object.pk %}" class="edit-link" title="Редактировать">✏️</a>
+                  <a href="{% url 'admin:directory_employee_delete' item.object.pk %}" class="delete-link" title="Удалить">🗑️</a>
+                  <a href="{% url 'admin:directory_employee_history' item.object.pk %}" class="history-link" title="История">📋</a>
                 </td>
               </tr>
             {% endfor %}
@@ -115,11 +120,10 @@
                 <td class="field-checkbox"></td>
                 <td class="field-name">
                   <button type="button" class="toggle-btn" data-state="expanded">[-]</button>
-                  <span class="tree-icon">{{ tree_settings.icons.subdivision }}</span>
+                  <span class="tree-icon">{{ tree_settings.icons.subdivision|default:"🏭" }}</span>
                   {{ sub_data.name }}
                 </td>
-                <td class="field-roles"></td>
-                <td class="field-actions"></td>
+                <td colspan="5"></td>
               </tr>
 
               {# Элементы без department #}
@@ -129,50 +133,53 @@
                     <input type="checkbox" name="_selected_action" value="{{ item.object.pk }}" class="action-select">
                   </td>
                   <td class="field-name">
-                    <span class="tree-icon">{{ tree_settings.icons.employee }}</span>
+                    <span class="tree-icon">{{ tree_settings.icons.employee|default:"👤" }}</span>
                     <a href="{% url 'admin:directory_employee_change' item.object.pk %}">
                       {{ item.name }}
                     </a>
                   </td>
-                  <td class="field-roles">
+
+                  <!-- Ответственный по ОТ -->
+                  <td class="field-safety text-center">
                     {% if item.additional_data.is_responsible_for_safety %}
-                      <span class="position-attribute" title="Ответственный за ОТ">🔰</span>
+                      <span class="safety-indicator">✅</span>
+                    {% else %}
+                      <span class="empty-indicator">—</span>
                     {% endif %}
+                  </td>
 
+                  <!-- Руководитель стажировки -->
+                  <td class="field-internship text-center">
                     {% if item.additional_data.can_be_internship_leader %}
-                      <span class="position-attribute" title="Может быть руководителем стажировки">👨‍🏫</span>
+                      <span class="internship-indicator">✅</span>
+                    {% else %}
+                      <span class="empty-indicator">—</span>
                     {% endif %}
+                  </td>
 
-                    {% if item.additional_data.is_electrical_personnel %}
-                      <span class="position-attribute" title="Электротехнический персонал">⚡</span>
-                    {% endif %}
-
-                    {% with g=item.additional_data.electrical_group %}
-                    {% if g %}
-                      <span class="position-attribute" title="Группа {{ g }} по ЭБ">
-                        {% if g == "I" %}1️⃣{% elif g == "II" %}2️⃣
-                        {% elif g == "III" %}3️⃣{% elif g == "IV" %}4️⃣
-                        {% elif g == "V" %}5️⃣{% endif %}
+                  <!-- Роль в комиссии -->
+                  <td class="field-commission">
+                    {% for role in item.additional_data.commission_roles %}
+                      <span class="commission-role" title="{{ role.commission_name }}: {{ role.role_display }}">
+                        {{ role.role_emoji }}
                       </span>
-                    {% endif %}
-                    {% endwith %}
-
-                    {% for commission in item.additional_data.commissions %}
-                      <span class="position-attribute" title="{{ commission.role_display }} в комиссии '{{ commission.name }}'">
-                        {% if commission.role == 'chairman' %}🗳️
-                        {% elif commission.role == 'secretary' %}📝
-                        {% else %}👥{% endif %}
-                      </span>
+                    {% empty %}
+                      <span class="empty-indicator">—</span>
                     {% endfor %}
+                  </td>
 
-                    <span class="contract-type-badge {{ item.additional_data.contract_type }}">
-                      {{ item.additional_data.contract_type_display }}
+                  <!-- Статус -->
+                  <td class="field-status">
+                    <span class="status-badge status-{{ item.additional_data.status }}">
+                      {{ item.additional_data.status_emoji }} {{ item.additional_data.status_display }}
                     </span>
                   </td>
+
+                  <!-- Действия -->
                   <td class="field-actions">
-                    <a href="{% url 'admin:directory_employee_change' item.object.pk %}" class="edit-link">✏️</a>
-                    <a href="{% url 'admin:directory_employee_delete' item.object.pk %}" class="delete-link">🗑️</a>
-                    <a href="{% url 'admin:directory_employee_history' item.object.pk %}" class="history-link">📋</a>
+                    <a href="{% url 'admin:directory_employee_change' item.object.pk %}" class="edit-link" title="Редактировать">✏️</a>
+                    <a href="{% url 'admin:directory_employee_delete' item.object.pk %}" class="delete-link" title="Удалить">🗑️</a>
+                    <a href="{% url 'admin:directory_employee_history' item.object.pk %}" class="history-link" title="История">📋</a>
                   </td>
                 </tr>
               {% endfor %}
@@ -183,11 +190,10 @@
                   <td class="field-checkbox"></td>
                   <td class="field-name">
                     <button type="button" class="toggle-btn" data-state="expanded">[-]</button>
-                    <span class="tree-icon">{{ tree_settings.icons.department }}</span>
+                    <span class="tree-icon">{{ tree_settings.icons.department|default:"📂" }}</span>
                     {{ dept_data.name }}
                   </td>
-                  <td class="field-roles"></td>
-                  <td class="field-actions"></td>
+                  <td colspan="5"></td>
                 </tr>
 
                 {% for item in dept_data.items %}
@@ -196,50 +202,53 @@
                       <input type="checkbox" name="_selected_action" value="{{ item.object.pk }}" class="action-select">
                     </td>
                     <td class="field-name">
-                      <span class="tree-icon">{{ tree_settings.icons.employee }}</span>
+                      <span class="tree-icon">{{ tree_settings.icons.employee|default:"👤" }}</span>
                       <a href="{% url 'admin:directory_employee_change' item.object.pk %}">
                         {{ item.name }}
                       </a>
                     </td>
-                    <td class="field-roles">
+
+                    <!-- Ответственный по ОТ -->
+                    <td class="field-safety text-center">
                       {% if item.additional_data.is_responsible_for_safety %}
-                        <span class="position-attribute" title="Ответственный за ОТ">🔰</span>
+                        <span class="safety-indicator">✅</span>
+                      {% else %}
+                        <span class="empty-indicator">—</span>
                       {% endif %}
+                    </td>
 
+                    <!-- Руководитель стажировки -->
+                    <td class="field-internship text-center">
                       {% if item.additional_data.can_be_internship_leader %}
-                        <span class="position-attribute" title="Может быть руководителем стажировки">👨‍🏫</span>
+                        <span class="internship-indicator">✅</span>
+                      {% else %}
+                        <span class="empty-indicator">—</span>
                       {% endif %}
+                    </td>
 
-                      {% if item.additional_data.is_electrical_personnel %}
-                        <span class="position-attribute" title="Электротехнический персонал">⚡</span>
-                      {% endif %}
-
-                      {% with g=item.additional_data.electrical_group %}
-                      {% if g %}
-                        <span class="position-attribute" title="Группа {{ g }} по ЭБ">
-                          {% if g == "I" %}1️⃣{% elif g == "II" %}2️⃣
-                          {% elif g == "III" %}3️⃣{% elif g == "IV" %}4️⃣
-                          {% elif g == "V" %}5️⃣{% endif %}
+                    <!-- Роль в комиссии -->
+                    <td class="field-commission">
+                      {% for role in item.additional_data.commission_roles %}
+                        <span class="commission-role" title="{{ role.commission_name }}: {{ role.role_display }}">
+                          {{ role.role_emoji }}
                         </span>
-                      {% endif %}
-                      {% endwith %}
-
-                      {% for commission in item.additional_data.commissions %}
-                        <span class="position-attribute" title="{{ commission.role_display }} в комиссии '{{ commission.name }}'">
-                          {% if commission.role == 'chairman' %}🗳️
-                          {% elif commission.role == 'secretary' %}📝
-                          {% else %}👥{% endif %}
-                        </span>
+                      {% empty %}
+                        <span class="empty-indicator">—</span>
                       {% endfor %}
+                    </td>
 
-                      <span class="contract-type-badge {{ item.additional_data.contract_type }}">
-                        {{ item.additional_data.contract_type_display }}
+                    <!-- Статус -->
+                    <td class="field-status">
+                      <span class="status-badge status-{{ item.additional_data.status }}">
+                        {{ item.additional_data.status_emoji }} {{ item.additional_data.status_display }}
                       </span>
                     </td>
+
+                    <!-- Действия -->
                     <td class="field-actions">
-                      <a href="{% url 'admin:directory_employee_change' item.object.pk %}" class="edit-link">✏️</a>
-                      <a href="{% url 'admin:directory_employee_delete' item.object.pk %}" class="delete-link">🗑️</a>
-                      <a href="{% url 'admin:directory_employee_history' item.object.pk %}" class="history-link">📋</a>
+                      <a href="{% url 'admin:directory_employee_change' item.object.pk %}" class="edit-link" title="Редактировать">✏️</a>
+                      <a href="{% url 'admin:directory_employee_delete' item.object.pk %}" class="delete-link" title="Удалить">🗑️</a>
+                      <a href="{% url 'admin:directory_employee_history' item.object.pk %}" class="history-link" title="История">📋</a>
                     </td>
                   </tr>
                 {% endfor %}
@@ -259,44 +268,79 @@
   <script src="{% static 'admin/js/tree_view.js' %}"></script>
   <script src="{% static 'admin/js/tree_search.js' %}"></script>
   <style>
-    /* Стили для отображения статусов и ролей */
-    .position-attribute {
+    /* Центрирование текста в ячейках */
+    .text-center {
+      text-align: center;
+    }
+
+    /* Индикаторы для булевых полей */
+    .safety-indicator, .internship-indicator {
+      font-size: 18px;
+      color: #28a745;
+    }
+
+    /* Пустые значения */
+    .empty-indicator {
+      color: #868e96;
+    }
+
+    /* Стили для ролей в комиссиях */
+    .commission-role {
       display: inline-block;
       margin-right: 5px;
-      font-size: 16px;
+      font-size: 18px;
     }
 
-    .contract-type-badge {
-      display: inline-block;
-      padding: 2px 8px;
-      border-radius: 3px;
+    /* Стили для статусов */
+    .status-badge {
+      padding: 3px 8px;
+      border-radius: 4px;
       font-size: 12px;
-      margin-left: 10px;
+      display: inline-block;
     }
 
-    .contract-type-badge.standard {
+    .status-active {
       background-color: #28a745;
       color: white;
     }
 
-    .contract-type-badge.contractor {
+    .status-candidate {
+      background-color: #6c757d;
+      color: white;
+    }
+
+    .status-fired {
+      background-color: #dc3545;
+      color: white;
+    }
+
+    .status-maternity_leave {
       background-color: #fd7e14;
       color: white;
     }
 
-    .contract-type-badge.part_time {
+    .status-part_time {
       background-color: #17a2b8;
       color: white;
     }
 
-    .contract-type-badge.transfer {
-      background-color: #6f42c1;
-      color: white;
+    /* Действия */
+    .field-actions a {
+      margin-right: 8px;
+      font-size: 16px;
+      text-decoration: none;
     }
 
-    .contract-type-badge.return {
-      background-color: #20c997;
-      color: white;
+    .edit-link:hover {
+      color: #007bff;
+    }
+
+    .delete-link:hover {
+      color: #dc3545;
+    }
+
+    .history-link:hover {
+      color: #17a2b8;
     }
   </style>
 {% endblock %}

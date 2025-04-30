@@ -1,13 +1,17 @@
+# directory/admin/employee.py
 from django.contrib import admin
 from directory.models import Employee
 from directory.models.commission import CommissionMember
 from directory.forms.employee import EmployeeForm
 from directory.admin.mixins.tree_view import TreeViewMixin
 
+
 @admin.register(Employee)
 class EmployeeAdmin(TreeViewMixin, admin.ModelAdmin):
     """
-    👤 Админ-класс для модели Employee.
+    👤 Админ-класс для модели Employee с оптимизированным отображением.
+    Показывает только ключевые атрибуты: Ответственный по ОТ, Руководитель 
+    стажировки, Роль в комиссии, Статус.
     """
     form = EmployeeForm
 
@@ -41,7 +45,7 @@ class EmployeeAdmin(TreeViewMixin, admin.ModelAdmin):
         'department',
         'position',
         'contract_type',
-        'status',              # Отображаем статус в списке
+        'status',
     ]
     list_filter = [
         'organization',
@@ -49,7 +53,7 @@ class EmployeeAdmin(TreeViewMixin, admin.ModelAdmin):
         'department',
         'position',
         'contract_type',
-        'status',              # Возможность фильтрации по статусу
+        'status',
     ]
     search_fields = [
         'full_name_nominative',
@@ -57,7 +61,6 @@ class EmployeeAdmin(TreeViewMixin, admin.ModelAdmin):
         'position__position_name'
     ]
 
-    # Если используешь отдельные поля
     fields = [
         'full_name_nominative',
         'full_name_dative',
@@ -68,7 +71,7 @@ class EmployeeAdmin(TreeViewMixin, admin.ModelAdmin):
         'department',
         'position',
         'contract_type',
-        'status',          # Обязательно для отображения в форме!
+        'status',
         'hire_date',
         'start_date',
         'height',
@@ -82,7 +85,15 @@ class EmployeeAdmin(TreeViewMixin, admin.ModelAdmin):
         if not request.user.is_superuser and hasattr(request.user, 'profile'):
             allowed_orgs = request.user.profile.organizations.all()
             qs = qs.filter(organization__in=allowed_orgs)
-        return qs
+        return qs.select_related(
+            'organization',
+            'subdivision',
+            'department',
+            'position'
+        ).prefetch_related(
+            'commission_roles',
+            'commission_roles__commission'
+        )
 
     def get_form(self, request, obj=None, **kwargs):
         Form = super().get_form(request, obj, **kwargs)
@@ -96,34 +107,55 @@ class EmployeeAdmin(TreeViewMixin, admin.ModelAdmin):
 
     def get_node_additional_data(self, obj):
         """
-        Получает дополнительные данные для отображения в дереве
+        Получает дополнительные данные для отображения в дереве.
+        Сокращенная версия с фокусом на ключевых атрибутах.
         """
-        additional_data = {}
+        # Базовые данные о статусе
+        additional_data = {
+            'status': obj.status,
+            'status_display': obj.get_status_display(),
+            'status_emoji': self._get_status_emoji(obj.status),
+        }
 
-        # Добавляем статус сотрудника и договор
-        additional_data['contract_type'] = obj.contract_type
-        additional_data['contract_type_display'] = obj.get_contract_type_display()
-        additional_data['status'] = obj.status
-        additional_data['status_display'] = obj.get_status_display()
-
-        # Атрибуты из позиции
+        # Атрибуты из позиции (должности)
         if obj.position:
             additional_data['is_responsible_for_safety'] = getattr(obj.position, 'is_responsible_for_safety', False)
             additional_data['can_be_internship_leader'] = getattr(obj.position, 'can_be_internship_leader', False)
-            additional_data['is_electrical_personnel'] = getattr(obj.position, 'is_electrical_personnel', False)
-            additional_data['electrical_group'] = getattr(obj.position, 'electrical_safety_group', None)
 
         # Роли в комиссиях
-        commissions = CommissionMember.objects.filter(
+        commission_roles = CommissionMember.objects.filter(
             employee=obj,
             is_active=True
         ).select_related('commission')
-        additional_data['commissions'] = []
-        for member in commissions:
-            additional_data['commissions'].append({
-                'name': member.commission.name,
-                'role': member.role,
-                'role_display': member.get_role_display()
+
+        # Для отображения в табличном виде сгруппируем роли
+        additional_data['commission_roles'] = []
+        for role in commission_roles:
+            additional_data['commission_roles'].append({
+                'commission_name': role.commission.name,
+                'role': role.role,
+                'role_display': role.get_role_display(),
+                'role_emoji': self._get_commission_role_emoji(role.role)
             })
 
         return additional_data
+
+    def _get_status_emoji(self, status):
+        """Возвращает эмодзи для статуса сотрудника"""
+        status_emojis = {
+            'candidate': '📝',
+            'active': '✅',
+            'maternity_leave': '👶',
+            'part_time': '⌛',
+            'fired': '🚫',
+        }
+        return status_emojis.get(status, '❓')
+
+    def _get_commission_role_emoji(self, role):
+        """Возвращает эмодзи для роли в комиссии"""
+        role_emojis = {
+            'chairman': '🗳️',
+            'secretary': '📝',
+            'member': '👥'
+        }
+        return role_emojis.get(role, '❓')
