@@ -1,18 +1,21 @@
 # directory/document_generators/siz_card_docx_generator.py
 """
-🛡️ Генератор карточки учета СИЗ в DOCX формате
+🛡️ Генератор личной карточки учёта СИЗ (DOCX).
 
-Модуль реализует функции для создания личной карточки
-учета средств индивидуальной защиты в формате DOCX,
-используя подход аналогичный генератору листа ознакомления.
+- Использует механизм маркеров аналогичный листу ознакомления
+- Поддерживает объединенные строки для условий на лицевой стороне
+- Заполняет только необходимые колонки на оборотной стороне
 """
 
 import logging
 import traceback
+import re
 from typing import Dict, Any, Optional, List
+
 from docx.shared import Pt
 from docx.oxml import OxmlElement
 from docx.oxml.ns import qn
+from docx.enum.text import WD_ALIGN_PARAGRAPH
 
 from directory.models.document_template import GeneratedDocument
 from directory.document_generators.base import (
@@ -20,387 +23,404 @@ from directory.document_generators.base import (
     prepare_employee_context,
     generate_docx_from_template,
 )
-from directory.models.siz import SIZNorm, SIZIssued
+from directory.models.siz import SIZNorm
+from directory.models.siz_issued import SIZIssued
 
 logger = logging.getLogger(__name__)
 
 
-def generate_siz_card_docx(employee, user=None, custom_context: Optional[Dict[str, Any]] = None) -> Optional[
-    GeneratedDocument]:
-    """
-    Генерирует карточку учета СИЗ в формате DOCX.
+# =============================================
+# Основная функция генерации карточки СИЗ
+# =============================================
 
-    Args:
-        employee: Объект сотрудника
-        user: Пользователь, создающий документ (опционально)
-        custom_context: Пользовательский контекст с доп. параметрами (опционально)
-                        Может содержать selected_norm_ids для фильтрации норм СИЗ
+def generate_siz_card_docx(
+        employee,
+        user=None,
+        custom_context: Optional[Dict[str, Any]] = None,
+) -> Optional[GeneratedDocument]:
+    """Генерирует карточку учёта СИЗ для сотрудника."""
 
-    Returns:
-        Optional[GeneratedDocument]: Созданный документ или None при ошибке
-    """
     try:
-        # 1. Загрузка шаблона
-        template = get_document_template("siz_card_docx", employee)
+        # 1. Получение шаблона
+        template = get_document_template("siz_card", employee)
         if not template:
-            logger.error("Активный шаблон для карточки учета СИЗ не найден")
-            raise ValueError("Активный шаблон для карточки учета СИЗ не найден")
+            raise ValueError("Активный шаблон для карточки СИЗ не найден")
 
         # 2. Подготовка базового контекста
         context = prepare_employee_context(employee)
+        full_name = context.get("fio_nominative", "")
 
-        # 3. Добавление данных о нормах СИЗ
-        # Проверяем, есть ли выбранные нормы СИЗ в пользовательском контексте
-        selected_norm_ids = custom_context.get('selected_norm_ids', []) if custom_context else []
+        # 3. Определение пола для заголовка
+        gender = _gender_from_patronymic(full_name)
 
+        # 4. Получение выбранных норм СИЗ
+        selected_norm_ids = []
+        if custom_context:
+            if 'selected_norm_ids' in custom_context:
+                selected_norm_ids = custom_context['selected_norm_ids']
+            elif 'selected_norms' in custom_context:
+                selected_norm_ids = custom_context['selected_norms']
+
+        # 5. Если нормы не выбраны, включаем все нормы для должности
+        if not selected_norm_ids and hasattr(employee, 'position') and employee.position:
+            logger.info("Нормы не выбраны, используем все нормы для должности")
+            selected_norm_ids = list(SIZNorm.objects.filter(
+                position=employee.position
+            ).values_list('id', flat=True))
+
+        # 6. Получение данных норм СИЗ
         norms_data = []
-        if employee.position:
-            # Базовый запрос для норм СИЗ
-            norm_query = SIZNorm.objects.filter(position=employee.position).select_related('siz')
+        if employee.position and selected_norm_ids:
+            norm_query = SIZNorm.objects.filter(
+                id__in=selected_norm_ids
+            ).select_related('siz')
 
-            # Если есть выбранные нормы, фильтруем по ним
-            if selected_norm_ids:
-                norm_query = norm_query.filter(id__in=selected_norm_ids)
-
-            # Получаем отфильтрованные нормы
-            siz_norms = norm_query
-
-            for norm in siz_norms:
+            for norm in norm_query:
                 norms_data.append({
-                    'name': norm.siz.name,
-                    'classification': norm.siz.classification,
-                    'unit': norm.siz.unit,
-                    'quantity': norm.quantity,
-                    'wear_period': "До износа" if norm.siz.wear_period == 0 else f"{norm.siz.wear_period} мес."
+                    "name": norm.siz.name,
+                    "classification": norm.siz.classification,
+                    "unit": norm.siz.unit,
+                    "quantity": norm.quantity,
+                    "wear_period": "До износа" if norm.siz.wear_period == 0 else str(norm.siz.wear_period),
+                    "condition": norm.condition  # Добавляем условие для группировки
                 })
 
-            logger.info(f"Получено {len(norms_data)} норм СИЗ для карточки")
+            logger.info(f"Найдено {len(norms_data)} норм СИЗ для сотрудника")
 
-        # 4. Добавление данных о выданных СИЗ
-        issued_data = []
-        siz_issued = SIZIssued.objects.filter(employee=employee).select_related('siz')
-
-        # Если есть выбранные нормы, фильтруем выданные СИЗ по ним
-        if selected_norm_ids:
-            # Получаем ID выбранных СИЗ
-            selected_siz_ids = SIZNorm.objects.filter(
-                id__in=selected_norm_ids
-            ).values_list('siz_id', flat=True)
-
-            # Фильтруем выданные СИЗ по этим ID
-            siz_issued = siz_issued.filter(siz_id__in=selected_siz_ids)
-
-        for issued in siz_issued:
-            issued_data.append({
-                'name': issued.siz.name,
-                'classification': issued.siz.classification,
-                'issue_date': issued.issue_date.strftime("%d.%m.%Y") if issued.issue_date else "",
-                'quantity': issued.quantity,
-                'wear_percentage': f"{issued.wear_percentage}%" if issued.wear_percentage is not None else "",
-                'return_date': issued.return_date.strftime("%d.%m.%Y") if issued.return_date else "",
-                'cost': str(issued.cost) if issued.cost else "",
-                'is_returned': issued.is_returned
-            })
-
-        logger.info(f"Получено {len(issued_data)} записей о выданных СИЗ для карточки")
-
-        # 5. Добавление заглушек для шаблона и служебных маркеров
+        # 7. Формирование контекста
         context.update({
-            # Номер личной карточки
-            'card_number': f"SIZ-{employee.id}",
+            "card_number": f"SIZ-{employee.id}",
+            "employee_full_name": full_name,
+            "employee_gender": gender,
+            "employee_height": getattr(employee, "height", "") or "",
+            "employee_clothing_size": getattr(employee, "clothing_size", "") or "",
+            "employee_shoe_size": getattr(employee, "shoe_size", "") or "",
+            "department_name": context.get("department", ""),
+            "position_name": context.get("position_nominative", ""),
+            "hire_date": employee.hire_date.strftime("%d.%m.%Y") if hasattr(employee,
+                                                                            "hire_date") and employee.hire_date else "",
 
-            # Данные сотрудника (заглушки)
-            'employee_full_name': employee.full_name_nominative,
-            'employee_gender': "Мужской",  # Заглушка
-            'employee_height': employee.height or "170-176 см",
-            'employee_clothing_size': employee.clothing_size or "48-50",
-            'employee_shoe_size': employee.shoe_size or "42",
-            'employee_tab_number': f"T-{employee.id}",  # Заглушка для табельного номера
+            # Маркеры для таблиц
+            "NORMS_TABLE": "NORMS_TABLE_MARKER",
+            "ISSUED_TABLE": "ISSUED_TABLE_MARKER",
 
-            # Подразделение и должность
-            'department_name': employee.department.name if employee.department else
-            (employee.subdivision.name if employee.subdivision else ""),
-            'position_name': employee.position.position_name if employee.position else "",
-
-            # Даты
-            'hire_date': employee.hire_date.strftime("%d.%m.%Y") if hasattr(employee,
-                                                                            'hire_date') and employee.hire_date else "",
-            'position_change_date': "",  # Заглушка для даты изменения должности
-
-            # Списки данных для таблиц
-            'siz_norms': norms_data,
-            'siz_issued': issued_data,
-
-            # Маркеры для поиска таблиц при пост-обработке
-            'NORMS_MARKER': 'DOCMARKER_NORMS',
-            'ISSUED_MARKER': 'DOCMARKER_ISSUED'
-
-            # Блок подписей оставляем без изменений,
-            # не используем заглушки для подписей
+            # Данные для таблиц
+            "siz_norms": norms_data,
+            "issued_siz": norms_data  # Используем те же данные для оборотной стороны
         })
 
-        # 6. Применение пользовательского контекста (если передан)
+        # 8. Добавление пользовательского контекста
         if custom_context:
-            context.update(custom_context)
+            for k, v in custom_context.items():
+                if k not in ['selected_norm_ids', 'selected_norms']:
+                    context[k] = v
 
-        # 7. Генерация документа с пост-обработкой таблиц
+        # 9. Генерация документа + пост-обработка
         return generate_docx_from_template(
             template,
             context,
             employee,
             user,
-            post_processor=process_siz_card_tables
+            post_processor=process_siz_card_tables,
         )
 
-    except Exception as e:
-        logger.error(f"Ошибка при генерации карточки учета СИЗ: {str(e)}")
+    except Exception as exc:
+        logger.error("Ошибка при генерации карточки СИЗ: %s", exc)
         logger.error(traceback.format_exc())
         return None
 
 
+# =========================
+#   ПОСТ-ОБРАБОТКА ТАБЛИЦ
+# =========================
+
 def process_siz_card_tables(doc, context):
-    """
-    Обрабатывает таблицы в карточке СИЗ:
-    1. Находит таблицу норм СИЗ по маркеру DOCMARKER_NORMS
-    2. Находит таблицу выданных СИЗ по маркеру DOCMARKER_ISSUED
-    3. Заполняет таблицы данными из контекста
-
-    Args:
-        doc: Документ DocxTemplate
-        context: Контекст с данными
-
-    Returns:
-        doc: Обработанный документ
-    """
+    """Обрабатывает таблицы в сгенерированном документе."""
     try:
+        # Получаем данные норм СИЗ
+        norms_data = context.get("siz_norms", [])
+        if not norms_data:
+            logger.warning("Нет данных о нормах СИЗ для обработки таблиц")
+            return doc
+
         docx_document = doc.docx
-        norms_data = context.get('siz_norms', [])
-        issued_data = context.get('siz_issued', [])
 
-        # Обрабатываем таблицу норм СИЗ
-        norms_table, norms_row_idx = _find_table_by_marker(docx_document, 'DOCMARKER_NORMS')
-        if norms_table and norms_row_idx is not None:
-            _process_norms_table(norms_table, norms_row_idx, norms_data)
-        else:
-            logger.warning("Не найдена таблица норм СИЗ с маркером DOCMARKER_NORMS")
+        # Обрабатываем лицевую сторону
+        processed_front = False
+        for table in docx_document.tables:
+            row_idx, cell_idx = _find_marker_in_table(table, "NORMS_TABLE_MARKER")
+            if row_idx is not None:
+                # Обработка таблицы лицевой стороны
+                process_front_table(table, row_idx, cell_idx, norms_data)
+                processed_front = True
+                break
 
-        # Обрабатываем таблицу выданных СИЗ
-        issued_table, issued_row_idx = _find_table_by_marker(docx_document, 'DOCMARKER_ISSUED')
-        if issued_table and issued_row_idx is not None:
-            _process_issued_table(issued_table, issued_row_idx, issued_data)
-        else:
-            logger.warning("Не найдена таблица выданных СИЗ с маркером DOCMARKER_ISSUED")
+        if not processed_front:
+            logger.warning("Маркер NORMS_TABLE_MARKER не найден в таблицах")
+
+        # Обрабатываем оборотную сторону
+        processed_back = False
+        for table in docx_document.tables:
+            row_idx, cell_idx = _find_marker_in_table(table, "ISSUED_TABLE_MARKER")
+            if row_idx is not None:
+                # Обработка таблицы оборотной стороны
+                process_back_table(table, row_idx, cell_idx, norms_data)
+                processed_back = True
+                break
+
+        if not processed_back:
+            logger.warning("Маркер ISSUED_TABLE_MARKER не найден в таблицах")
 
         return doc
 
-    except Exception as e:
-        logger.error(f"Ошибка при обработке таблиц карточки СИЗ: {str(e)}")
+    except Exception as exc:
+        logger.error("Ошибка при пост-обработке таблиц: %s", exc)
         logger.error(traceback.format_exc())
         return doc
 
 
-def _find_table_by_marker(docx_document, marker):
-    """
-    Находит таблицу и строку в ней по текстовому маркеру.
+def process_front_table(table, row_idx, cell_idx, norms_data):
+    """Обрабатывает таблицу на лицевой стороне с объединёнными строками для условий."""
+    try:
+        # Группируем нормы по условиям
+        grouped_norms = {}
+        for norm in norms_data:
+            condition = norm.get("condition", "")
+            if condition not in grouped_norms:
+                grouped_norms[condition] = []
+            grouped_norms[condition].append(norm)
 
-    Args:
-        docx_document: Документ docx
-        marker: Текстовый маркер для поиска
+        # Удаляем маркер из ячейки
+        cell = table.rows[row_idx].cells[cell_idx]
+        cell.text = ""
 
-    Returns:
-        tuple: (найденная таблица, индекс строки с маркером) или (None, None)
-    """
-    for table in docx_document.tables:
-        for row_idx, row in enumerate(table.rows):
-            for cell in row.cells:
-                if marker in cell.text:
-                    return table, row_idx
+        # Заполняем первую строку, если есть нормы без условий
+        current_row = row_idx
+        if "" in grouped_norms and grouped_norms[""]:
+            for norm in grouped_norms[""]:
+                if current_row >= len(table.rows):
+                    new_row = table.add_row()
+                else:
+                    new_row = table.rows[current_row]
+
+                _fill_front_row(new_row, norm)
+                current_row += 1
+
+        # Добавляем строки с условиями и соответствующими нормами
+        for condition, norms in grouped_norms.items():
+            if not condition:
+                continue  # Пропускаем пустые условия, они уже обработаны
+
+            # Добавляем строку с условием
+            if current_row >= len(table.rows):
+                condition_row = table.add_row()
+            else:
+                condition_row = table.rows[current_row]
+
+            # Объединяем ячейки в строке условия
+            first_cell = condition_row.cells[0]
+            for i in range(1, len(condition_row.cells)):
+                if i < len(condition_row.cells):
+                    first_cell.merge(condition_row.cells[i])
+
+            # Заполняем текст условия
+            first_cell.text = condition
+            for paragraph in first_cell.paragraphs:
+                paragraph.alignment = WD_ALIGN_PARAGRAPH.CENTER
+                for run in paragraph.runs:
+                    run.italic = True
+
+            current_row += 1
+
+            # Добавляем нормы для данного условия
+            for norm in norms:
+                if current_row >= len(table.rows):
+                    new_row = table.add_row()
+                else:
+                    new_row = table.rows[current_row]
+
+                _fill_front_row(new_row, norm)
+                current_row += 1
+
+        # Применяем форматирование ко всей таблице
+        _apply_table_format(table)
+
+    except Exception as e:
+        logger.error(f"Ошибка при обработке таблицы лицевой стороны: {str(e)}")
+        logger.error(traceback.format_exc())
+
+
+def process_back_table(table, row_idx, cell_idx, norms_data):
+    """Обрабатывает таблицу на оборотной стороне, заполняя только нужные колонки."""
+    try:
+        # Удаляем маркер из ячейки
+        cell = table.rows[row_idx].cells[cell_idx]
+        cell.text = ""
+
+        # Определяем колонки для заполнения (0-based): 0, 1, 3, 6
+        cols_to_fill = [0, 1, 3, 6]
+
+        # Заполняем строки данными
+        current_row = row_idx
+        for norm in norms_data:
+            if current_row >= len(table.rows):
+                new_row = table.add_row()
+            else:
+                new_row = table.rows[current_row]
+
+            # Заполняем только нужные колонки
+            if 0 < len(new_row.cells):
+                new_row.cells[0].text = norm.get("name", "")
+
+            if 1 < len(new_row.cells):
+                new_row.cells[1].text = norm.get("classification", "")
+
+            if 3 < len(new_row.cells):
+                new_row.cells[3].text = str(norm.get("quantity", ""))
+
+            if 6 < len(new_row.cells):
+                new_row.cells[6].text = "✓"  # Галочка в колонке расписки
+
+            # Форматируем ячейки
+            for col in cols_to_fill:
+                if col < len(new_row.cells):
+                    for paragraph in new_row.cells[col].paragraphs:
+                        paragraph.alignment = WD_ALIGN_PARAGRAPH.CENTER
+                    _set_cell_border(new_row.cells[col])
+
+            current_row += 1
+
+        # Применяем форматирование ко всей таблице
+        _apply_table_format(table)
+
+    except Exception as e:
+        logger.error(f"Ошибка при обработке таблицы оборотной стороны: {str(e)}")
+        logger.error(traceback.format_exc())
+
+
+# --------------------------
+#   УТИЛИТЫ
+# --------------------------
+
+def _gender_from_patronymic(full_name: str) -> str:
+    """Определяет пол по отчеству."""
+    parts = full_name.split()
+    if len(parts) >= 3:
+        patronymic = parts[2]
+        if patronymic.endswith(("на", "вна", "чна", "кызы", "зы")):
+            return "Женский"
+        if patronymic.endswith(("ич", "ыч", "оглы", "улы", "лы")):
+            return "Мужской"
+
+    # По умолчанию считаем мужским
+    return "Мужской"
+
+
+def _find_marker_in_table(table, marker):
+    """Находит маркер в таблице и возвращает координаты ячейки."""
+    for r_idx, row in enumerate(table.rows):
+        for c_idx, cell in enumerate(row.cells):
+            for paragraph in cell.paragraphs:
+                if marker in paragraph.text:
+                    return r_idx, c_idx
     return None, None
 
 
-def _process_norms_table(table, template_row_idx, norms_data):
-    """
-    Обрабатывает таблицу норм СИЗ.
-
-    Args:
-        table: Таблица для обработки
-        template_row_idx: Индекс строки-шаблона
-        norms_data: Данные норм СИЗ
-    """
-    # Очищаем маркер в шаблонной строке
-    template_row = table.rows[template_row_idx]
-    for cell in template_row.cells:
-        cell.text = cell.text.replace('DOCMARKER_NORMS', '')
-
-    # Если нет данных, выходим
-    if not norms_data:
+def _fill_front_row(row, norm):
+    """Заполняет строку таблицы на лицевой стороне."""
+    # Проверяем наличие достаточного количества ячеек
+    if len(row.cells) < 5:
+        logger.warning(f"Недостаточно ячеек в строке таблицы: {len(row.cells)}")
         return
 
-    # Заполняем первую запись в шаблонной строке
-    _fill_norm_row(template_row, norms_data[0])
+    # Заполняем ячейки
+    row.cells[0].text = norm.get("name", "")
+    row.cells[1].text = norm.get("classification", "")
+    row.cells[2].text = norm.get("unit", "")
+    row.cells[3].text = str(norm.get("quantity", ""))
+    row.cells[4].text = norm.get("wear_period", "")
 
-    # Добавляем строки для остальных записей
-    for norm in norms_data[1:]:
-        new_row = table.add_row()
-        _copy_row_format(template_row, new_row)
-        _fill_norm_row(new_row, norm)
-
-
-def _fill_norm_row(row, norm_data):
-    """
-    Заполняет строку таблицы норм данными.
-
-    Args:
-        row: Строка таблицы
-        norm_data: Данные для заполнения
-    """
-    if len(row.cells) >= 5:  # Минимальное количество ячеек для норм СИЗ
-        try:
-            row.cells[0].text = norm_data.get('name', '')
-            row.cells[1].text = norm_data.get('classification', '')
-            row.cells[2].text = norm_data.get('unit', '')
-            row.cells[3].text = str(norm_data.get('quantity', ''))
-            row.cells[4].text = norm_data.get('wear_period', '')
-
-            # Применение форматирования
-            _apply_cell_formats(row)
-        except Exception as e:
-            logger.error(f"Ошибка при заполнении строки нормы СИЗ: {str(e)}")
+    # Форматируем ячейки
+    for i in range(5):
+        for paragraph in row.cells[i].paragraphs:
+            paragraph.alignment = WD_ALIGN_PARAGRAPH.CENTER
+        _set_cell_border(row.cells[i])
 
 
-def _process_issued_table(table, template_row_idx, issued_data):
-    """
-    Обрабатывает таблицу выданных СИЗ.
-
-    Args:
-        table: Таблица для обработки
-        template_row_idx: Индекс строки-шаблона
-        issued_data: Данные выданных СИЗ
-    """
-    # Очищаем маркер в шаблонной строке
-    template_row = table.rows[template_row_idx]
-    for cell in template_row.cells:
-        cell.text = cell.text.replace('DOCMARKER_ISSUED', '')
-
-    # Если нет данных, выходим
-    if not issued_data:
-        return
-
-    # Заполняем первую запись в шаблонной строке
-    _fill_issued_row(template_row, issued_data[0])
-
-    # Добавляем строки для остальных записей
-    for issued in issued_data[1:]:
-        new_row = table.add_row()
-        _copy_row_format(template_row, new_row)
-        _fill_issued_row(new_row, issued)
-
-
-def _fill_issued_row(row, issued_data):
-    """
-    Заполняет строку таблицы выданных СИЗ данными.
-
-    Args:
-        row: Строка таблицы
-        issued_data: Данные выданного СИЗ
-    """
+def _apply_table_format(table):
+    """Применяет форматирование к таблице."""
+    # 1. Попытка применить готовый стиль
     try:
-        # Проверяем количество ячеек в строке
-        cells_count = len(row.cells)
-        if cells_count < 7:
-            logger.warning(f"Недостаточно ячеек в строке таблицы выданных СИЗ: {cells_count}")
-            return
+        table.style = "Table Grid"
+    except (KeyError, ValueError):
+        logger.info("Стиль 'Table Grid' недоступен – проставляем границы вручную")
+        _add_borders_manually(table)
 
-        # Заполняем доступные ячейки
-        row.cells[0].text = issued_data.get('name', '')
-        row.cells[1].text = issued_data.get('classification', '')
-        row.cells[2].text = issued_data.get('issue_date', '')
-        row.cells[3].text = str(issued_data.get('quantity', ''))
-        row.cells[4].text = issued_data.get('wear_percentage', '')
-
-        if issued_data.get('is_returned') and cells_count >= 11:
-            # Заполняем ячейки для возвращенных СИЗ
-            row.cells[7].text = issued_data.get('return_date', '')
-            row.cells[8].text = str(issued_data.get('quantity', ''))  # То же количество
-            row.cells[9].text = issued_data.get('wear_percentage', '')  # То же значение износа
-            row.cells[10].text = issued_data.get('cost', '')
-
-        # Применение форматирования
-        _apply_cell_formats(row)
-    except Exception as e:
-        logger.error(f"Ошибка при заполнении строки выданных СИЗ: {str(e)}")
+    # 2. Шрифт всем run‑ам
+    for row in table.rows:
+        for cell in row.cells:
+            for para in cell.paragraphs:
+                if not para.runs:
+                    para.add_run("")
+                for run in para.runs:
+                    run.font.name = "Times New Roman"
+                    run.font.size = Pt(12)
 
 
-def _copy_row_format(src_row, dst_row):
-    """
-    Копирует форматирование из одной строки в другую.
-
-    Args:
-        src_row: Исходная строка (шаблон)
-        dst_row: Целевая строка
-    """
-    try:
-        # Копируем высоту строки
-        dst_row.height = src_row.height
-
-        # Копируем стили ячеек, если количество ячеек совпадает
-        for idx in range(min(len(src_row.cells), len(dst_row.cells))):
-            src_cell = src_row.cells[idx]
-            dst_cell = dst_row.cells[idx]
-
-            # Применяем стили и границы
-            _set_cell_border(dst_cell)
-
-    except Exception as e:
-        logger.error(f"Ошибка при копировании формата строки: {str(e)}")
+def _add_borders_manually(table):
+    """Добавляет границы всем ячейкам таблицы."""
+    for row in table.rows:
+        for cell in row.cells:
+            _set_cell_border(cell)
 
 
-def _apply_cell_formats(row):
-    """
-    Применяет форматирование ко всем ячейкам в строке.
-
-    Args:
-        row: Строка таблицы
-    """
-    for cell in row.cells:
-        # Устанавливаем шрифт для всех параграфов в ячейке
-        for paragraph in cell.paragraphs:
-            for run in paragraph.runs:
-                run.font.name = 'Times New Roman'
-                run.font.size = Pt(10)
-
-        # Устанавливаем границы ячейки
-        _set_cell_border(cell)
-
-
-def _set_cell_border(cell):
-    """
-    Устанавливает одинарную границу для ячейки.
-
-    Args:
-        cell: Ячейка таблицы
-    """
-    # Значения по умолчанию - все стороны single 4 εм
-    borders = {
-        "top": {"val": "single", "sz": "4", "color": "000000"},
-        "left": {"val": "single", "sz": "4", "color": "000000"},
-        "bottom": {"val": "single", "sz": "4", "color": "000000"},
-        "right": {"val": "single", "sz": "4", "color": "000000"},
+def _set_cell_border(
+        cell,
+        **kwargs,
+):
+    """Устанавливает одинарную границу толщиной 4 εм (≈0.5 pt) вокруг ячейки."""
+    # Значения по умолчанию – все стороны single 4 εм
+    sides = {
+        "top": {
+            "val": "single",
+            "sz": "4",
+            "color": "000000",
+            "space": "0",
+        },
+        "left": {
+            "val": "single",
+            "sz": "4",
+            "color": "000000",
+            "space": "0",
+        },
+        "bottom": {
+            "val": "single",
+            "sz": "4",
+            "color": "000000",
+            "space": "0",
+        },
+        "right": {
+            "val": "single",
+            "sz": "4",
+            "color": "000000",
+            "space": "0",
+        },
     }
+    sides.update(kwargs)
 
-    # Применяем границы к ячейке
     tc = cell._tc
     tcPr = tc.get_or_add_tcPr()
 
-    # Добавляем границы
-    tcBorders = OxmlElement('w:tcBorders')
-    tcPr.append(tcBorders)
+    tblBorders = tcPr.find(qn("w:tcBorders"))
+    if tblBorders is None:
+        tblBorders = OxmlElement("w:tcBorders")
+        tcPr.append(tblBorders)
 
-    # Создаем каждую границу
-    for edge, attrs in borders.items():
-        border = OxmlElement(f'w:{edge}')
-        border.set(qn('w:val'), attrs['val'])
-        border.set(qn('w:sz'), attrs['sz'])
-        border.set(qn('w:color'), attrs['color'])
-        border.set(qn('w:space'), "0")
-        tcBorders.append(border)
+    for edge in ("left", "top", "right", "bottom"):
+        edge_el = tblBorders.find(qn(f"w:{edge}"))
+        if edge_el is None:
+            edge_el = OxmlElement(f"w:{edge}")
+            tblBorders.append(edge_el)
+        attrs = sides.get(edge, {})
+        for key in ["val", "sz", "color", "space"]:
+            edge_el.set(qn(f"w:{key}"), attrs.get(key, "single" if key == "val" else "4"))

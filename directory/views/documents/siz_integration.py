@@ -1,96 +1,42 @@
-# directory/views/documents/siz_integration.py
-"""
-🔄 Интеграция с существующим механизмом генерации карточки СИЗ
+# Добавьте эту функцию в directory/views/documents/siz_integration.py
 
-Этот модуль содержит функции для интеграции системы генерации документов
-с существующим механизмом генерации карточки учета СИЗ.
-"""
-import os
-import tempfile
-from django.http import FileResponse
-from django.shortcuts import get_object_or_404, redirect
-from django.urls import reverse
-from django.contrib import messages
-from django.utils.translation import gettext as _
-
-from directory.models import Employee
-from directory.models.document_template import DocumentTemplate, GeneratedDocument
-from directory.utils.excel_export import generate_card_excel
-
-
-def generate_siz_card_excel(request, employee_id):
+def generate_siz_card_docx_view(request, employee_id):
     """
-    Генерирует карточку учета СИЗ в формате Excel и сохраняет информацию о генерации.
+    Представление для генерации карточки СИЗ в формате DOCX.
 
     Args:
-        request: Объект запроса
+        request: HttpRequest объект
         employee_id: ID сотрудника
 
     Returns:
-        HttpResponse с файлом Excel или перенаправление с сообщением об ошибке
+        HttpResponse с файлом DOCX
     """
-    try:
-        # Получаем сотрудника
-        employee = get_object_or_404(Employee, id=employee_id)
+    from django.shortcuts import get_object_or_404, redirect
+    from django.contrib import messages
+    from django.http import HttpResponse
+    from directory.models import Employee
+    from directory.document_generators.siz_card_docx_generator import generate_siz_card_docx
 
-        # Генерируем Excel-файл с помощью существующего механизма
-        response = generate_card_excel(request, employee_id)
+    employee = get_object_or_404(Employee, pk=employee_id)
 
-        # Если функция вернула не FileResponse, значит, произошла ошибка
-        if not isinstance(response, FileResponse):
-            messages.error(request, _('Ошибка при генерации карточки учета СИЗ'))
-            return redirect('directory:siz:siz_personal_card', employee_id=employee_id)
+    # Получаем выбранные нормы СИЗ из GET-параметров
+    selected_norm_ids = request.GET.getlist('selected_norms', [])
 
-        # Создаем временный файл для сохранения информации о генерации
-        with tempfile.NamedTemporaryFile(delete=False, suffix='.xlsx') as tmp_file:
-            # Копируем содержимое из response в временный файл
-            for chunk in response.streaming_content:
-                tmp_file.write(chunk)
+    # Создаем контекст с выбранными нормами
+    custom_context = {'selected_norm_ids': selected_norm_ids} if selected_norm_ids else None
 
-            # Получаем или создаем шаблон документа
-            template, created = DocumentTemplate.objects.get_or_create(
-                document_type='siz_card',
-                defaults={
-                    'name': 'Карточка учета СИЗ',
-                    'description': 'Шаблон карточки учета выдачи средств индивидуальной защиты',
-                    'is_active': True,
-                    'is_default': True
-                }
-            )
+    # Генерируем документ
+    document = generate_siz_card_docx(employee, request.user, custom_context)
 
-            # Создаем запись о сгенерированном документе
-            document = GeneratedDocument()
-            document.template = template
-            document.employee = employee
-            document.created_by = request.user if request.user.is_authenticated else None
-
-            # Формируем контекст с данными о генерации
-            document_data = {
-                'generated_at': str(document.created_at),
-                'generated_by': str(document.created_by) if document.created_by else 'Система',
-                'document_type': 'siz_card',
-                'format': 'Excel'
-            }
-            document.document_data = document_data
-
-            # Сохраняем файл в запись
-            document.document_file.save(
-                f'siz_card_{employee.full_name_nominative}_{document.created_at.strftime("%Y%m%d_%H%M%S")}.xlsx',
-                open(tmp_file.name, 'rb')
-            )
-            document.save()
-
-            # Удаляем временный файл
-            try:
-                os.unlink(tmp_file.name)
-            except:
-                pass
-
-            messages.success(request, _('Карточка учета СИЗ успешно сгенерирована'))
-
-            # Перенаправляем на страницу с документом
-            return redirect('directory:documents:document_detail', pk=document.id)
-
-    except Exception as e:
-        messages.error(request, _(f'Ошибка при генерации карточки учета СИЗ: {str(e)}'))
+    if document:
+        # Возвращаем файл для скачивания
+        response = HttpResponse(
+            document.document_file.read(),
+            content_type='application/vnd.openxmlformats-officedocument.wordprocessingml.document'
+        )
+        response['Content-Disposition'] = f'attachment; filename="SIZ_Card_{employee.id}.docx"'
+        return response
+    else:
+        # Обработка ошибки
+        messages.error(request, "Не удалось сгенерировать карточку СИЗ")
         return redirect('directory:siz:siz_personal_card', employee_id=employee_id)

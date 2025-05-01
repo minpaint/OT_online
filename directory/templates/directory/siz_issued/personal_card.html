@@ -5,7 +5,7 @@
 
 {% block extra_css %}
 <style>
-/* Стили для личной карточки учета СИЗ по форме МБ-7 */
+/* Стили для личной карточки учета СИЗ */
 .siz-card-header {
     background-color: #007bff;
     color: white;
@@ -93,7 +93,7 @@
     cursor: pointer;
 }
 
-/* 🆕 Стили для подсветки строк при наведении */
+/* Стили для подсветки строк при наведении */
 .siz-table tbody tr:not(.condition-row):hover {
     background-color: #f2f9ff;
     transition: background-color 0.2s ease;
@@ -109,7 +109,7 @@
     font-style: italic;
 }
 
-/* 🆕 Стили для кнопки выбора всех */
+/* Стили для кнопки выбора всех */
 .select-all-wrapper {
     margin-bottom: 10px;
     text-align: right;
@@ -152,25 +152,6 @@
 
 .siz-table-container {
     overflow-x: auto;
-}
-
-.nav-link.active {
-    background-color: #007bff !important;
-    color: white !important;
-}
-
-.badge-active {
-    background-color: #28a745;
-    color: white;
-}
-
-.badge-returned {
-    background-color: #dc3545;
-    color: white;
-}
-
-.print-btn {
-    margin-bottom: 1rem;
 }
 
 /* Стили для печати */
@@ -231,243 +212,197 @@
 <div class="container">
     <h1>{{ title }}</h1>
 
-    <div class="row mb-3 no-print">
-        <div class="col-md-6">
-            <a href="{% url 'directory:siz:siz_issue_for_employee' employee.id %}" class="btn btn-primary">
-                <i class="fas fa-plus"></i> Выдать новые СИЗ
-            </a>
-            <button onclick="window.print()" class="btn btn-secondary ml-2">
-                <i class="fas fa-print"></i> Распечатать карточку
-            </button>
-            <button id="export-pdf-button" class="btn btn-danger ml-2">
-    <i class="fas fa-file-pdf"></i> Экспорт в PDF
-</button>
-
+    <div class="card">
+        <div class="siz-card-header">
+            ЛИЧНАЯ КАРТОЧКА № {{ employee.id }}
+            учета средств индивидуальной защиты
         </div>
-    </div>
+        <div class="card-body">
+            <!-- Сведения о работнике -->
+            <div class="employee-info-section">
+                <h4 class="section-header">Сведения о работнике</h4>
 
-    <!-- Навигация по вкладкам -->
-    <ul class="nav nav-tabs mb-3 no-print" id="sizTabs" role="tablist">
-        <li class="nav-item">
-            <a class="nav-link active" id="norms-tab" data-toggle="tab" href="#norms" role="tab" aria-controls="norms"
-                aria-selected="true">Лицевая сторона (Нормы выдачи)</a>
-        </li>
-        <li class="nav-item">
-            <a class="nav-link" id="issued-tab" data-toggle="tab" href="#issued" role="tab" aria-controls="issued"
-                aria-selected="false">Оборотная сторона (Выданные СИЗ)
-                <span class="badge badge-primary">{{ issued_items.count }}</span>
-            </a>
-        </li>
-    </ul>
-
-    <!-- Содержимое вкладок -->
-    <div class="tab-content" id="sizTabsContent">
-        <!-- Вкладка "Нормы выдачи" (Лицевая сторона) -->
-        <div class="tab-pane fade show active" id="norms" role="tabpanel" aria-labelledby="norms-tab">
-            <div class="card">
-                <div class="siz-card-header">
-                    ЛИЧНАЯ КАРТОЧКА № {{ employee.id }}
-                    учета средств индивидуальной защиты
+                <div class="row employee-info-row">
+                    <div class="col-md-8 col-sm-7">
+                        <div class="row">
+                            <div class="col-md-4 employee-info-label">Фамилия, собственное имя, отчество (если таковое имеется):</div>
+                            <div class="col-md-8 employee-info-value">{{ employee.full_name_nominative }}</div>
+                        </div>
+                    </div>
+                    <div class="col-md-2 col-sm-2">
+                        <div class="row">
+                            <div class="col-md-4 employee-info-label">Пол</div>
+                            <div class="col-md-8 employee-info-value">{{ gender }}</div>
+                        </div>
+                    </div>
+                    <div class="col-md-2 col-sm-3">
+                        <div class="row">
+                            <div class="col-md-4 employee-info-label">Рост</div>
+                            <div class="col-md-8 employee-info-value">{{ employee.height|default:"" }}</div>
+                        </div>
+                    </div>
                 </div>
-                <div class="card-body">
-                    <!-- Сведения о работнике -->
-                    <div class="employee-info-section">
-                        <h4 class="section-header">Сведения о работнике</h4>
 
-                        <div class="row employee-info-row">
-                            <div class="col-md-8 col-sm-7">
-                                <div class="row">
-                                    <div class="col-md-4 employee-info-label">Фамилия, собственное имя, отчество (если таковое имеется):</div>
-                                    <div class="col-md-8 employee-info-value">{{ employee.full_name_nominative }}</div>
-                                </div>
-                            </div>
-                            <div class="col-md-2 col-sm-2">
-                                <div class="row">
-                                    <div class="col-md-4 employee-info-label">Пол</div>
-                                    <div class="col-md-8 employee-info-value">{{ gender }}</div>
-                                </div>
-                            </div>
-                            <div class="col-md-2 col-sm-3">
-                                <div class="row">
-                                    <div class="col-md-4 employee-info-label">Рост</div>
-                                    <div class="col-md-8 employee-info-value">{{ employee.height|default:"" }}</div>
-                                </div>
-                            </div>
-                        </div>
-
-                        <div class="row employee-info-row">
-                            <div class="col-md-8 col-sm-7">
-                                <div class="row">
-                                    <div class="col-md-4 employee-info-label">Структурное подразделение</div>
-                                    <div class="col-md-8 employee-info-value">
-                                        {% if employee.department %}
-                                            {{ employee.department.name }}
-                                        {% elif employee.subdivision %}
-                                            {{ employee.subdivision.name }}
-                                        {% else %}
-                                            Непродовольственный отдел
-                                        {% endif %}
-                                    </div>
-                                </div>
-                            </div>
-                            <div class="col-md-4 col-sm-5">
-                                <div class="row">
-                                    <div class="col-md-6 employee-info-label">Размер одежды</div>
-                                    <div class="col-md-6 employee-info-value">{{ employee.clothing_size|default:"" }}</div>
-                                </div>
-                            </div>
-                        </div>
-
-                        <div class="row employee-info-row">
-                            <div class="col-md-8 col-sm-7">
-                                <div class="row">
-                                    <div class="col-md-4 employee-info-label">Профессия (должность):</div>
-                                    <div class="col-md-8 employee-info-value">{{ employee.position.position_name }}</div>
-                                </div>
-                            </div>
-                            <div class="col-md-4 col-sm-5">
-                                <div class="row">
-                                    <div class="col-md-6 employee-info-label">Размер обуви</div>
-                                    <div class="col-md-6 employee-info-value">{{ employee.shoe_size|default:"" }}</div>
-                                </div>
-                            </div>
-                        </div>
-
-                        <div class="row employee-info-row">
-                            <div class="col-md-8 col-sm-7">
-                                <div class="row">
-                                    <div class="col-md-4 employee-info-label">Дата поступления на работу</div>
-                                    <div class="col-md-8 employee-info-value">{{ employee.date_of_birth|date:"d.m.Y" }}</div>
-                                </div>
-                            </div>
-                            <div class="col-md-4 col-sm-5">
-                                <div class="row">
-                                    <div class="col-md-6 employee-info-label">СИЗ головы</div>
-                                    <div class="col-md-6 employee-info-value">{{ siz_sizes.headgear }}</div>
-                                </div>
-                            </div>
-                        </div>
-
-                        <div class="row employee-info-row">
-                            <div class="col-md-8 col-sm-7">
-                                <!-- Здесь была строка "Дата изменения профессии (должности)" - удалена -->
-                            </div>
-                            <div class="col-md-4 col-sm-5">
-                                <div class="row">
-                                    <div class="col-md-6 employee-info-label">СИЗОД</div>
-                                    <div class="col-md-6 employee-info-value">{{ siz_sizes.respirator }}</div>
-                                </div>
-                            </div>
-                        </div>
-
-                        <div class="row employee-info-row">
-                            <div class="col-md-8 col-sm-7">
-                                <!-- Дополнительная пустая строка для сохранения симметрии -->
-                            </div>
-                            <div class="col-md-4 col-sm-5">
-                                <div class="row">
-                                    <div class="col-md-6 employee-info-label">СИЗ рук</div>
-                                    <div class="col-md-6 employee-info-value">{{ siz_sizes.gloves }}</div>
-                                </div>
+                <div class="row employee-info-row">
+                    <div class="col-md-8 col-sm-7">
+                        <div class="row">
+                            <div class="col-md-4 employee-info-label">Структурное подразделение</div>
+                            <div class="col-md-8 employee-info-value">
+                                {% if employee.department %}
+                                    {{ employee.department.name }}
+                                {% elif employee.subdivision %}
+                                    {{ employee.subdivision.name }}
+                                {% else %}
+                                    Непродовольственный отдел
+                                {% endif %}
                             </div>
                         </div>
                     </div>
+                    <div class="col-md-4 col-sm-5">
+                        <div class="row">
+                            <div class="col-md-6 employee-info-label">Размер одежды</div>
+                            <div class="col-md-6 employee-info-value">{{ employee.clothing_size|default:"" }}</div>
+                        </div>
+                    </div>
+                </div>
 
-                    <!-- Предусмотрено по установленным нормам -->
-                    <div class="norms-section">
-                        <h4 class="section-header mt-3 mb-3">Предусмотрено по установленным нормам</h4>
+                <div class="row employee-info-row">
+                    <div class="col-md-8 col-sm-7">
+                        <div class="row">
+                            <div class="col-md-4 employee-info-label">Профессия (должность):</div>
+                            <div class="col-md-8 employee-info-value">{{ employee.position.position_name }}</div>
+                        </div>
+                    </div>
+                    <div class="col-md-4 col-sm-5">
+                        <div class="row">
+                            <div class="col-md-6 employee-info-label">Размер обуви</div>
+                            <div class="col-md-6 employee-info-value">{{ employee.shoe_size|default:"" }}</div>
+                        </div>
+                    </div>
+                </div>
 
-                        <!-- Форма для выбора СИЗ к выдаче -->
-                        <form id="issue-siz-form" method="post" action="{% url 'directory:siz:siz_issue_for_employee' employee.id %}">
-                            {% csrf_token %}
-                            <input type="hidden" name="issue_selected_siz" value="1">
+                <div class="row employee-info-row">
+                    <div class="col-md-8 col-sm-7">
+                        <div class="row">
+                            <div class="col-md-4 employee-info-label">Дата поступления на работу</div>
+                            <div class="col-md-8 employee-info-value">{{ employee.date_of_birth|date:"d.m.Y" }}</div>
+                        </div>
+                    </div>
+                    <div class="col-md-4 col-sm-5">
+                        <div class="row">
+                            <div class="col-md-6 employee-info-label">СИЗ головы</div>
+                            <div class="col-md-6 employee-info-value">{{ siz_sizes.headgear }}</div>
+                        </div>
+                    </div>
+                </div>
 
-                            <!-- 🆕 Кнопка "Выбрать все/Снять выделение" -->
-                            <div class="select-all-wrapper no-print">
-                                <button type="button" id="select-all-btn" class="select-all-btn">
-                                    <i class="fas fa-check-square"></i> Снять выделение
-                                </button>
-                            </div>
+                <div class="row employee-info-row">
+                    <div class="col-md-8 col-sm-7">
+                        <!-- Дополнительная пустая строка для сохранения симметрии -->
+                    </div>
+                    <div class="col-md-4 col-sm-5">
+                        <div class="row">
+                            <div class="col-md-6 employee-info-label">СИЗОД</div>
+                            <div class="col-md-6 employee-info-value">{{ siz_sizes.respirator }}</div>
+                        </div>
+                    </div>
+                </div>
 
-                            <table class="table table-bordered siz-table">
-                                <thead>
-                                    <tr>
-                                        <th class="siz-name">Наименование средств индивидуальной защиты</th>
-                                        <th class="siz-classification">Классификация (маркировка) средства индивидуальной защиты по защитным свойствам</th>
-                                        <th class="siz-unit">Единица измерения</th>
-                                        <th class="siz-quantity">Количество</th>
-                                        <th class="siz-period">Срок носки в месяцах</th>
-                                        <th class="checkbox-column">Выдать</th>
-                                    </tr>
-                                </thead>
-                                <tbody>
-                                    {% for norm in base_norms %}
-                                    <tr class="siz-item-row" data-id="{{ norm.id }}">
-                                        <td class="siz-name">{{ norm.siz.name }}</td>
-                                        <td class="siz-classification">{{ norm.siz.classification }}</td>
-                                        <td class="siz-unit">{{ norm.siz.unit }}</td>
-                                        <td class="siz-quantity">{{ norm.quantity }}</td>
-                                        <td class="siz-period">
-                                            {% if norm.siz.wear_period == 0 %}
-                                            До износа
-                                            {% else %}
-                                            {{ norm.siz.wear_period }}
-                                            {% endif %}
-                                        </td>
-                                        <td class="checkbox-column">
-                                            <input type="checkbox" name="selected_norms" value="{{ norm.id }}" class="siz-checkbox" checked>
-                                        </td>
-                                    </tr>
-                                    {% endfor %}
-
-                                    {% for group in condition_groups %}
-                                    <tr class="condition-row">
-                                        <td colspan="5">{{ group.name }}:</td>
-                                        <td class="checkbox-column"></td>
-                                    </tr>
-                                    {% for norm in group.norms %}
-                                    <tr class="siz-item-row" data-id="{{ norm.id }}">
-                                        <td class="siz-name">{{ norm.siz.name }}</td>
-                                        <td class="siz-classification">{{ norm.siz.classification }}</td>
-                                        <td class="siz-unit">{{ norm.siz.unit }}</td>
-                                        <td class="siz-quantity">{{ norm.quantity }}</td>
-                                        <td class="siz-period">
-                                            {% if norm.siz.wear_period == 0 %}
-                                            До износа
-                                            {% else %}
-                                            {{ norm.siz.wear_period }}
-                                            {% endif %}
-                                        </td>
-                                        <td class="checkbox-column">
-                                            <input type="checkbox" name="selected_norms" value="{{ norm.id }}" class="siz-checkbox" checked>
-                                        </td>
-                                    </tr>
-                                    {% endfor %}
-                                    {% endfor %}
-                                </tbody>
-                            </table>
-
-                            <div class="text-center mt-3 no-print">
-                                <button type="submit" class="btn btn-success issue-siz-button">
-                                    <i class="fas fa-check-circle"></i> Выдать выбранные СИЗ
-                                </button>
-                            </div>
-                        </form>
+                <div class="row employee-info-row">
+                    <div class="col-md-8 col-sm-7">
+                        <!-- Дополнительная пустая строка для сохранения симметрии -->
+                    </div>
+                    <div class="col-md-4 col-sm-5">
+                        <div class="row">
+                            <div class="col-md-6 employee-info-label">СИЗ рук</div>
+                            <div class="col-md-6 employee-info-value">{{ siz_sizes.gloves }}</div>
+                        </div>
                     </div>
                 </div>
             </div>
-        </div>
 
-        <!-- Вкладка "Выданные СИЗ" (Оборотная сторона) остается без изменений -->
-        <div class="tab-pane fade" id="issued" role="tabpanel" aria-labelledby="issued-tab">
-            <!-- Содержимое второй вкладки остается без изменений -->
-            <!-- ... -->
-        </div>
-    </div>
+            <!-- Предусмотрено по установленным нормам -->
+            <div class="norms-section">
+                <h4 class="section-header mt-3 mb-3">Предусмотрено по установленным нормам</h4>
 
-    <!-- Блок для подписи (при печати) остается без изменений -->
-    <div class="d-none d-print-block mt-5">
-        <!-- ... -->
+                <!-- Форма для выбора СИЗ к выдаче -->
+                <form id="issue-siz-form" method="get" action="{% url 'directory:siz:siz_card' employee.id %}">
+                    <!-- Кнопка "Выбрать все/Снять выделение" -->
+                    <div class="select-all-wrapper no-print">
+                        <button type="button" id="select-all-btn" class="select-all-btn">
+                            <i class="fas fa-check-square"></i> Снять выделение
+                        </button>
+                    </div>
+
+                    <table class="table table-bordered siz-table">
+                        <thead>
+                            <tr>
+                                <th class="siz-name">Наименование средств индивидуальной защиты</th>
+                                <th class="siz-classification">Классификация (маркировка) средства индивидуальной защиты по защитным свойствам</th>
+                                <th class="siz-unit">Единица измерения</th>
+                                <th class="siz-quantity">Количество</th>
+                                <th class="siz-period">Срок носки в месяцах</th>
+                                <th class="checkbox-column">Выдать</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            {% for norm in base_norms %}
+                            <tr class="siz-item-row" data-id="{{ norm.id }}">
+                                <td class="siz-name">{{ norm.siz.name }}</td>
+                                <td class="siz-classification">{{ norm.siz.classification }}</td>
+                                <td class="siz-unit">{{ norm.siz.unit }}</td>
+                                <td class="siz-quantity">{{ norm.quantity }}</td>
+                                <td class="siz-period">
+                                    {% if norm.siz.wear_period == 0 %}
+                                    До износа
+                                    {% else %}
+                                    {{ norm.siz.wear_period }}
+                                    {% endif %}
+                                </td>
+                                <td class="checkbox-column">
+                                    <input type="checkbox" name="selected_norms" value="{{ norm.id }}" class="siz-checkbox" checked>
+                                </td>
+                            </tr>
+                            {% endfor %}
+
+                            {% for group in condition_groups %}
+                            <tr class="condition-row">
+                                <td colspan="5">{{ group.name }}:</td>
+                                <td class="checkbox-column"></td>
+                            </tr>
+                            {% for norm in group.norms %}
+                            <tr class="siz-item-row" data-id="{{ norm.id }}">
+                                <td class="siz-name">{{ norm.siz.name }}</td>
+                                <td class="siz-classification">{{ norm.siz.classification }}</td>
+                                <td class="siz-unit">{{ norm.siz.unit }}</td>
+                                <td class="siz-quantity">{{ norm.quantity }}</td>
+                                <td class="siz-period">
+                                    {% if norm.siz.wear_period == 0 %}
+                                    До износа
+                                    {% else %}
+                                    {{ norm.siz.wear_period }}
+                                    {% endif %}
+                                </td>
+                                <td class="checkbox-column">
+                                    <input type="checkbox" name="selected_norms" value="{{ norm.id }}" class="siz-checkbox" checked>
+                                </td>
+                            </tr>
+                            {% endfor %}
+                            {% endfor %}
+                        </tbody>
+                    </table>
+
+                    <div class="text-center mt-3 no-print">
+                        <button type="submit" class="btn btn-primary">
+                            <i class="fas fa-file-word"></i> Скачать карточку учета СИЗ
+                        </button>
+                        <button type="button" onclick="window.print()" class="btn btn-secondary ml-2">
+                            <i class="fas fa-print"></i> Распечатать карточку
+                        </button>
+                    </div>
+                </form>
+            </div>
+        </div>
     </div>
 </div>
 {% endblock %}
@@ -475,15 +410,6 @@
 {% block extra_js %}
 <script>
     document.addEventListener('DOMContentLoaded', function() {
-        // Код для работы с вкладками
-        const hash = window.location.hash;
-        if (hash) {
-            const tab = document.querySelector(`a[href="${hash}"]`);
-            if (tab) {
-                tab.click();
-            }
-        }
-
         // Валидация формы выдачи СИЗ
         const form = document.getElementById('issue-siz-form');
         if (form) {
@@ -496,35 +422,7 @@
             });
         }
 
-        // Добавляем обработчик для кнопки экспорта в PDF
-        const exportPdfBtn = document.getElementById('export-pdf-button');
-        if (exportPdfBtn) {
-            exportPdfBtn.addEventListener('click', function(e) {
-                e.preventDefault();
-
-                // Получаем все выбранные чекбоксы
-                const checkboxes = document.querySelectorAll('input[name="selected_norms"]:checked');
-
-                // Формируем URL с параметрами
-                let url = '{% url "directory:siz:siz_personal_card_pdf" employee.id %}';
-
-                // Добавляем параметры выбранных элементов
-                if (checkboxes.length > 0) {
-                    url += '?';
-                    checkboxes.forEach(function(checkbox, index) {
-                        url += `selected_norms=${checkbox.value}`;
-                        if (index < checkboxes.length - 1) {
-                            url += '&';
-                        }
-                    });
-                }
-
-                // Переходим на страницу с PDF
-                window.location.href = url;
-            });
-        }
-
-        // 🆕 Функция для выбора всех/снятия выделения с чекбоксов
+        // Функция для выбора всех/снятия выделения с чекбоксов
         const selectAllBtn = document.getElementById('select-all-btn');
         if (selectAllBtn) {
             selectAllBtn.addEventListener('click', function() {
@@ -538,7 +436,7 @@
                 updateSelectAllButtonText(!allChecked);
             });
 
-            // 🆕 Функция обновления текста кнопки в зависимости от состояния чекбоксов
+            // Функция обновления текста кнопки в зависимости от состояния чекбоксов
             function updateSelectAllButtonText(allChecked) {
                 if (allChecked) {
                     selectAllBtn.innerHTML = '<i class="fas fa-check-square"></i> Снять выделение';
@@ -547,7 +445,7 @@
                 }
             }
 
-            // 🆕 Проверка, все ли чекбоксы выбраны
+            // Проверка, все ли чекбоксы выбраны
             function areAllCheckboxesChecked(checkboxes) {
                 for (const checkbox of checkboxes) {
                     if (!checkbox.checked) return false;
@@ -555,7 +453,7 @@
                 return true;
             }
 
-            // 🆕 Слушатель изменений для чекбоксов
+            // Слушатель изменений для чекбоксов
             document.querySelectorAll('.siz-checkbox').forEach(checkbox => {
                 checkbox.addEventListener('change', function() {
                     const checkboxes = document.querySelectorAll('.siz-checkbox');
@@ -564,7 +462,7 @@
                 });
             });
 
-            // 🆕 Обработка клика на строку для переключения чекбокса
+            // Обработка клика на строку для переключения чекбокса
             document.querySelectorAll('.siz-item-row').forEach(row => {
                 row.addEventListener('click', function(e) {
                     // Проверяем, что клик был не на самом чекбоксе и не на другом интерактивном элементе
