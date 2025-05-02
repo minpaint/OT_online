@@ -2,10 +2,10 @@ from django.urls import path, include, reverse_lazy
 from django.contrib.auth import views as auth_views
 from django.shortcuts import redirect
 from django.contrib.auth import logout
-from directory.views.documents import siz_integration
 from .views import siz
 from .views import siz_issued
 from directory.views import commissions
+from directory.views.documents.siz_integration import generate_siz_card_docx_view
 from directory.views import (
     HomePageView,
     EmployeeListView,
@@ -120,13 +120,14 @@ siz_patterns = [
     path('', siz.SIZListView.as_view(), name='siz_list'),
     path('norms/create/', siz.SIZNormCreateView.as_view(), name='siznorm_create'),
     path('norms/api/', siz.siz_by_position_api, name='siz_api'),
-    path('personal-card/<int:employee_id>/pdf/', siz_issued.export_personal_card_pdf, name='siz_personal_card_pdf'),
     path('issue-selected/<int:employee_id>/', siz_issued.issue_selected_siz, name='issue_selected_siz'),
     path('issue/', siz_issued.SIZIssueFormView.as_view(), name='siz_issue'),
     path('issue/employee/<int:employee_id>/', siz_issued.SIZIssueFormView.as_view(), name='siz_issue_for_employee'),
     path('personal-card/<int:employee_id>/', siz_issued.SIZPersonalCardView.as_view(), name='siz_personal_card'),
     path('return/<int:siz_issued_id>/', siz_issued.SIZIssueReturnView.as_view(), name='siz_return'),
-    path('card/<int:employee_id>/', siz_integration.generate_siz_card_docx_view, name='siz_card'),
+    path('siz/siz-card/<int:employee_id>/', generate_siz_card_docx_view, name='siz_card'),
+
+
 
 ]
 

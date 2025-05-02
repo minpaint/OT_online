@@ -3,7 +3,7 @@ from django.views.generic import FormView
 from django.contrib.auth.mixins import LoginRequiredMixin
 from django.shortcuts import get_object_or_404, redirect
 from django.contrib import messages
-from django.http import HttpResponse, HttpRequest  # Добавлен HttpRequest
+from django.http import HttpResponse, HttpRequest
 import os
 import tempfile
 import zipfile
@@ -21,7 +21,7 @@ from directory.document_generators.protocol_generator import generate_knowledge_
 from directory.document_generators.familiarization_generator import generate_familiarization_document
 from directory.document_generators.ot_card_generator import generate_personal_ot_card
 from directory.document_generators.journal_example_generator import generate_journal_example
-from directory.views.siz_issued import export_personal_card_pdf  # Импорт для PDF карточки СИЗ
+from directory.document_generators.siz_card_docx_generator import generate_siz_card_docx  # Импорт для DOCX карточки СИЗ
 # --- --- ---
 
 from django.conf import settings
@@ -171,7 +171,6 @@ class DocumentSelectionView(LoginRequiredMixin, FormView):
         # Генерируем все выбранные документы и собираем их для архива
         generated_documents = []
         files_to_archive = []
-        has_siz_card = False
 
         logger.info(f"Начинается генерация документов для {employee.full_name_nominative}, типы: {document_types}")
 
@@ -186,11 +185,6 @@ class DocumentSelectionView(LoginRequiredMixin, FormView):
             return True
 
         for doc_type in document_types:
-            # Обрабатываем карточку СИЗ отдельно
-            if doc_type == 'siz_card':
-                has_siz_card = True
-                continue  # Обработаем ниже
-
             # Проверяем шаблон перед генерацией (опционально)
             # if not check_template_file(doc_type, employee):
             #     messages.warning(self.request, f"Пропущен документ типа {doc_type}: шаблон не найден.")
@@ -219,56 +213,6 @@ class DocumentSelectionView(LoginRequiredMixin, FormView):
                 logger.error(f"Критическая ошибка при вызове генератора для типа {doc_type}: {str(e)}", exc_info=True)
                 messages.warning(self.request, f"Ошибка при генерации документа типа {doc_type}: {str(e)}")
                 continue  # Переходим к следующему документу
-
-        # --- Обработка карточки СИЗ (PDF) ---
-        if has_siz_card:
-            try:
-                # Используем сохраненный employee_id, а не переменную из цикла
-                logger.info(f"Начинаем генерацию карточки СИЗ (PDF) для сотрудника ID: {employee_id}")
-
-                # Создаем временный файл для PDF
-                with tempfile.NamedTemporaryFile(delete=False, suffix='.pdf') as tmp_file:
-                    # Подготавливаем фиктивный request, т.к. export_personal_card_pdf его ожидает
-                    fake_request = HttpRequest()
-                    fake_request.user = self.request.user
-                    fake_request.method = 'GET'  # Укажем метод
-
-                    # Вызываем функцию генерации PDF, используя сохраненный employee_id
-                    pdf_response = export_personal_card_pdf(fake_request, employee_id)
-
-                    # Проверяем, что вернулся успешный HttpResponse с содержимым
-                    if isinstance(pdf_response, HttpResponse) and pdf_response.status_code == 200:
-                        # Сохраняем содержимое PDF в файл
-                        pdf_content = b''.join(pdf_response.streaming_content) if hasattr(pdf_response,
-                                                                                          'streaming_content') else pdf_response.content
-                        if pdf_content:
-                            tmp_file.write(pdf_content)
-                            logger.info(
-                                f"PDF СИЗ записан во временный файл: {tmp_file.name}, размер: {len(pdf_content)}")
-                        else:
-                            logger.error("Содержимое PDF ответа для СИЗ пустое.")
-                            raise ValueError("Содержимое PDF ответа для СИЗ пустое.")
-                    else:
-                        status = pdf_response.status_code if isinstance(pdf_response, HttpResponse) else 'N/A'
-                        logger.error(f"Функция export_personal_card_pdf вернула ошибку. Статус: {status}")
-                        raise ValueError(f"Ошибка генерации PDF СИЗ (статус: {status})")
-
-                # Проверяем размер файла после закрытия
-                if os.path.getsize(tmp_file.name) > 0:
-                    # Добавляем файл в список для архивирования
-                    pdf_filename = f'siz_card_{employee.full_name_nominative.split()[0]}_{datetime.datetime.now().strftime("%Y%m%d_%H%M%S")}.pdf'
-                    files_to_archive.append((tmp_file.name, pdf_filename))
-                    logger.info(f"Добавлен PDF-файл СИЗ в список для архива: {tmp_file.name}")
-                else:
-                    logger.error("PDF-файл СИЗ имеет нулевой размер после записи.")
-                    messages.warning(self.request, "Ошибка при генерации PDF-файла СИЗ: файл пуст")
-                    try:  # Удаляем пустой временный файл
-                        os.unlink(tmp_file.name)
-                    except OSError:
-                        pass
-            except Exception as e:
-                logger.error(f"Ошибка при генерации карточки СИЗ (PDF): {str(e)}", exc_info=True)
-                messages.warning(self.request, f"Ошибка при генерации карточки СИЗ (PDF): {str(e)}")
 
         # --- Создание и отправка архива ---
         if not files_to_archive:
@@ -316,27 +260,11 @@ class DocumentSelectionView(LoginRequiredMixin, FormView):
             # Удаляем архив после отправки
             os.unlink(zip_path)
 
-            # Очищаем временные файлы (PDF СИЗ)
-            for file_path, _ in files_to_archive:
-                # Удаляем только временные PDF файлы, созданные в tempfile
-                if file_path.startswith(tempfile.gettempdir()) and file_path.endswith('.pdf'):
-                    try:
-                        os.unlink(file_path)
-                    except OSError as e:
-                        logger.error(f"Не удалось удалить временный файл {file_path}: {e}")
-
             return response
 
         except Exception as e:
             logger.error(f"Ошибка при создании или отправке архива: {str(e)}", exc_info=True)
             messages.error(self.request, f"Ошибка при создании архива: {str(e)}")
-            # Попытка удалить временные файлы даже при ошибке архивации
-            for file_path, _ in files_to_archive:
-                if file_path.startswith(tempfile.gettempdir()) and file_path.endswith('.pdf'):
-                    try:
-                        os.unlink(file_path)
-                    except OSError:
-                        pass
             return self.form_invalid(form)
 
     def _generate_document(self, doc_type, employee) -> Optional[GeneratedDocument]:
@@ -347,6 +275,7 @@ class DocumentSelectionView(LoginRequiredMixin, FormView):
             'doc_familiarization': generate_familiarization_document,
             'personal_ot_card': generate_personal_ot_card,
             'journal_example': generate_journal_example,
+            'siz_card': generate_siz_card_docx,  # Добавили генератор DOCX для СИЗ
         }
 
         generator_func = generator_map.get(doc_type)
