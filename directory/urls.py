@@ -42,6 +42,9 @@ from directory.autocomplete_views import (
     EmployeeForCommissionAutocomplete,
     CommissionAutocomplete,
 )
+from django.urls import path
+from directory.views.hiring_wizard import HiringWizardView
+from directory.views.api import position_needs_step_info
 
 app_name = 'directory'
 
@@ -141,6 +144,7 @@ hiring_patterns = [
     path('<int:pk>/delete/', hiring.HiringDeleteView.as_view(), name='hiring_delete'),
     path('create-from-employee/<int:employee_id>/', hiring.CreateHiringFromEmployeeView.as_view(),
          name='create_from_employee'),
+    path('hiring/wizard/', HiringWizardView.as_view(), name='hiring_wizard'),
 ]
 
 # 🏥 Медосмотры
@@ -238,4 +242,6 @@ urlpatterns = [
          name='api_employee_medical_status'),
     path('api/medical/position/<int:position_id>/norms/', medical_examination.api_position_medical_norms,
          name='api_position_medical_norms'),
+# API для проверки требуемых шагов
+    path('api/position/<int:position_id>/needs_step_info/', position_needs_step_info, name='position_needs_step_info'),
 ]

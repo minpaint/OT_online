@@ -42,11 +42,69 @@ margin-top: 0.5rem;
 width: 100%;
 }
 }
+
+/* Стили для карточек быстрых действий */
+.quick-actions-card {
+margin-bottom: 1.5rem;
+}
+
+.quick-actions-card .card-header {
+background-color: #007bff;
+color: white;
+font-weight: bold;
+}
+
+.quick-action-btn {
+margin-bottom: 0.5rem;
+transition: all 0.2s ease;
+}
+
+.quick-action-btn:hover {
+transform: translateY(-2px);
+box-shadow: 0 4px 8px rgba(0,0,0,0.1);
+}
+
+.wizard-btn {
+background-color: #6f42c1;
+border-color: #6f42c1;
+}
+
+.wizard-btn:hover {
+background-color: #5a32a3;
+border-color: #5a32a3;
+}
 </style>
 {% endblock %}
 
 {% block content %}
 <div class="container-fluid">
+
+<!-- 📋 Секция для кнопок быстрых действий -->
+<div class="card quick-actions-card">
+    <div class="card-header">
+        <h5><i class="fas fa-bolt"></i> Быстрые действия</h5>
+    </div>
+    <div class="card-body">
+        <div class="row">
+            <div class="col-md-4 mb-2">
+                <a href="{% url 'directory:employees:employee_hire' %}" class="btn btn-success btn-block quick-action-btn">
+                    <i class="fas fa-user-plus"></i> Принять на работу (стандартная форма)
+                </a>
+            </div>
+            <div class="col-md-4 mb-2">
+                <a href="{% url 'directory:hiring:hiring_wizard' %}" class="btn wizard-btn text-white btn-block quick-action-btn">
+                    <i class="fas fa-magic"></i> Принять на работу (многошаговая форма)
+                </a>
+            </div>
+            <div class="col-md-4 mb-2">
+                <a href="{% url 'directory:hiring:hiring_list' %}" class="btn btn-info btn-block quick-action-btn">
+                    <i class="fas fa-list"></i> Список приемов на работу
+                </a>
+            </div>
+        </div>
+    </div>
+</div>
+
  <!-- 🔍 Форма поиска сотрудников -->
  <div class="card mb-3">
  <div class="card-body">
@@ -119,6 +177,8 @@ width: 100%;
  <span data-employee-update-url="{% url 'directory:employees:employee_update' 0 %}"></span>
  <!-- Добавляем URL для генерации документов -->
  <span data-document-selection-url="{% url 'directory:documents:document_selection' 0 %}"></span>
+ <!-- Добавляем URL для многошаговой формы -->
+ <span data-hiring-wizard-url="{% url 'directory:hiring:hiring_wizard' %}"></span>
  </div>
 
  <!-- 📋 Таблица сотрудников -->
@@ -400,6 +460,7 @@ document.addEventListener('DOMContentLoaded', function() {
 const sizPersonalCardUrl = document.querySelector('[data-siz-personal-card-url]').getAttribute('data-siz-personal-card-url');
 const sizIssueUrl = document.querySelector('[data-siz-issue-url]').getAttribute('data-siz-issue-url');
 const employeeUpdateUrl = document.querySelector('[data-employee-update-url]').getAttribute('data-employee-update-url');
+const hiringWizardUrl = document.querySelector('[data-hiring-wizard-url]').getAttribute('data-hiring-wizard-url');
 
 // Получаем элементы интерфейса
  const checkboxes = document.querySelectorAll('.employee-checkbox');

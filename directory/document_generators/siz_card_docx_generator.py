@@ -65,7 +65,7 @@ def generate_siz_card_docx(
         # 4. Генерация случайных размеров СИЗ
         ppe_head, ppe_gloves, sizod, _ = _generate_random_ppe_sizes(gender)
 
-        # 5. Получение выбранных норм СИЗ
+        # 5. Получаем выбранные нормы СИЗ из GET-параметров (для оборотной стороны)
         selected_norm_ids = []
         if custom_context:
             if 'selected_norm_ids' in custom_context:
@@ -73,31 +73,32 @@ def generate_siz_card_docx(
             elif 'selected_norms' in custom_context:
                 selected_norm_ids = custom_context['selected_norms']
 
-        # 6. Если нормы не выбраны, включаем все нормы для должности
-        if not selected_norm_ids and hasattr(employee, 'position') and employee.position:
-            logger.info("Нормы не выбраны, используем все нормы для должности")
-            selected_norm_ids = list(SIZNorm.objects.filter(
+        # 6. Получаем ВСЕ нормы СИЗ для лицевой стороны (независимо от выбора)
+        all_norms_data = []
+        if employee.position:
+            all_norms_query = SIZNorm.objects.filter(
                 position=employee.position
-            ).values_list('id', flat=True))
-
-        # 7. Получение данных норм СИЗ
-        norms_data = []
-        if employee.position and selected_norm_ids:
-            norm_query = SIZNorm.objects.filter(
-                id__in=selected_norm_ids
             ).select_related('siz')
 
-            for norm in norm_query:
-                norms_data.append({
+            for norm in all_norms_query:
+                all_norms_data.append({
                     "name": norm.siz.name,
                     "classification": norm.siz.classification,
                     "unit": norm.siz.unit,
                     "quantity": norm.quantity,
                     "wear_period": "До износа" if norm.siz.wear_period == 0 else str(norm.siz.wear_period),
-                    "condition": norm.condition  # Добавляем условие для группировки
+                    "condition": norm.condition,
+                    "id": norm.id  # Добавляем ID для дальнейшего использования
                 })
 
-            logger.info(f"Найдено {len(norms_data)} норм СИЗ для сотрудника")
+        # 7. Получаем ВЫБРАННЫЕ нормы СИЗ для оборотной стороны
+        selected_norms_data = []
+        if selected_norm_ids:
+            # Фильтруем полный список по выбранным ID
+            selected_norms_data = [norm for norm in all_norms_data if str(norm["id"]) in selected_norm_ids]
+        else:
+            # Если ID не выбраны, используем все нормы (по умолчанию)
+            selected_norms_data = all_norms_data.copy()
 
         # 8. Формирование контекста с заглушками для недостающих данных
         department_name = context.get("department", "")
@@ -134,9 +135,9 @@ def generate_siz_card_docx(
             "NORMS_TABLE": "NORMS_TABLE_MARKER",
             "ISSUED_TABLE": "ISSUED_TABLE_MARKER",
 
-            # Данные для таблиц
-            "siz_norms": norms_data,
-            "issued_siz": norms_data  # Используем те же данные для оборотной стороны
+            # Данные для таблиц - разделяем для лицевой и оборотной стороны
+            "siz_norms": all_norms_data,  # ВСЕ СИЗ для лицевой стороны
+            "issued_siz": selected_norms_data  # ВЫБРАННЫЕ СИЗ для оборотной стороны
         })
 
         # 9. Добавление пользовательского контекста
@@ -205,6 +206,20 @@ def _generate_random_ppe_sizes(gender: str) -> Tuple[str, str, str, str]:
     return str(headgear), str(gloves), respirator, gas_mask
 
 
+def _gender_from_patronymic(patronymic: str) -> str:
+    """Определяет пол по отчеству."""
+    if not patronymic:
+        return "Мужской"  # По умолчанию
+
+    if patronymic.endswith(("на", "вна", "чна", "кызы", "зы")):
+        return "Женский"
+    if patronymic.endswith(("ич", "ыч", "оглы", "улы", "лы")):
+        return "Мужской"
+
+    # По умолчанию считаем мужским
+    return "Мужской"
+
+
 # =========================
 #   ПОСТ-ОБРАБОТКА ТАБЛИЦ
 # =========================
@@ -212,39 +227,37 @@ def _generate_random_ppe_sizes(gender: str) -> Tuple[str, str, str, str]:
 def process_siz_card_tables(doc, context):
     """Обрабатывает таблицы в сгенерированном документе."""
     try:
-        # Получаем данные норм СИЗ
-        norms_data = context.get("siz_norms", [])
-        if not norms_data:
-            logger.warning("Нет данных о нормах СИЗ для обработки таблиц")
-            return doc
-
         docx_document = doc.docx
 
-        # Обрабатываем лицевую сторону
-        processed_front = False
-        for table in docx_document.tables:
-            row_idx, cell_idx = _find_marker_in_table(table, "NORMS_TABLE_MARKER")
-            if row_idx is not None:
-                # Обработка таблицы лицевой стороны
-                process_front_table(table, row_idx, cell_idx, norms_data)
-                processed_front = True
-                break
+        # Обрабатываем лицевую сторону с ПОЛНЫМ списком норм
+        norms_data = context.get("siz_norms", [])
+        if norms_data:
+            processed_front = False
+            for table in docx_document.tables:
+                row_idx, cell_idx = _find_marker_in_table(table, "NORMS_TABLE_MARKER")
+                if row_idx is not None:
+                    # Обработка таблицы лицевой стороны
+                    process_front_table(table, row_idx, cell_idx, norms_data)
+                    processed_front = True
+                    break
 
-        if not processed_front:
-            logger.warning("Маркер NORMS_TABLE_MARKER не найден в таблицах")
+            if not processed_front:
+                logger.warning("Маркер NORMS_TABLE_MARKER не найден в таблицах")
 
-        # Обрабатываем оборотную сторону
-        processed_back = False
-        for table in docx_document.tables:
-            row_idx, cell_idx = _find_marker_in_table(table, "ISSUED_TABLE_MARKER")
-            if row_idx is not None:
-                # Обработка таблицы оборотной стороны
-                process_back_table(table, row_idx, cell_idx, norms_data)
-                processed_back = True
-                break
+        # Обрабатываем оборотную сторону только с ВЫБРАННЫМИ нормами
+        issued_data = context.get("issued_siz", [])
+        if issued_data:
+            processed_back = False
+            for table in docx_document.tables:
+                row_idx, cell_idx = _find_marker_in_table(table, "ISSUED_TABLE_MARKER")
+                if row_idx is not None:
+                    # Обработка таблицы оборотной стороны
+                    process_back_table(table, row_idx, cell_idx, issued_data)
+                    processed_back = True
+                    break
 
-        if not processed_back:
-            logger.warning("Маркер ISSUED_TABLE_MARKER не найден в таблицах")
+            if not processed_back:
+                logger.warning("Маркер ISSUED_TABLE_MARKER не найден в таблицах")
 
         return doc
 
@@ -513,20 +526,6 @@ def _format_header_row(header_row):
                     run.font.bold = True  # Делаем заголовки полужирными
     except Exception as e:
         logger.error(f"Ошибка при форматировании заголовков: {str(e)}")
-
-
-def _gender_from_patronymic(patronymic: str) -> str:
-    """Определяет пол по отчеству."""
-    if not patronymic:
-        return "Мужской"  # По умолчанию
-
-    if patronymic.endswith(("на", "вна", "чна", "кызы", "зы")):
-        return "Женский"
-    if patronymic.endswith(("ич", "ыч", "оглы", "улы", "лы")):
-        return "Мужской"
-
-    # По умолчанию считаем мужским
-    return "Мужской"
 
 
 def _find_marker_in_table(table, marker):

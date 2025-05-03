@@ -22,6 +22,12 @@ from .medical_examination import (
     MedicalNormImportForm,
     MedicalNormExportForm
 )
+# Добавляем импорт форм для многошаговой формы приема на работу
+from .hiring_wizard import (
+    Step1BasicInfoForm,
+    Step2MedicalInfoForm,
+    Step3SIZInfoForm
+)
 
 __all__ = [
     "DepartmentForm",
@@ -48,4 +54,8 @@ __all__ = [
     "EmployeeMedicalExaminationSearchForm",
     "MedicalNormImportForm",
     "MedicalNormExportForm",
+    # Добавляем формы многошагового визарда в список экспорта
+    "Step1BasicInfoForm",
+    "Step2MedicalInfoForm",
+    "Step3SIZInfoForm",
 ]
