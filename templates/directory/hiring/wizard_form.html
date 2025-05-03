@@ -1,0 +1,212 @@
+<!-- templates/directory/hiring/wizard_form.html -->
+{% extends 'base.html' %}
+{% load static %}
+{% load crispy_forms_tags %}
+
+{% block title %}{{ title }}{% endblock %}
+
+{% block extra_css %}
+<style>
+    .wizard-steps {
+        display: flex;
+        margin-bottom: 30px;
+        align-items: center;
+        justify-content: center;
+    }
+    
+    .wizard-step {
+        width: 30px;
+        height: 30px;
+        border-radius: 50%;
+        background-color: #e9e9e9;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        margin: 0 20px;
+        position: relative;
+        z-index: 1;
+    }
+    
+    .wizard-step-active {
+        background-color: #007bff;
+        color: #fff;
+    }
+    
+    .wizard-step-completed {
+        background-color: #28a745;
+        color: #fff;
+    }
+    
+    .wizard-step::before {
+        content: '';
+        position: absolute;
+        height: 3px;
+        width: 50px;
+        background-color: #e9e9e9;
+        right: 30px;
+        z-index: -1;
+    }
+    
+    .wizard-step:first-child::before {
+        display: none;
+    }
+    
+    .wizard-step-completed::before,
+    .wizard-step-active::before {
+        background-color: #28a745;
+    }
+    
+    .wizard-step-label {
+        position: absolute;
+        bottom: -25px;
+        left: 50%;
+        transform: translateX(-50%);
+        white-space: nowrap;
+        font-size: 14px;
+    }
+    
+    .wizard-nav-buttons {
+        display: flex;
+        justify-content: space-between;
+        margin-top: 30px;
+    }
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="container">
+    <h1 class="mt-4 mb-4">{{ title }}</h1>
+    
+    <!-- Шаги визарда -->
+    <div class="wizard-steps">
+        {% with wizard_steps=wizard.steps %}
+            {% for step in wizard.steps.all %}
+                <div class="wizard-step {% if step == wizard.steps.current %}wizard-step-active{% elif wizard.steps.prev and wizard.steps.prev >= forloop.counter0 %}wizard-step-completed{% endif %}">
+                    {{ forloop.counter }}
+                    <span class="wizard-step-label">
+                        {% if step == 'basic_info' %}
+                            Основная информация
+                        {% elif step == 'medical_info' %}
+                            Медосмотр
+                        {% elif step == 'siz_info' %}
+                            СИЗ
+                        {% endif %}
+                    </span>
+                </div>
+            {% endfor %}
+        {% endwith %}
+    </div>
+    
+    <!-- Форма шага -->
+    <div class="card">
+        <div class="card-header">
+            {% if wizard.steps.current == 'basic_info' %}
+                <h4>📝 Основная информация о сотруднике</h4>
+            {% elif wizard.steps.current == 'medical_info' %}
+                <h4>🏥 Информация для медосмотра</h4>
+            {% elif wizard.steps.current == 'siz_info' %}
+                <h4>🛡️ Информация для СИЗ</h4>
+            {% endif %}
+        </div>
+        <div class="card-body">
+            <form method="post" enctype="multipart/form-data">
+                {% csrf_token %}
+                {{ wizard.management_form }}
+                
+                {% if wizard.form.errors %}
+                <div class="alert alert-danger">
+                    <h4 class="alert-heading">Ошибки в форме</h4>
+                    {{ wizard.form.errors }}
+                </div>
+                {% endif %}
+                
+                <!-- Дополнительная информация для шага СИЗ -->
+                {% if wizard.steps.current == 'siz_info' and siz_norms %}
+                <div class="alert alert-info mb-4">
+                    <h5>📋 Перечень СИЗ для должности:</h5>
+                    <ul>
+                        {% for norm in siz_norms %}
+                        <li>{{ norm.siz.name }} ({{ norm.siz.classification }}) - {{ norm.quantity }} {{ norm.siz.unit }}</li>
+                        {% endfor %}
+                    </ul>
+                </div>
+                {% endif %}
+                
+                <!-- Вывод полей формы с crispy -->
+                {% crispy wizard.form %}
+                
+                <!-- Кнопки навигации -->
+                <div class="wizard-nav-buttons">
+                    {% if wizard.steps.prev %}
+                    <button name="wizard_goto_step" type="submit" value="{{ wizard.steps.prev }}" class="btn btn-secondary">
+                        <i class="fas fa-arrow-left"></i> Назад
+                    </button>
+                    {% else %}
+                    <a href="{% url 'directory:hiring:hiring_list' %}" class="btn btn-secondary">
+                        <i class="fas fa-times"></i> Отмена
+                    </a>
+                    {% endif %}
+                    
+                    <button type="submit" class="btn btn-primary">
+                        {% if wizard.steps.next %}
+                        Далее <i class="fas fa-arrow-right"></i>
+                        {% else %}
+                        <i class="fas fa-check"></i> Завершить
+                        {% endif %}
+                    </button>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+    // Скрипт для автоматической отправки формы при выборе должности на первом шаге
+    document.addEventListener('DOMContentLoaded', function() {
+        const step = '{{ wizard.steps.current }}';
+        if (step === 'basic_info') {
+            const positionSelect = document.getElementById('id_basic_info-position');
+            if (positionSelect) {
+                positionSelect.addEventListener('change', function() {
+                    // Задержка для автозавершения select2
+                    setTimeout(function() {
+                        // Запрос дополнительной информации о должности через AJAX
+                        const positionId = positionSelect.value;
+                        if (positionId) {
+                            fetch(`/directory/api/position/${positionId}/needs_step_info/`)
+                                .then(response => response.json())
+                                .then(data => {
+                                    // Показываем информацию о требуемых шагах
+                                    if (data.needs_medical || data.needs_siz) {
+                                        let message = 'Для выбранной должности ';
+                                        if (data.needs_medical) message += 'требуется заполнить данные для медосмотра. ';
+                                        if (data.needs_siz) message += 'требуется заполнить данные по СИЗ. ';
+                                        
+                                        // Добавляем информационное сообщение
+                                        const infoDiv = document.createElement('div');
+                                        infoDiv.className = 'alert alert-info mt-2';
+                                        infoDiv.innerHTML = message;
+                                        
+                                        // Находим родительский элемент для сообщения
+                                        const parentDiv = positionSelect.closest('.form-group');
+                                        if (parentDiv) {
+                                            // Удаляем предыдущее сообщение, если есть
+                                            const prevInfo = parentDiv.querySelector('.alert');
+                                            if (prevInfo) prevInfo.remove();
+                                            
+                                            // Добавляем новое сообщение
+                                            parentDiv.appendChild(infoDiv);
+                                        }
+                                    }
+                                })
+                                .catch(error => console.error('Ошибка получения данных о должности:', error));
+                        }
+                    }, 300);
+                });
+            }
+        }
+    });
+</script>
+{% endblock %}
