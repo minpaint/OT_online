@@ -1,0 +1,67 @@
+/* Стили для DAL Select2 и многошаговой формы */
+.select2-container {
+    width: 100% !important;
+    display: block !important;
+}
+
+.select2-container .select2-selection--single {
+    height: calc(1.5em + .75rem + 2px) !important;
+    padding: .375rem .75rem !important;
+    border: 1px solid #ced4da !important;
+    border-radius: .25rem !important;
+}
+
+.select2-container--default .select2-selection--single .select2-selection__rendered {
+    line-height: 1.5 !important;
+    padding-left: 0 !important;
+    color: #495057 !important;
+}
+
+.select2-container--default .select2-selection--single .select2-selection__arrow {
+    height: 100% !important;
+    right: 5px !important;
+}
+
+.select2-container--default .select2-selection--single .select2-selection__clear {
+    margin-right: 20px !important;
+}
+
+/* Стили для индикатора шагов */
+.wizard-steps {
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    margin-bottom: 2rem;
+}
+
+.wizard-step {
+    width: 40px;
+    height: 40px;
+    border-radius: 50%;
+    background-color: #f8f9fa;
+    color: #6c757d;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-weight: bold;
+    position: relative;
+    z-index: 2;
+}
+
+.wizard-step.active {
+    background-color: #007bff;
+    color: white;
+}
+
+.step-connector {
+    flex-grow: 1;
+    height: 2px;
+    background-color: #dee2e6;
+    margin: 0 10px;
+}
+
+.step-label {
+    text-align: center;
+    font-size: 0.9rem;
+    margin-top: 0.5rem;
+}

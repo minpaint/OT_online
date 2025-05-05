@@ -42,8 +42,10 @@ from directory.autocomplete_views import (
     EmployeeForCommissionAutocomplete,
     CommissionAutocomplete,
 )
-from django.urls import path
-from directory.views.hiring_wizard import HiringWizardView
+
+# Правильные импорты для многошаговой формы и API
+from directory.views.hiring import SimpleHiringView, position_requirements_api
+
 from directory.views.api import position_needs_step_info
 
 app_name = 'directory'
@@ -129,9 +131,6 @@ siz_patterns = [
     path('personal-card/<int:employee_id>/', siz_issued.SIZPersonalCardView.as_view(), name='siz_personal_card'),
     path('return/<int:siz_issued_id>/', siz_issued.SIZIssueReturnView.as_view(), name='siz_return'),
     path('siz/siz-card/<int:employee_id>/', generate_siz_card_docx_view, name='siz_card'),
-
-
-
 ]
 
 # 📑 Приемы на работу
@@ -144,7 +143,15 @@ hiring_patterns = [
     path('<int:pk>/delete/', hiring.HiringDeleteView.as_view(), name='hiring_delete'),
     path('create-from-employee/<int:employee_id>/', hiring.CreateHiringFromEmployeeView.as_view(),
          name='create_from_employee'),
-    path('hiring/wizard/', HiringWizardView.as_view(), name='hiring_wizard'),
+
+    # 🧙‍♂️ Многошаговая форма приема (единый маршрут вместо трех отдельных)
+    path('simple/', SimpleHiringView.as_view(), name='simple_hiring'),
+
+
+    # API для проверки требований должности
+    #  path('api/position/<int:position_id>/info/', position_info_api, name='position_info_api'),
+    #  path('api/position/<int:position_id>/info/', position_info_api, name='global_position_info_api'),
+    path('api/position/<int:position_id>/requirements/', position_requirements_api, name='position_requirements_api'),
 ]
 
 # 🏥 Медосмотры
@@ -242,6 +249,4 @@ urlpatterns = [
          name='api_employee_medical_status'),
     path('api/medical/position/<int:position_id>/norms/', medical_examination.api_position_medical_norms,
          name='api_position_medical_norms'),
-# API для проверки требуемых шагов
-    path('api/position/<int:position_id>/needs_step_info/', position_needs_step_info, name='position_needs_step_info'),
 ]

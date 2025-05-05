@@ -1,4 +1,4 @@
-# 📂 directory/forms/__init__.py
+# directory/forms/__init__.py
 
 from .department import DepartmentForm
 from .document import DocumentForm
@@ -8,25 +8,21 @@ from .organization import OrganizationForm
 from .position import PositionForm
 from .subdivision import StructuralSubdivisionForm
 from .registration import CustomUserCreationForm
-from .employee_hiring import EmployeeHiringForm  # ✅ Добавляем импорт
+from .employee_hiring import EmployeeHiringForm
 from .siz_issued import SIZIssueMassForm, SIZIssueReturnForm
 from .siz import SIZForm, SIZNormForm
+
 from .medical_examination import (
     MedicalExaminationTypeForm,
     HarmfulFactorForm,
     MedicalExaminationNormForm,
-    PositionMedicalFactorForm,  # Исправлено с PositionMedicalExaminationForm
+    PositionMedicalFactorForm,
     EmployeeMedicalExaminationForm,
     MedicalNormSearchForm,
     EmployeeMedicalExaminationSearchForm,
     MedicalNormImportForm,
-    MedicalNormExportForm
-)
-# Добавляем импорт форм для многошаговой формы приема на работу
-from .hiring_wizard import (
-    Step1BasicInfoForm,
-    Step2MedicalInfoForm,
-    Step3SIZInfoForm
+    MedicalNormExportForm,
+    UniquePositionMedicalNormForm,
 )
 
 __all__ = [
@@ -38,24 +34,20 @@ __all__ = [
     "PositionForm",
     "StructuralSubdivisionForm",
     "CustomUserCreationForm",
-    "EmployeeHiringForm",  # ✅ Добавляем в список
+    "EmployeeHiringForm",
     "SIZForm",
     "SIZNormForm",
-    # 🆕 Добавляем в список экспорта
     "SIZIssueMassForm",
     "SIZIssueReturnForm",
-    # 🩺 Добавляем формы медосмотров в экспорт
     "MedicalExaminationTypeForm",
     "HarmfulFactorForm",
     "MedicalExaminationNormForm",
-    "PositionMedicalFactorForm",  # Исправлено с PositionMedicalExaminationForm
+    "PositionMedicalFactorForm",
     "EmployeeMedicalExaminationForm",
     "MedicalNormSearchForm",
     "EmployeeMedicalExaminationSearchForm",
     "MedicalNormImportForm",
     "MedicalNormExportForm",
-    # Добавляем формы многошагового визарда в список экспорта
-    "Step1BasicInfoForm",
-    "Step2MedicalInfoForm",
-    "Step3SIZInfoForm",
+    "UniquePositionMedicalNormForm",
+
 ]

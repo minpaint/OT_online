@@ -11,7 +11,10 @@ from .siz_issued import SIZIssued
 from .siz import SIZ, SIZNorm
 from .document_template import DocumentTemplate, GeneratedDocument
 from .commission import Commission, CommissionMember
-from .hiring import EmployeeHiring  # Добавляем новую модель
+from .hiring import EmployeeHiring
+# Добавляем импорт медицинских моделей
+from .medical_examination import HarmfulFactor, MedicalExaminationType, MedicalSettings
+from .medical_norm import MedicalExaminationNorm, PositionMedicalFactor, EmployeeMedicalExamination
 
 __all__ = [
     'Organization',
@@ -29,6 +32,12 @@ __all__ = [
     'GeneratedDocument',
     'Commission',
     'CommissionMember',
-    'EmployeeHiring',  # Добавляем в список экспорта
+    'EmployeeHiring',
+    # Добавляем медицинские модели в список экспорта
+    'HarmfulFactor',
+    'MedicalExaminationType',
+    'MedicalSettings',
+    'MedicalExaminationNorm',
+    'PositionMedicalFactor',
+    'EmployeeMedicalExamination',
 ]
-
