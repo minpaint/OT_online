@@ -43,10 +43,10 @@ from directory.autocomplete_views import (
     CommissionAutocomplete,
 )
 
-# Правильные импорты для многошаговой формы и API
-from directory.views.hiring import SimpleHiringView, position_requirements_api
-
-from directory.views.api import position_needs_step_info
+from directory.views.hiring import (
+    HiringTreeView, HiringListView, HiringDetailView, HiringCreateView, HiringUpdateView,
+    HiringDeleteView, CreateHiringFromEmployeeView, SimpleHiringView, position_requirements_api
+)
 
 app_name = 'directory'
 
@@ -144,13 +144,10 @@ hiring_patterns = [
     path('create-from-employee/<int:employee_id>/', hiring.CreateHiringFromEmployeeView.as_view(),
          name='create_from_employee'),
 
-    # 🧙‍♂️ Многошаговая форма приема (единый маршрут вместо трех отдельных)
+    # 🧙‍♂️ форма приема (единый маршрут вместо трех отдельных)
     path('simple/', SimpleHiringView.as_view(), name='simple_hiring'),
 
-
     # API для проверки требований должности
-    #  path('api/position/<int:position_id>/info/', position_info_api, name='position_info_api'),
-    #  path('api/position/<int:position_id>/info/', position_info_api, name='global_position_info_api'),
     path('api/position/<int:position_id>/requirements/', position_requirements_api, name='position_requirements_api'),
 ]
 
