@@ -30,6 +30,7 @@ from directory.views.documents import (
     document_download,
 )
 
+
 from directory.autocomplete_views import (
     OrganizationAutocomplete,
     SubdivisionAutocomplete,
@@ -192,6 +193,7 @@ medical_patterns = [
     path('tabs/employee/<int:employee_id>/exams/', medical_examination.EmployeeMedicalExaminationTabView.as_view(),
          name='employee_exams_tab'),
 ]
+
 
 # 🔐 Аутентификация
 auth_patterns = [

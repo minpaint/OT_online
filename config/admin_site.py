@@ -36,6 +36,9 @@ class OTAdminSite(AdminSite):
         (_("📑 Прием на работу"), [
             "EmployeeHiring", "Commission", "GeneratedDocument",
         ]),
+        (_("📊 Импорт/Экспорт данных"), [
+            "ImportExportMenu",
+        ]),
     ])
 
     def get_app_list(self, request):

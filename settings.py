@@ -101,7 +101,11 @@ WSGI_APPLICATION = 'wsgi.application'
 if os.getenv('DATABASE_URL'):
     # Используем dj-database-url для парсинга URL базы данных (удобно для Heroku/Render)
     import dj_database_url
-    DATABASES = {'default': dj_database_url.config(conn_max_age=600, ssl_require=os.getenv('DATABASE_SSL_REQUIRE', 'False') == 'True')}
+    db_config = dj_database_url.config()
+    db_config['CONN_MAX_AGE'] = 600
+    if os.getenv('DATABASE_SSL_REQUIRE', 'False') == 'True':
+        db_config['OPTIONS'] = {'sslmode': 'require'}
+    DATABASES = {'default': db_config}
 elif os.getenv('DB_ENGINE'): # Альтернативный способ конфигурации через отдельные переменные
      DATABASES = {
         'default': {
