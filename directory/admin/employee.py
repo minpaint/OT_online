@@ -1,9 +1,16 @@
 # directory/admin/employee.py
 from django.contrib import admin
+from django.contrib import messages
+from django.shortcuts import redirect, render
+from django.urls import path
+from django.http import HttpResponse
+from tablib import Dataset
+
 from directory.models import Employee
 from directory.models.commission import CommissionMember
 from directory.forms.employee import EmployeeForm
 from directory.admin.mixins.tree_view import TreeViewMixin
+from directory.resources.employee import EmployeeResource
 
 
 @admin.register(Employee)
@@ -57,13 +64,11 @@ class EmployeeAdmin(TreeViewMixin, admin.ModelAdmin):
     ]
     search_fields = [
         'full_name_nominative',
-        'full_name_dative',
         'position__position_name'
     ]
 
     fields = [
         'full_name_nominative',
-        'full_name_dative',
         'date_of_birth',
         'place_of_residence',
         'organization',
@@ -104,6 +109,15 @@ class EmployeeAdmin(TreeViewMixin, admin.ModelAdmin):
                 super().__init__(*args, **inner_kwargs)
 
         return FormWithUser
+
+    def get_urls(self):
+        """🔗 Добавляем кастомные URL для импорта/экспорта"""
+        urls = super().get_urls()
+        custom_urls = [
+            path('import/', self.admin_site.admin_view(self.import_view), name='directory_employee_import'),
+            path('export/', self.admin_site.admin_view(self.export_view), name='directory_employee_export'),
+        ]
+        return custom_urls + urls
 
     def get_node_additional_data(self, obj):
         """
@@ -159,3 +173,109 @@ class EmployeeAdmin(TreeViewMixin, admin.ModelAdmin):
             'member': '👥'
         }
         return role_emojis.get(role, '❓')
+
+    def import_view(self, request):
+        """📥 Импорт сотрудников"""
+        context = self.admin_site.each_context(request)
+
+        if request.method == 'POST':
+            if 'confirm' in request.POST:
+                # Финальное подтверждение импорта
+                dataset_data = request.session.get('employee_dataset')
+                if not dataset_data:
+                    messages.error(request, 'Данные для импорта не найдены. Загрузите файл заново.')
+                    return redirect('admin:directory_employee_import')
+
+                dataset = Dataset().load(dataset_data)
+                resource = EmployeeResource()
+                result = resource.import_data(dataset, dry_run=False)
+
+                del request.session['employee_dataset']
+
+                if result.has_errors():
+                    # Выводим ошибки в консоль для отладки
+                    print("="*80)
+                    print("ОШИБКИ ИМПОРТА СОТРУДНИКОВ:")
+                    print(f"Всего ошибок: {result.totals['error']}")
+                    print(f"Invalid rows count: {len(result.invalid_rows)}")
+
+                    for idx, row in enumerate(result.invalid_rows[:5]):
+                        print(f"\n--- Строка {idx+1} ---")
+                        print(f"Row object: {row}")
+                        print(f"Row.__dict__: {row.__dict__ if hasattr(row, '__dict__') else 'N/A'}")
+                        if hasattr(row, 'errors'):
+                            for error in row.errors:
+                                print(f"Error: {error.error}")
+                                print(f"Traceback: {error.traceback}")
+
+                    print(f"\nRow errors dict: {result.row_errors()}")
+                    print("="*80)
+
+                    messages.error(request, f'❌ Импорт завершен с ошибками! Создано: {result.totals["new"]}, ошибок: {result.totals["error"]}. Смотрите консоль сервера для деталей.')
+                else:
+                    messages.success(request, f'✅ Импорт завершен! Создано: {result.totals["new"]}, обновлено: {result.totals["update"]}')
+                return redirect('admin:directory_employee_changelist')
+            else:
+                # Предпросмотр импорта
+                import_file = request.FILES.get('import_file')
+                if not import_file:
+                    messages.error(request, 'Файл не выбран')
+                    return redirect('admin:directory_employee_import')
+
+                file_format = import_file.name.split('.')[-1].lower()
+                if file_format not in ['xlsx', 'xls']:
+                    messages.error(request, 'Поддерживаются только файлы XLSX и XLS')
+                    return redirect('admin:directory_employee_import')
+
+                try:
+                    dataset = Dataset().load(import_file.read(), format=file_format)
+                    resource = EmployeeResource()
+                    result = resource.import_data(dataset, dry_run=True)
+
+                    # Сохраняем данные в сессии для финального импорта
+                    request.session['employee_dataset'] = dataset.export('json')
+
+                    context.update({
+                        'title': 'Предпросмотр импорта сотрудников',
+                        'result': result,
+                        'dataset': dataset,
+                    })
+                    return render(request, 'admin/directory/employee/import_preview.html', context)
+                except Exception as e:
+                    messages.error(request, f'Ошибка при обработке файла: {str(e)}')
+                    return redirect('admin:directory_employee_import')
+
+        context.update({
+            'title': 'Импорт сотрудников',
+            'subtitle': None,
+        })
+        return render(request, 'admin/directory/employee/import.html', context)
+
+    def export_view(self, request):
+        """📤 Экспорт сотрудников"""
+        from directory.models import Employee
+
+        # Фильтрация по организации (если указана)
+        organization_id = request.GET.get('organization_id')
+
+        if organization_id:
+            queryset = Employee.objects.filter(organization_id=organization_id)
+        else:
+            queryset = Employee.objects.all()
+
+        # Применяем права доступа
+        if not request.user.is_superuser and hasattr(request.user, 'profile'):
+            allowed_orgs = request.user.profile.organizations.all()
+            queryset = queryset.filter(organization__in=allowed_orgs)
+
+        queryset = queryset.select_related('organization', 'subdivision', 'department', 'position')
+
+        resource = EmployeeResource()
+        dataset = resource.export(queryset)
+
+        response = HttpResponse(
+            dataset.export('xlsx'),
+            content_type='application/vnd.openxmlformats-officedocument.spreadsheetml.sheet'
+        )
+        response['Content-Disposition'] = 'attachment; filename="employees.xlsx"'
+        return response

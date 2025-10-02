@@ -12,7 +12,7 @@ class Migration(migrations.Migration):
     """
 
     dependencies = [
-        ('directory', '0007_add_document_templates'),
+        ('directory', '0006_remove_siznorm_unique_position_siz_empty_condition_and_more'),
     ]
 
     def update_document_types(apps, schema_editor):

@@ -1,0 +1,90 @@
+{% extends "admin/base_site.html" %}
+{% load static %}
+
+{% block title %}{{ title }}{% endblock %}
+
+{% block breadcrumbs %}
+<div class="breadcrumbs">
+    <a href="{% url 'admin:index' %}">Главная</a>
+    &rsaquo; <a href="{% url 'admin:app_list' app_label='directory' %}">Directory</a>
+    &rsaquo; <a href="{% url 'admin:directory_position_changelist' %}">Профессии и должности</a>
+    &rsaquo; {{ title }}
+</div>
+{% endblock %}
+
+{% block content %}
+<div class="module">
+    <h1>🏢 Импорт организационной структуры</h1>
+
+    <div class="help" style="background-color: #fef3cd; padding: 15px; border-left: 4px solid #ffc107; margin: 20px 0;">
+        <h3>⚠️ Важно!</h3>
+        <ul>
+            <li>Файл должен быть в формате <strong>XLSX</strong> или <strong>XLS</strong></li>
+            <li>Обязательные поля: <code>org_short_name_ru</code>, <code>position_name</code></li>
+            <li>При импорте автоматически создаются отсутствующие организации, подразделения и отделы</li>
+            <li>Существующие должности будут обновлены</li>
+        </ul>
+    </div>
+
+    <fieldset class="module aligned">
+        <h2>📋 Структура Excel-файла (9 столбцов)</h2>
+
+        <div style="padding: 15px;">
+            <h3>Поля для импорта:</h3>
+            <ol>
+                <li><code>org_short_name_ru</code> - Краткое наименование организации <span style="color: red;">★ Обязательное</span></li>
+                <li><code>subdivision_name</code> - Наименование структурного подразделения</li>
+                <li><code>department_name</code> - Наименование отдела</li>
+                <li><code>position_name</code> - Название должности <span style="color: red;">★ Обязательное</span></li>
+                <li><code>safety_instructions_numbers</code> - Номера инструкций по ОТ</li>
+                <li><code>internship_period_days</code> - Срок стажировки (дни)</li>
+                <li><code>is_responsible_for_safety</code> - Ответственный за ОТ (да/нет)</li>
+                <li><code>can_be_internship_leader</code> - Может быть руководителем стажировки (да/нет)</li>
+                <li><code>can_sign_orders</code> - Может подписывать распоряжения (да/нет)</li>
+            </ol>
+
+            <h3 style="margin-top: 20px;">Пример строки Excel:</h3>
+            <table style="width: 100%; border-collapse: collapse; margin-top: 10px;">
+                <thead>
+                    <tr style="background-color: #417690; color: white;">
+                        <th style="border: 1px solid #ddd; padding: 8px;">org_short_name_ru</th>
+                        <th style="border: 1px solid #ddd; padding: 8px;">subdivision_name</th>
+                        <th style="border: 1px solid #ddd; padding: 8px;">department_name</th>
+                        <th style="border: 1px solid #ddd; padding: 8px;">position_name</th>
+                        <th style="border: 1px solid #ddd; padding: 8px;">internship_period_days</th>
+                        <th style="border: 1px solid #ddd; padding: 8px;">is_responsible_for_safety</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    <tr>
+                        <td style="border: 1px solid #ddd; padding: 8px;">РиК</td>
+                        <td style="border: 1px solid #ddd; padding: 8px;">Цех №1</td>
+                        <td style="border: 1px solid #ddd; padding: 8px;">Участок сборки</td>
+                        <td style="border: 1px solid #ddd; padding: 8px;">Слесарь</td>
+                        <td style="border: 1px solid #ddd; padding: 8px;">5</td>
+                        <td style="border: 1px solid #ddd; padding: 8px;">нет</td>
+                    </tr>
+                </tbody>
+            </table>
+        </div>
+    </fieldset>
+
+    <form method="post" enctype="multipart/form-data" style="margin-top: 20px;">
+        {% csrf_token %}
+        <fieldset class="module aligned">
+            <h2>📤 Загрузить файл</h2>
+            <div class="form-row">
+                <div>
+                    <label for="import_file">Выберите файл Excel (XLSX или XLS):</label>
+                    <input type="file" id="import_file" name="import_file" accept=".xlsx,.xls" required>
+                </div>
+            </div>
+        </fieldset>
+
+        <div class="submit-row">
+            <input type="submit" value="📋 Предпросмотр импорта" class="default">
+            <a href="{% url 'admin:directory_position_changelist' %}" class="button">Отмена</a>
+        </div>
+    </form>
+</div>
+{% endblock %}

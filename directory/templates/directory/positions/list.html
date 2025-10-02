@@ -42,7 +42,7 @@
 </form>
 
 <div class="mb-3">
-    <a href="{% url 'directory:position-create' %}" class="btn btn-success">
+    <a href="{% url 'directory:positions:position_create' %}" class="btn btn-success">
         Добавить должность
     </a>
 </div>
@@ -69,10 +69,10 @@
                     <td>{{ position.electrical_safety_group|default:"-" }}</td>
                     <td>
                         <div class="btn-group" role="group">
-                            <a href="{% url 'directory:position-update' position.pk %}" class="btn btn-warning btn-sm">
+                            <a href="{% url 'directory:positions:position_update' position.pk %}" class="btn btn-warning btn-sm">
                                 Редактировать
                             </a>
-                            <a href="{% url 'directory:position-delete' position.pk %}" class="btn btn-danger btn-sm">
+                            <a href="{% url 'directory:positions:position_delete' position.pk %}" class="btn btn-danger btn-sm">
                                 Удалить
                             </a>
                         </div>

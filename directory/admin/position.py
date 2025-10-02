@@ -7,6 +7,8 @@ from django.shortcuts import redirect, render
 from django.urls import path, reverse
 from django.utils.html import format_html
 from django.db.models import Exists, OuterRef, Count
+from django.http import HttpResponse
+from tablib import Dataset
 
 from directory.models import Position
 from directory.forms.position import PositionForm
@@ -16,6 +18,7 @@ from directory.models.medical_norm import PositionMedicalFactor, MedicalExaminat
 from directory.models.medical_examination import HarmfulFactor
 from directory.models.commission import CommissionMember
 from directory.utils.profession_icons import get_profession_icon
+from directory.resources.organization_structure import OrganizationStructureResource
 
 
 # Обновленный инлайн для СИЗ
@@ -234,7 +237,7 @@ class PositionAdmin(TreeViewMixin, admin.ModelAdmin):
         return super().change_view(request, object_id, form_url, extra_context)
 
     def get_urls(self):
-        """🔗 Добавляем кастомный URL для подтягивания норм СИЗ"""
+        """🔗 Добавляем кастомные URL для подтягивания норм СИЗ и импорта/экспорта"""
         urls = super().get_urls()
         custom_urls = [
             path(
@@ -242,6 +245,8 @@ class PositionAdmin(TreeViewMixin, admin.ModelAdmin):
                 self.admin_site.admin_view(self.copy_reference_norms_view),
                 name='position_copy_reference_norms',
             ),
+            path('import/', self.admin_site.admin_view(self.import_view), name='directory_position_import'),
+            path('export/', self.admin_site.admin_view(self.export_view), name='directory_position_export'),
         ]
         return custom_urls + urls
 
@@ -539,3 +544,88 @@ class PositionAdmin(TreeViewMixin, admin.ModelAdmin):
         🗑️ Проверка прав на удаление
         """
         return self.has_view_permission(request, obj)
+
+    def import_view(self, request):
+        """📥 Импорт организационной структуры"""
+        context = self.admin_site.each_context(request)
+
+        if request.method == 'POST':
+            if 'confirm' in request.POST:
+                # Финальное подтверждение импорта
+                dataset_data = request.session.get('position_dataset')
+                if not dataset_data:
+                    messages.error(request, 'Данные для импорта не найдены. Загрузите файл заново.')
+                    return redirect('admin:directory_position_import')
+
+                dataset = Dataset().load(dataset_data)
+                resource = OrganizationStructureResource()
+                result = resource.import_data(dataset, dry_run=False)
+
+                del request.session['position_dataset']
+
+                messages.success(request, f'✅ Импорт завершен! Создано: {result.totals["new"]}, обновлено: {result.totals["update"]}')
+                return redirect('admin:directory_position_changelist')
+            else:
+                # Предпросмотр импорта
+                import_file = request.FILES.get('import_file')
+                if not import_file:
+                    messages.error(request, 'Файл не выбран')
+                    return redirect('admin:directory_position_import')
+
+                file_format = import_file.name.split('.')[-1].lower()
+                if file_format not in ['xlsx', 'xls']:
+                    messages.error(request, 'Поддерживаются только файлы XLSX и XLS')
+                    return redirect('admin:directory_position_import')
+
+                try:
+                    dataset = Dataset().load(import_file.read(), format=file_format)
+                    resource = OrganizationStructureResource()
+                    result = resource.import_data(dataset, dry_run=True)
+
+                    # Сохраняем данные в сессии для финального импорта
+                    request.session['position_dataset'] = dataset.export('json')
+
+                    context.update({
+                        'title': 'Предпросмотр импорта организационной структуры',
+                        'result': result,
+                        'dataset': dataset,
+                    })
+                    return render(request, 'admin/directory/position/import_preview.html', context)
+                except Exception as e:
+                    messages.error(request, f'Ошибка при обработке файла: {str(e)}')
+                    return redirect('admin:directory_position_import')
+
+        context.update({
+            'title': 'Импорт организационной структуры',
+            'subtitle': None,
+        })
+        return render(request, 'admin/directory/position/import.html', context)
+
+    def export_view(self, request):
+        """📤 Экспорт организационной структуры"""
+        from directory.models import Organization
+
+        # Фильтрация по организации (если указана)
+        organization_id = request.GET.get('organization_id')
+
+        if organization_id:
+            queryset = Position.objects.filter(organization_id=organization_id)
+        else:
+            queryset = Position.objects.all()
+
+        # Применяем права доступа
+        if not request.user.is_superuser and hasattr(request.user, 'profile'):
+            allowed_orgs = request.user.profile.organizations.all()
+            queryset = queryset.filter(organization__in=allowed_orgs)
+
+        queryset = queryset.select_related('organization', 'subdivision', 'department')
+
+        resource = OrganizationStructureResource()
+        dataset = resource.export(queryset)
+
+        response = HttpResponse(
+            dataset.export('xlsx'),
+            content_type='application/vnd.openxmlformats-officedocument.spreadsheetml.sheet'
+        )
+        response['Content-Disposition'] = 'attachment; filename="organization_structure.xlsx"'
+        return response

@@ -20,6 +20,5 @@ def get_child_subdivisions(subdivision_id):
 def search_employees(query):
     """Поиск сотрудников по различным критериям."""
     return Q(full_name_nominative__icontains=query) | \
-           Q(full_name_dative__icontains=query) | \
            Q(position__position_name__icontains=query) | \
            Q(structural_subdivision__name__icontains=query)

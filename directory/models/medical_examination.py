@@ -45,14 +45,6 @@ class HarmfulFactor(models.Model):
         help_text="Полное наименование вредного производственного фактора"
     )
 
-    examination_type = models.ForeignKey(
-        MedicalExaminationType,
-        on_delete=models.PROTECT,
-        related_name="harmful_factors",
-        verbose_name="Вид медосмотра",
-        help_text="Вид медосмотра, который требуется для данного вредного фактора"
-    )
-
     periodicity = models.PositiveIntegerField(
         verbose_name="Периодичность (месяцы)",
         validators=[MinValueValidator(1)],
@@ -63,10 +55,10 @@ class HarmfulFactor(models.Model):
         verbose_name = "Вредный фактор"
         verbose_name_plural = "Вредные факторы"
         ordering = ['short_name']
-        unique_together = [['short_name', 'examination_type']]
+        unique_together = [['short_name']]
 
     def __str__(self):
-        return f"{self.short_name} - {self.full_name}"
+        return self.short_name
 
 
 class MedicalSettings(models.Model):

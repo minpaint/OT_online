@@ -18,7 +18,7 @@ class EmployeeForm(OrganizationRestrictionFormMixin, forms.ModelForm):
     class Meta:
         model = Employee
         fields = [
-            "full_name_nominative", "full_name_dative",
+            "full_name_nominative",
             "date_of_birth", "place_of_residence",
             "organization", "subdivision", "department", "position",
             "height", "clothing_size", "shoe_size",

@@ -8,6 +8,12 @@
     <a href="{% url 'admin:directory_equipment_add' %}" class="addlink">
       Добавить оборудование
     </a>
+    <a href="{% url 'admin:directory_equipment_import' %}" class="addlink" style="background-position: 0 -96px;">
+      📥 Импорт
+    </a>
+    <a href="{% url 'admin:directory_equipment_export' %}" class="addlink" style="background-position: 0 -96px;">
+      📤 Экспорт
+    </a>
   </div>
   <form id="changelist-form" method="post"
         {% if cl.formset and cl.formset.is_multipart %}enctype="multipart/form-data"{% endif %}

@@ -1,16 +1,17 @@
 {
   "permissions": {
     "allow": [
-      "Bash(findstr:*)",
-      "Bash(curl:*)",
-      "Bash(python:*)",
+      "Bash(\"C:\\Users\\miag\\AppData\\Local\\Programs\\Python\\Python313\\python.exe\" manage.py shell)",
+      "Bash(\"C:\\Users\\miag\\AppData\\Local\\Programs\\Python\\Python313\\python.exe\" -c \"import openpyxl, sys; sys.stdout.reconfigure(encoding=''utf-8''); wb = openpyxl.load_workbook(''Импорт сотрудников Б+.xlsx''); ws = wb.active; print(''=== ЗАГОЛОВКИ ===''); headers = [cell.value for cell in ws[1]]; [print(f''{i}: {repr(h)}'') for i, h in enumerate(headers, 1)]; print(f''\\nВсего столбцов: {len(headers)}''); print(''\\n=== ПЕРВЫЕ 3 СТРОКИ ДАННЫХ ===''); [print(f''Строка {i}: {[cell.value for cell in ws[i]]}'') for i in range(2, 5)]\")",
+      "Bash(\"C:\\Users\\miag\\AppData\\Local\\Programs\\Python\\Python313\\python.exe\" manage.py shell -c \"from directory.models import Employee; print([f.name for f in Employee._meta.fields if not f.null and not f.blank and f.name != ''id''])\")",
       "Bash(dir:*)",
-      "Bash(pip install:*)",
-      "Bash(\"C:\\Users\\miag\\AppData\\Local\\Programs\\Python\\Python313\\python.exe\" -m pip install setuptools)",
-      "Bash(\"C:\\Users\\miag\\AppData\\Local\\Programs\\Python\\Python313\\python.exe\" -m pip install -r requirements.txt)",
-      "Bash(\"C:\\Users\\miag\\AppData\\Local\\Programs\\Python\\Python313\\python.exe\" manage.py runserver localhost:8000)",
-      "Bash(\"C:\\Users\\miag\\AppData\\Local\\Programs\\Python\\Python313\\python.exe\" -m pip list)",
-      "Bash(\"C:\\Users\\miag\\AppData\\Local\\Programs\\Python\\Python313\\python.exe\" -m pip install docxtpl docxcompose pyHanko pyhanko-certvalidator svglib xhtml2pdf WeasyPrint cryptography)"
+      "Bash(\"C:\\Users\\miag\\AppData\\Local\\Programs\\Python\\Python313\\python.exe\" manage.py makemigrations directory --name remove_full_name_dative)",
+      "Bash(\"C:\\Users\\miag\\AppData\\Local\\Programs\\Python\\Python313\\python.exe\" manage.py migrate directory)",
+      "Bash(\"C:\\Users\\miag\\AppData\\Local\\Programs\\Python\\Python313\\python.exe\" manage.py check)",
+      "Bash(\"C:\\Users\\miag\\AppData\\Local\\Programs\\Python\\Python313\\python.exe\" -c \"import openpyxl, sys; sys.stdout.reconfigure(encoding=''utf-8''); wb = openpyxl.load_workbook(''harmful_factors.xlsx''); ws = wb.active; print(''=== ЗАГОЛОВКИ ===''); headers = [cell.value for cell in ws[1]]; [print(f''{i}: {repr(h)}'') for i, h in enumerate(headers, 1)]; print(f''\\nВсего столбцов: {len(headers)}''); print(''\\n=== ПЕРВЫЕ 2 СТРОКИ ДАННЫХ ===''); [print(f''Строка {i}: {[cell.value for cell in ws[i]]}'') for i in range(2, 4)]\")",
+      "Bash(\"C:\\Users\\miag\\AppData\\Local\\Programs\\Python\\Python313\\python.exe\" manage.py makemigrations directory --name remove_examination_type_from_harmfulfactor)",
+      "Bash(\"C:\\Users\\miag\\AppData\\Local\\Programs\\Python\\Python313\\python.exe\" manage.py makemigrations directory --name remove_examination_type_from_employeemedicalexamination)",
+      "Bash(del \"templates\\admin\\directory\\medicalnorm\\change_form.html\")"
     ],
     "deny": [],
     "ask": []

@@ -60,13 +60,6 @@ class MedicalExaminationNorm(models.Model):
             return self.periodicity_override
         return self.harmful_factor.periodicity
 
-    @property
-    def examination_type(self):
-        """
-        Возвращает вид медосмотра для удобства доступа
-        """
-        return self.harmful_factor.examination_type
-
 
 class PositionMedicalFactor(models.Model):
     """
@@ -150,14 +143,6 @@ class EmployeeMedicalExamination(models.Model):
         help_text="Сотрудник, для которого регистрируется медосмотр"
     )
 
-    examination_type = models.ForeignKey(
-        MedicalExaminationType,
-        on_delete=models.PROTECT,
-        related_name="employee_examinations",
-        verbose_name="Вид медосмотра",
-        help_text="Вид пройденного медосмотра"
-    )
-
     harmful_factor = models.ForeignKey(
         HarmfulFactor,
         on_delete=models.PROTECT,
@@ -214,7 +199,7 @@ class EmployeeMedicalExamination(models.Model):
         ordering = ['-date_completed', 'employee']
 
     def __str__(self):
-        return f"{self.employee} - {self.examination_type} ({self.date_completed})"
+        return f"{self.employee} - {self.harmful_factor} ({self.date_completed})"
 
     @property
     def is_expired(self):

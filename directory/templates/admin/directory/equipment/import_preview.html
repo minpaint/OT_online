@@ -1,0 +1,103 @@
+{% extends "admin/base_site.html" %}
+{% load static %}
+
+{% block title %}{{ title }}{% endblock %}
+
+{% block breadcrumbs %}
+<div class="breadcrumbs">
+    <a href="{% url 'admin:index' %}">Главная</a>
+    &rsaquo; <a href="{% url 'admin:app_list' app_label='directory' %}">Directory</a>
+    &rsaquo; <a href="{% url 'admin:directory_equipment_changelist' %}">Оборудование</a>
+    &rsaquo; {{ title }}
+</div>
+{% endblock %}
+
+{% block content %}
+<div class="module">
+    <h1>📋 Предпросмотр импорта оборудования</h1>
+
+    {% if result.has_errors %}
+    <div class="messagelist">
+        <div class="error">
+            <h3>❌ Обнаружены ошибки ({{ result.totals.error }})</h3>
+            <ul>
+                {% for row in result.invalid_rows %}
+                <li>
+                    <strong>Строка {{ row.number }}:</strong>
+                    {{ row.error_dict|default:"Неизвестная ошибка" }}
+                </li>
+                {% endfor %}
+            </ul>
+        </div>
+    </div>
+    {% endif %}
+
+    <div class="help" style="background-color: #d1ecf1; padding: 15px; border-left: 4px solid #0c5460; margin: 20px 0;">
+        <h3>📊 Статистика импорта</h3>
+        <ul>
+            <li>✅ Нового оборудования: <strong>{{ result.totals.new }}</strong></li>
+            <li>🔄 Будет обновлено: <strong>{{ result.totals.update }}</strong></li>
+            <li>⏭️ Пропущено: <strong>{{ result.totals.skip }}</strong></li>
+            <li>❌ Ошибок: <strong>{{ result.totals.error }}</strong></li>
+        </ul>
+    </div>
+
+    <fieldset class="module aligned">
+        <h2>Данные для импорта:</h2>
+        <div style="overflow-x: auto;">
+            <table style="width: 100%; border-collapse: collapse; margin-top: 10px;">
+                <thead>
+                    <tr style="background-color: #417690; color: white;">
+                        <th style="border: 1px solid #ddd; padding: 8px;">#</th>
+                        <th style="border: 1px solid #ddd; padding: 8px;">Организация</th>
+                        <th style="border: 1px solid #ddd; padding: 8px;">Подразделение</th>
+                        <th style="border: 1px solid #ddd; padding: 8px;">Отдел</th>
+                        <th style="border: 1px solid #ddd; padding: 8px;">Наименование</th>
+                        <th style="border: 1px solid #ddd; padding: 8px;">Инв. номер</th>
+                        <th style="border: 1px solid #ddd; padding: 8px;">Периодичность ТО</th>
+                        <th style="border: 1px solid #ddd; padding: 8px;">Последнее ТО</th>
+                        <th style="border: 1px solid #ddd; padding: 8px;">Статус</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for row in dataset %}
+                    <tr {% if forloop.counter|divisibleby:2 %}style="background-color: #f9f9f9;"{% endif %}>
+                        <td style="border: 1px solid #ddd; padding: 8px;">{{ forloop.counter }}</td>
+                        <td style="border: 1px solid #ddd; padding: 8px;">{{ row.org_short_name_ru|default:"-" }}</td>
+                        <td style="border: 1px solid #ddd; padding: 8px;">{{ row.subdivision_name|default:"-" }}</td>
+                        <td style="border: 1px solid #ddd; padding: 8px;">{{ row.department_name|default:"-" }}</td>
+                        <td style="border: 1px solid #ddd; padding: 8px;">{{ row.equipment_name|default:"-" }}</td>
+                        <td style="border: 1px solid #ddd; padding: 8px;">{{ row.inventory_number|default:"автоген." }}</td>
+                        <td style="border: 1px solid #ddd; padding: 8px;">{{ row.maintenance_period_months|default:"-" }} мес.</td>
+                        <td style="border: 1px solid #ddd; padding: 8px;">{{ row.last_maintenance_date|default:"-" }}</td>
+                        <td style="border: 1px solid #ddd; padding: 8px; text-align: center;">
+                            {% if row in result.invalid_rows %}
+                            <span style="background-color: #dc3545; color: white; padding: 3px 8px; border-radius: 3px;">Ошибка</span>
+                            {% else %}
+                            <span style="background-color: #28a745; color: white; padding: 3px 8px; border-radius: 3px;">OK</span>
+                            {% endif %}
+                        </td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+    </fieldset>
+
+    <form method="post" enctype="multipart/form-data" style="margin-top: 20px;">
+        {% csrf_token %}
+        <input type="hidden" name="confirm" value="1">
+
+        <div class="submit-row">
+            <input type="submit" value="✅ Подтвердить импорт" class="default" {% if result.has_errors %}disabled{% endif %}>
+            <a href="{% url 'admin:directory_equipment_import' %}" class="button">Отмена</a>
+        </div>
+
+        {% if result.has_errors %}
+        <div class="help" style="background-color: #fff3cd; padding: 15px; border-left: 4px solid #ffc107; margin-top: 20px;">
+            ⚠️ Импорт невозможен из-за ошибок. Исправьте файл и загрузите заново.
+        </div>
+        {% endif %}
+    </form>
+</div>
+{% endblock %}

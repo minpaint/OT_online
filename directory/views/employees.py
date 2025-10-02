@@ -173,11 +173,6 @@ class EmployeeHiringView(LoginRequiredMixin, FormView):
         # Получаем данные из формы
         employee_data = form.cleaned_data
 
-        # Автоматически генерируем ФИО в дательном падеже с помощью pymorphy2
-        if employee_data.get('full_name_nominative'):
-            full_name_dative = decline_full_name(employee_data['full_name_nominative'], 'datv')
-            form.instance.full_name_dative = full_name_dative
-
         # Сохраняем данные формы
         employee = form.save()
 

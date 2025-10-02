@@ -78,8 +78,7 @@ class EmployeeCreateView(LoginRequiredMixin, CreateView):
     template_name = 'directory/employees/form.html'
     success_url = reverse_lazy('directory:employee_list')
     fields = [
-        'full_name_nominative',  # 📝 ФИО в именительном падеже
-        'full_name_dative',  # 📝 ФИО в дательном падеже
+        'full_name_nominative',  # 📝 ФИО
         'organization',  # 🏢 Организация
         'subdivision',  # 🏭 Подразделение
         'department',  # 📂 Отдел

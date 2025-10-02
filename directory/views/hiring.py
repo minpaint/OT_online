@@ -71,7 +71,6 @@ class SimpleHiringView(LoginRequiredMixin, FormView):
             # Создаем сотрудника
             employee = Employee(
                 full_name_nominative=data['full_name_nominative'],
-                full_name_dative=decline_full_name(data['full_name_nominative'], 'datv'),
                 date_of_birth=data.get('date_of_birth'),
                 place_of_residence=data.get('place_of_residence'),
                 organization=data['organization'],

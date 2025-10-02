@@ -16,7 +16,6 @@ from .commission_admin import CommissionAdmin
 from django.utils.html import format_html
 from directory.models import EmployeeHiring
 from .medical_examination import *
-from .import_export import ImportExportMenuAdmin  # Импорт/Экспорт
 
 
 __all__ = [

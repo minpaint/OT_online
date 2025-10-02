@@ -1,0 +1,194 @@
+{% extends "admin/base_site.html" %}
+{% load static %}
+
+{% block title %}{{ title }}{% endblock %}
+
+{% block extrahead %}
+{{ block.super }}
+{{ formset.media }}
+<style>
+    .formset-row {
+        background-color: #f9f9f9;
+        padding: 15px;
+        margin-bottom: 10px;
+        border-left: 3px solid #417690;
+        border-radius: 4px;
+    }
+    .formset-row:hover {
+        background-color: #f0f0f0;
+    }
+    .delete-row {
+        color: #ba2121;
+        cursor: pointer;
+        font-weight: bold;
+    }
+    .add-row {
+        background-color: #417690;
+        color: white;
+        padding: 10px 20px;
+        border: none;
+        border-radius: 4px;
+        cursor: pointer;
+        margin-top: 10px;
+    }
+    .add-row:hover {
+        background-color: #2d5468;
+    }
+    .form-row {
+        margin-bottom: 15px;
+    }
+    .form-row label {
+        display: block;
+        font-weight: bold;
+        margin-bottom: 5px;
+    }
+    .help {
+        background-color: #e7f3ff;
+        padding: 15px;
+        border-left: 4px solid #2196F3;
+        margin: 20px 0;
+    }
+</style>
+{% endblock %}
+
+{% block breadcrumbs %}
+<div class="breadcrumbs">
+    <a href="{% url 'admin:index' %}">Главная</a>
+    &rsaquo; <a href="{% url 'admin:app_list' app_label='directory' %}">Directory</a>
+    &rsaquo; <a href="{% url 'admin:directory_medicalexaminationnorm_changelist' %}">Нормы медосмотров</a>
+    &rsaquo; {{ title }}
+</div>
+{% endblock %}
+
+{% block content %}
+<div class="module">
+    <h1>📋 {{ title }}</h1>
+
+    <div class="help">
+        <h3>ℹ️ Инструкция</h3>
+        <ol>
+            <li>Выберите профессию (должность) из списка</li>
+            <li>Добавьте один или несколько вредных факторов</li>
+            <li>При необходимости переопределите периодичность для каждого фактора</li>
+            <li>Нажмите "Сохранить" для создания норм</li>
+        </ol>
+    </div>
+
+    <form method="post">
+        {% csrf_token %}
+
+        <!-- Форма выбора профессии -->
+        <fieldset class="module aligned">
+            <h2>1. Выберите профессию (должность)</h2>
+            <div class="form-row">
+                {{ position_form.position_name.errors }}
+                <div>
+                    <label for="{{ position_form.position_name.id_for_label }}" class="required">
+                        {{ position_form.position_name.label }}:
+                    </label>
+                    {{ position_form.position_name }}
+                    {% if position_form.position_name.help_text %}
+                    <p class="help">{{ position_form.position_name.help_text }}</p>
+                    {% endif %}
+                </div>
+            </div>
+        </fieldset>
+
+        <!-- Formset с вредными факторами -->
+        <fieldset class="module aligned">
+            <h2>2. Добавьте вредные факторы</h2>
+
+            {{ formset.management_form }}
+            {{ formset.non_form_errors }}
+
+            <div id="formset-container">
+                {% for form in formset %}
+                <div class="formset-row" data-form-index="{{ forloop.counter0 }}">
+                    <h3 style="margin-top: 0;">Вредный фактор #{{ forloop.counter }}</h3>
+
+                    {{ form.non_field_errors }}
+
+                    <div class="form-row">
+                        {{ form.harmful_factor.errors }}
+                        <label for="{{ form.harmful_factor.id_for_label }}" class="required">
+                            {{ form.harmful_factor.label }}:
+                        </label>
+                        {{ form.harmful_factor }}
+                    </div>
+
+                    <div class="form-row">
+                        {{ form.periodicity_override.errors }}
+                        <label for="{{ form.periodicity_override.id_for_label }}">
+                            {{ form.periodicity_override.label }}:
+                        </label>
+                        {{ form.periodicity_override }}
+                        <p class="help">{{ form.periodicity_override.widget.attrs.placeholder }}</p>
+                    </div>
+
+                    <div class="form-row">
+                        {{ form.notes.errors }}
+                        <label for="{{ form.notes.id_for_label }}">
+                            {{ form.notes.label }}:
+                        </label>
+                        {{ form.notes }}
+                    </div>
+
+                    {% if formset.can_delete %}
+                    <div class="form-row">
+                        {{ form.DELETE }}
+                        <label for="{{ form.DELETE.id_for_label }}" class="delete-row">
+                            🗑️ Удалить этот фактор
+                        </label>
+                    </div>
+                    {% endif %}
+                </div>
+                {% endfor %}
+            </div>
+
+            <button type="button" class="add-row" onclick="addForm()">
+                ➕ Добавить ещё один вредный фактор
+            </button>
+        </fieldset>
+
+        <div class="submit-row">
+            <input type="submit" value="💾 Сохранить" class="default">
+            <a href="{% url 'admin:directory_medicalexaminationnorm_changelist' %}" class="button cancel-link">Отмена</a>
+        </div>
+    </form>
+</div>
+
+<script>
+    // Функция для добавления новой формы в formset
+    function addForm() {
+        const container = document.getElementById('formset-container');
+        const totalForms = document.getElementById('id_form-TOTAL_FORMS');
+        const currentFormCount = parseInt(totalForms.value);
+
+        // Получаем последнюю форму как шаблон
+        const lastForm = container.querySelector('.formset-row:last-child');
+        const newForm = lastForm.cloneNode(true);
+
+        // Обновляем индексы в новой форме
+        const formRegex = new RegExp('form-' + (currentFormCount - 1), 'g');
+        newForm.innerHTML = newForm.innerHTML.replace(formRegex, 'form-' + currentFormCount);
+
+        // Обновляем заголовок
+        newForm.querySelector('h3').textContent = 'Вредный фактор #' + (currentFormCount + 1);
+
+        // Очищаем значения полей
+        newForm.querySelectorAll('input, select, textarea').forEach(field => {
+            if (field.type === 'checkbox') {
+                field.checked = false;
+            } else {
+                field.value = '';
+            }
+        });
+
+        // Добавляем форму в контейнер
+        container.appendChild(newForm);
+
+        // Увеличиваем счётчик форм
+        totalForms.value = currentFormCount + 1;
+    }
+</script>
+{% endblock %}

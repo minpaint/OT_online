@@ -1,0 +1,99 @@
+{% extends "admin/base_site.html" %}
+{% load static %}
+
+{% block title %}{{ title }}{% endblock %}
+
+{% block breadcrumbs %}
+<div class="breadcrumbs">
+    <a href="{% url 'admin:index' %}">Главная</a>
+    &rsaquo; <a href="{% url 'admin:app_list' app_label='directory' %}">Directory</a>
+    &rsaquo; <a href="{% url 'admin:directory_employee_changelist' %}">Сотрудники</a>
+    &rsaquo; {{ title }}
+</div>
+{% endblock %}
+
+{% block content %}
+<div class="module">
+    <h1>👥 Импорт сотрудников</h1>
+
+    <div class="help" style="background-color: #fef3cd; padding: 15px; border-left: 4px solid #ffc107; margin: 20px 0;">
+        <h3>⚠️ Важно!</h3>
+        <ul>
+            <li>Файл должен быть в формате <strong>XLSX</strong> или <strong>XLS</strong></li>
+            <li>Обязательные поля: <code>hire_date</code>, <code>org_short_name_ru</code>, <code>position_name</code>, <code>full_name_nominative</code></li>
+            <li>ФИО в дательном падеже генерируется автоматически через pymorphy2</li>
+            <li>Автозаполнение: start_date=hire_date, contract_type='standard', status='active'</li>
+            <li>Автоматически создаются отсутствующие организации, подразделения, отделы и должности</li>
+            <li>Существующие сотрудники (по ФИО) будут обновлены</li>
+        </ul>
+    </div>
+
+    <fieldset class="module aligned">
+        <h2>📋 Структура Excel-файла (6 столбцов)</h2>
+
+        <div style="padding: 15px;">
+            <h3>Поля для импорта (в строгом порядке):</h3>
+            <ol>
+                <li><code>hire_date</code> - Дата приема (ДД.ММ.ГГГГ) <span style="color: red;">★ Обязательное, 1-я колонка</span></li>
+                <li><code>org_short_name_ru</code> - Краткое наименование организации <span style="color: red;">★ Обязательное</span></li>
+                <li><code>subdivision_name</code> - Структурное подразделение</li>
+                <li><code>department_name</code> - Отдел</li>
+                <li><code>position_name</code> - Название должности <span style="color: red;">★ Обязательное</span></li>
+                <li><code>full_name_nominative</code> - ФИО (именительный падеж) <span style="color: red;">★ Обязательное</span></li>
+            </ol>
+
+            <div class="help" style="background-color: #d1ecf1; padding: 10px; margin: 15px 0;">
+                <strong>💡 Автоматически заполняется:</strong>
+                <ul>
+                    <li><code>full_name_dative</code> - генерируется из full_name_nominative через pymorphy2</li>
+                    <li><code>start_date</code> = hire_date</li>
+                    <li><code>contract_type</code> = 'standard' (трудовой договор)</li>
+                    <li><code>status</code> = 'active' (оформлен)</li>
+                </ul>
+            </div>
+
+            <h3 style="margin-top: 20px;">Пример строки Excel:</h3>
+            <table style="width: 100%; border-collapse: collapse; margin-top: 10px;">
+                <thead>
+                    <tr style="background-color: #417690; color: white;">
+                        <th style="border: 1px solid #ddd; padding: 8px;">hire_date</th>
+                        <th style="border: 1px solid #ddd; padding: 8px;">org_short_name_ru</th>
+                        <th style="border: 1px solid #ddd; padding: 8px;">subdivision_name</th>
+                        <th style="border: 1px solid #ddd; padding: 8px;">department_name</th>
+                        <th style="border: 1px solid #ddd; padding: 8px;">position_name</th>
+                        <th style="border: 1px solid #ddd; padding: 8px;">full_name_nominative</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    <tr>
+                        <td style="border: 1px solid #ddd; padding: 8px;">01.01.2024</td>
+                        <td style="border: 1px solid #ddd; padding: 8px;">РиК</td>
+                        <td style="border: 1px solid #ddd; padding: 8px;">Цех №1</td>
+                        <td style="border: 1px solid #ddd; padding: 8px;">Участок сборки</td>
+                        <td style="border: 1px solid #ddd; padding: 8px;">Слесарь</td>
+                        <td style="border: 1px solid #ddd; padding: 8px;">Иванов Иван Иванович</td>
+                    </tr>
+                </tbody>
+            </table>
+        </div>
+    </fieldset>
+
+    <form method="post" enctype="multipart/form-data" style="margin-top: 20px;">
+        {% csrf_token %}
+        <fieldset class="module aligned">
+            <h2>📤 Загрузить файл</h2>
+            <div class="form-row">
+                <div>
+                    <label for="import_file">Выберите файл Excel (XLSX или XLS):</label>
+                    <input type="file" id="import_file" name="import_file" accept=".xlsx,.xls" required>
+                </div>
+            </div>
+        </fieldset>
+
+        <div class="submit-row">
+            <input type="submit" value="📋 Предпросмотр импорта" class="default">
+            <a href="{% url 'admin:directory_employee_changelist' %}" class="button">Отмена</a>
+        </div>
+    </form>
+</div>
+{% endblock %}

@@ -43,6 +43,9 @@ __all__ = [
     "MedicalNormExportForm",
     # 🆕 новая
     "UniquePositionMedicalNormForm",
+    "HarmfulFactorNormForm",
+    "HarmfulFactorNormFormSet",
+    "PositionNormForm",
 ]
 
 
@@ -64,9 +67,8 @@ class MedicalExaminationTypeForm(forms.ModelForm):
 class HarmfulFactorForm(forms.ModelForm):
     class Meta:
         model = HarmfulFactor
-        fields = ["examination_type", "short_name", "full_name", "periodicity"]
+        fields = ["short_name", "full_name", "periodicity"]
         widgets = {
-            "examination_type": forms.Select(attrs={"class": "form-control"}),
             "short_name": forms.TextInput(attrs={"class": "form-control"}),
             "full_name": forms.TextInput(attrs={"class": "form-control"}),
             "periodicity": forms.NumberInput(attrs={"class": "form-control"}),
@@ -114,13 +116,12 @@ class EmployeeMedicalExaminationForm(forms.ModelForm):
     class Meta:
         model = EmployeeMedicalExamination
         fields = [
-            "employee", "examination_type", "harmful_factor",
+            "employee", "harmful_factor",
             "date_completed", "next_date", "medical_certificate",
             "status", "notes",
         ]
         widgets = {
             "employee": forms.Select(attrs={"class": "form-control"}),
-            "examination_type": forms.Select(attrs={"class": "form-control"}),
             "harmful_factor": forms.Select(attrs={"class": "form-control"}),
             "date_completed": forms.DateInput(attrs={"class": "form-control", "type": "date"}),
             "next_date": forms.DateInput(attrs={"class": "form-control", "type": "date"}),
@@ -160,9 +161,6 @@ class MedicalSettingsForm(forms.ModelForm):
 class MedicalNormSearchForm(forms.Form):
     position_name = forms.CharField(required=False, label="Наименование должности",
                                     widget=forms.TextInput(attrs={"class": "form-control"}))
-    examination_type = forms.ModelChoiceField(required=False, label="Вид медосмотра",
-                                              queryset=MedicalExaminationType.objects.all(),
-                                              widget=forms.Select(attrs={"class": "form-control"}))
     harmful_factor = forms.CharField(required=False, label="Вредный фактор",
                                      widget=forms.TextInput(attrs={"class": "form-control"}))
 
@@ -170,9 +168,6 @@ class MedicalNormSearchForm(forms.Form):
 class EmployeeMedicalExaminationSearchForm(forms.Form):
     employee = forms.CharField(required=False, label="Сотрудник",
                                widget=forms.TextInput(attrs={"class": "form-control"}))
-    examination_type = forms.ModelChoiceField(required=False, label="Вид медосмотра",
-                                              queryset=MedicalExaminationType.objects.all(),
-                                              widget=forms.Select(attrs={"class": "form-control"}))
     status = forms.ChoiceField(required=False, label="Статус",
                                choices=[("", "---")] + list(EmployeeMedicalExamination.STATUS_CHOICES),
                                widget=forms.Select(attrs={"class": "form-control"}))
@@ -229,7 +224,6 @@ class UniquePositionMedicalNormForm(forms.ModelForm):
             "notes": forms.Textarea(attrs={"class": "form-control", "rows": 3}),
         }
 
-    # заполнение choices + предустановка
     def __init__(self, *args, **kwargs):
         # Важное изменение: сохраняем position_id перед вызовом super().__init__
         position_id = kwargs.pop("position_id", None)
@@ -242,10 +236,9 @@ class UniquePositionMedicalNormForm(forms.ModelForm):
 
         # Получаем все уникальные имена должностей
         names = Position.objects.values_list("position_name", flat=True).distinct().order_by("position_name")
-        self.fields["unique_position_name"].choices = [("", "-- Выберите профессию/должность --")] + [(n, n) for n in
-                                                                                                      names]
+        self.fields["unique_position_name"].choices = [("", "-- Выберите профессию/должность --")] + [(n, n) for n in names]
 
-        # Изменяем порядок приоритетов:
+        # Устанавливаем initial значение для unique_position_name
         # 1. Если передан position_id, используем его (даже если self.instance.pk существует)
         if position_id:
             try:
@@ -260,6 +253,9 @@ class UniquePositionMedicalNormForm(forms.ModelForm):
         elif self.instance.pk:
             self.fields["unique_position_name"].initial = self.instance.position_name
             logger.debug(f"Установлено начальное значение из instance: {self.instance.position_name}")
+
+        # Переупорядочиваем поля
+        self.order_fields(['unique_position_name', 'harmful_factor', 'periodicity_override', 'notes'])
 
     # проверяем уникальность (position_name + factor)
     def clean(self):
@@ -281,3 +277,57 @@ class UniquePositionMedicalNormForm(forms.ModelForm):
         # Сохраняем название должности в поле position_name
         self.instance.position_name = self.cleaned_data["unique_position_name"]
         return super().save(commit)
+
+
+# ---------------------------------------------------------------------------
+# 📋 FORMSET ДЛЯ МНОЖЕСТВЕННОГО ДОБАВЛЕНИЯ ВРЕДНЫХ ФАКТОРОВ
+# ---------------------------------------------------------------------------
+
+class HarmfulFactorNormForm(forms.Form):
+    """
+    Форма для одного вредного фактора в formset
+    """
+    harmful_factor = forms.ModelChoiceField(
+        queryset=HarmfulFactor.objects.all(),
+        required=True,
+        label="Вредный фактор",
+        widget=forms.Select(attrs={"class": "form-control"})
+    )
+    periodicity_override = forms.IntegerField(
+        required=False,
+        label="Периодичность (мес)",
+        widget=forms.NumberInput(attrs={"class": "form-control", "placeholder": "Оставьте пустым для использования значения по умолчанию"})
+    )
+    notes = forms.CharField(
+        required=False,
+        label="Примечания",
+        widget=forms.Textarea(attrs={"class": "form-control", "rows": 2})
+    )
+
+
+# Создаем formset на основе формы
+from django.forms import formset_factory
+
+HarmfulFactorNormFormSet = formset_factory(
+    HarmfulFactorNormForm,
+    extra=3,  # Показывать 3 пустые формы по умолчанию
+    can_delete=True  # Позволить удалять формы
+)
+
+
+class PositionNormForm(forms.Form):
+    """
+    Форма для выбора профессии и добавления вредных факторов через formset
+    """
+    position_name = forms.ChoiceField(
+        label="Профессия (должность)",
+        required=True,
+        help_text="Выберите общее название без привязки к организации",
+    )
+
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, **kwargs)
+
+        # Получаем все уникальные имена должностей
+        names = Position.objects.values_list("position_name", flat=True).distinct().order_by("position_name")
+        self.fields["position_name"].choices = [("", "-- Выберите профессию/должность --")] + [(n, n) for n in names]

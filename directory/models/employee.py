@@ -51,11 +51,7 @@ class Employee(models.Model):
 
     full_name_nominative = models.CharField(
         max_length=255,
-        verbose_name="ФИО (именительный)"
-    )
-    full_name_dative = models.CharField(
-        max_length=255,
-        verbose_name="ФИО (дательный)"
+        verbose_name="ФИО"
     )
     date_of_birth = models.DateField(verbose_name="Дата рождения")
     place_of_residence = models.TextField(verbose_name="Место проживания")

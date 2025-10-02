@@ -1,12 +1,16 @@
 # directory/admin/equipment.py
 from django.contrib import admin
-from django.shortcuts import redirect
-from django.urls import reverse
+from django.contrib import messages
+from django.shortcuts import redirect, render
+from django.urls import path, reverse
 from django.utils.dateparse import parse_date
+from django.http import HttpResponse
+from tablib import Dataset
 
 from directory.admin.mixins.tree_view import TreeViewMixin
 from directory.models import Equipment
 from directory.forms.equipment import EquipmentForm
+from directory.resources.equipment import EquipmentResource
 
 
 class EquipmentTreeViewMixin(TreeViewMixin):
@@ -96,6 +100,15 @@ class EquipmentAdmin(EquipmentTreeViewMixin, admin.ModelAdmin):
     list_filter = ['organization', 'subdivision', 'department']
     search_fields = ['equipment_name', 'inventory_number']
 
+    def get_urls(self):
+        """🔗 Добавляем кастомные URL для импорта/экспорта"""
+        urls = super().get_urls()
+        custom_urls = [
+            path('import/', self.admin_site.admin_view(self.import_view), name='directory_equipment_import'),
+            path('export/', self.admin_site.admin_view(self.export_view), name='directory_equipment_export'),
+        ]
+        return custom_urls + urls
+
     # ────────────────────────────────────────────────────────────
     #  ПЕРЕПРОВЕДЕНИЕ ТО ИЗ СПИСКА
     # ────────────────────────────────────────────────────────────
@@ -118,3 +131,88 @@ class EquipmentAdmin(EquipmentTreeViewMixin, admin.ModelAdmin):
             allowed_orgs = request.user.profile.organizations.all()
             qs = qs.filter(organization__in=allowed_orgs)
         return qs
+
+    def import_view(self, request):
+        """📥 Импорт оборудования"""
+        context = self.admin_site.each_context(request)
+
+        if request.method == 'POST':
+            if 'confirm' in request.POST:
+                # Финальное подтверждение импорта
+                dataset_data = request.session.get('equipment_dataset')
+                if not dataset_data:
+                    messages.error(request, 'Данные для импорта не найдены. Загрузите файл заново.')
+                    return redirect('admin:directory_equipment_import')
+
+                dataset = Dataset().load(dataset_data)
+                resource = EquipmentResource()
+                result = resource.import_data(dataset, dry_run=False)
+
+                del request.session['equipment_dataset']
+
+                messages.success(request, f'✅ Импорт завершен! Создано: {result.totals["new"]}, обновлено: {result.totals["update"]}')
+                return redirect('admin:directory_equipment_changelist')
+            else:
+                # Предпросмотр импорта
+                import_file = request.FILES.get('import_file')
+                if not import_file:
+                    messages.error(request, 'Файл не выбран')
+                    return redirect('admin:directory_equipment_import')
+
+                file_format = import_file.name.split('.')[-1].lower()
+                if file_format not in ['xlsx', 'xls']:
+                    messages.error(request, 'Поддерживаются только файлы XLSX и XLS')
+                    return redirect('admin:directory_equipment_import')
+
+                try:
+                    dataset = Dataset().load(import_file.read(), format=file_format)
+                    resource = EquipmentResource()
+                    result = resource.import_data(dataset, dry_run=True)
+
+                    # Сохраняем данные в сессии для финального импорта
+                    request.session['equipment_dataset'] = dataset.export('json')
+
+                    context.update({
+                        'title': 'Предпросмотр импорта оборудования',
+                        'result': result,
+                        'dataset': dataset,
+                    })
+                    return render(request, 'admin/directory/equipment/import_preview.html', context)
+                except Exception as e:
+                    messages.error(request, f'Ошибка при обработке файла: {str(e)}')
+                    return redirect('admin:directory_equipment_import')
+
+        context.update({
+            'title': 'Импорт оборудования',
+            'subtitle': None,
+        })
+        return render(request, 'admin/directory/equipment/import.html', context)
+
+    def export_view(self, request):
+        """📤 Экспорт оборудования"""
+        from directory.models import Equipment
+
+        # Фильтрация по организации (если указана)
+        organization_id = request.GET.get('organization_id')
+
+        if organization_id:
+            queryset = Equipment.objects.filter(organization_id=organization_id)
+        else:
+            queryset = Equipment.objects.all()
+
+        # Применяем права доступа
+        if not request.user.is_superuser and hasattr(request.user, 'profile'):
+            allowed_orgs = request.user.profile.organizations.all()
+            queryset = queryset.filter(organization__in=allowed_orgs)
+
+        queryset = queryset.select_related('organization', 'subdivision', 'department')
+
+        resource = EquipmentResource()
+        dataset = resource.export(queryset)
+
+        response = HttpResponse(
+            dataset.export('xlsx'),
+            content_type='application/vnd.openxmlformats-officedocument.spreadsheetml.sheet'
+        )
+        response['Content-Disposition'] = 'attachment; filename="equipment.xlsx"'
+        return response
