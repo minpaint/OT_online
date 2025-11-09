@@ -16,7 +16,9 @@ TESTING = len(sys.argv) > 1 and sys.argv[1] == 'test'
 # 🔐 Основные настройки безопасности
 SECRET_KEY = os.getenv('DJANGO_SECRET_KEY')
 DEBUG = os.getenv('DJANGO_DEBUG', 'False') == 'True' and not TESTING
-ALLOWED_HOSTS = os.getenv('DJANGO_ALLOWED_HOSTS', '127.0.0.1,localhost').split(',')
+ALLOWED_HOSTS = os.getenv('DJANGO_ALLOWED_HOSTS', '127.0.0.1,localhost,exam.localhost,localhost:8001,exam.localhost:8001,127.0.0.1:8001').split(',')
+SECURE_PROXY_SSL_HEADER = ('HTTP_X_FORWARDED_PROTO', 'https')
+
 
 # 📱 Базовые приложения  ────────────────────────────────────────────────
 DJANGO_APPS = [
@@ -55,6 +57,7 @@ INSTALLED_APPS = DJANGO_APPS + THIRD_PARTY_APPS + LOCAL_APPS
 # 🛠️ Базовый middleware
 MIDDLEWARE = [
     'django.middleware.security.SecurityMiddleware',     # Защита 🔒
+    'whitenoise.middleware.WhiteNoiseMiddleware',        # WhiteNoise для статики 🎨
     'django.contrib.sessions.middleware.SessionMiddleware', # Сессии 🕑
     'corsheaders.middleware.CorsMiddleware',            # CORS 🌐
     'django.middleware.common.CommonMiddleware',         # Общие настройки 🔧
@@ -62,6 +65,7 @@ MIDDLEWARE = [
     'django.contrib.auth.middleware.AuthenticationMiddleware', # Аутентификация 🔑
     'django.contrib.messages.middleware.MessageMiddleware', # Сообщения 📨
     'django.middleware.clickjacking.XFrameOptionsMiddleware', # Защита от clickjacking 🖱️
+    'directory.middleware.ExamSubdomainMiddleware',      # Изоляция exam.* поддомена 🔐
 ]
 
 # Добавляем debug_toolbar middleware только если не в режиме тестирования и DEBUG=True
@@ -142,19 +146,22 @@ TIME_ZONE = os.getenv('TIME_ZONE', 'Europe/Moscow')
 USE_I18N = True
 USE_TZ = True # Рекомендуется использовать True для работы с часовыми поясами
 
-# 📁 Статические файлы
+# 📁 Статические файлы - ИСПРАВЛЕНО ДЛЯ СЕРВЕРА
 STATIC_URL = os.getenv('STATIC_URL', '/static/')
 STATICFILES_DIRS = [
     BASE_DIR / 'static',
     BASE_DIR / 'directory' / 'static', # Статика из конкретного приложения 'directory'
 ]
-STATIC_ROOT = BASE_DIR / 'staticfiles' # Директория для collectstatic
+# ИСПРАВЛЕНО: путь для сбора статики на сервере
+STATIC_ROOT = BASE_DIR.parent / 'data' / 'static'  # Теперь указывает на /home/django/webapps/soutby/data/static
+
 STATICFILES_FINDERS = [
     'django.contrib.staticfiles.finders.FileSystemFinder',
     'django.contrib.staticfiles.finders.AppDirectoriesFinder',
 ]
-# Используйте ManifestStaticFilesStorage для кэширования статики (или Whitenoise)
-STATICFILES_STORAGE = 'django.contrib.staticfiles.storage.ManifestStaticFilesStorage'
+
+# ИСПРАВЛЕНО: используем WhiteNoise для статики
+STATICFILES_STORAGE = 'whitenoise.storage.CompressedManifestStaticFilesStorage'
 
 # 📸 Медиа файлы
 MEDIA_URL = os.getenv('MEDIA_URL', '/media/')
@@ -334,9 +341,13 @@ LOGGING = {
             'level': 'DEBUG', # Уровень для вашего приложения
             'propagate': True, # Передавать сообщения корневому логгеру
         },
+        'exam_security': { # Логгер для безопасности exam поддомена
+            'handlers': ['file', 'console'],
+            'level': 'WARNING', # Логируем только предупреждения и ошибки
+            'propagate': False,
+        },
     },
 }
-
 
 # 💾 Кэширование
 CACHES = {
@@ -361,3 +372,6 @@ WKHTMLTOPDF_CMD = os.getenv('WKHTMLTOPDF_CMD', 'C:\\Program Files\\wkhtmltopdf\\
 # Для Linux может быть: WKHTMLTOPDF_CMD = os.getenv('WKHTMLTOPDF_CMD', '/usr/bin/wkhtmltopdf')
 # Для MacOS (если установлен через Homebrew): WKHTMLTOPDF_CMD = os.getenv('WKHTMLTOPDF_CMD', '/usr/local/bin/wkhtmltopdf')
 
+# 📝 Настройки для экзаменационного поддомена
+EXAM_SUBDOMAIN = os.getenv('EXAM_SUBDOMAIN', 'exam.localhost:8001')
+EXAM_PROTOCOL = os.getenv('EXAM_PROTOCOL', 'http')

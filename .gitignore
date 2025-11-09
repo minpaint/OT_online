@@ -3,43 +3,73 @@ __pycache__/
 *.py[cod]
 *$py.class
 .Python
+
+# Build
 build/
-develop-eggs/
 dist/
+sdist/
+develop-eggs/
 downloads/
 eggs/
 .eggs/
-lib/
-lib64/
 parts/
-sdist/
 var/
 wheels/
+share/python-wheels/
+pip-wheel-metadata/
 *.egg-info/
 .installed.cfg
-*.egg
 
-# Django
-*.log
-local_settings.py
-db.sqlite3
-db.sqlite3-journal
-media/
-staticfiles/
-
-# Virtual Environment
+# Virtualenv
+.venv/
 venv/
 ENV/
+env/
 
-# IDE
+# Caches & QA
+.pytest_cache/
+.mypy_cache/
+.tox/
+.coverage
+.coverage.*
+htmlcov/
+.cache/
+pytestdebug.log
+
+# Django artifacts
+staticfiles/
+static_root/
+media/
+document_templates/
+generated_documents/
+
+# Logs & backups
+logs/
+backups/
+*.log
+*.log.*
+
+# DB dumps & local DB
+*.sqlite3
+*.db
+*.sql
+*.dump
+
+# Secrets
+.env
+.env.*
+*.env
+
+# OS/IDE
+.DS_Store
+Thumbs.db
 .idea/
 .vscode/
 *.swp
 *.swo
 
-# Environment variables
-.env
+# Node (если появится фронт)
+node_modules/
 
-# OS
-.DS_Store
-Thumbs.db
+# Misc
+.python-version

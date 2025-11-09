@@ -1,0 +1,1047 @@
+{% extends request.session.quiz_token_mode|yesno:"base_token_mode.html,base.html" %}
+{% load static %}
+
+{% block title %}{{ quiz.title }} — вопрос {{ question_number }}{% endblock %}
+
+{% block extra_css %}
+<style>
+    body.exam-mode {
+        margin: 0;
+        padding: 0;
+        overflow-x: hidden;
+    }
+    body.exam-mode main {
+        padding: 0;
+        margin: 0;
+    }
+    body.exam-mode .container.mt-4 {
+        max-width: 100%;
+        padding: 0;
+        margin: 0;
+    }
+    .exam-layout {
+        background-color: #0b7a79;
+        color: #ffffff;
+        min-height: 100vh;
+        display: flex;
+        flex-direction: column;
+        padding: 2rem clamp(1rem, 4vw, 3rem);
+        gap: 2rem;
+        font-family: "Arial", "Helvetica", sans-serif;
+    }
+    .exam-header {
+        display: flex;
+        flex-wrap: wrap;
+        gap: 1.5rem;
+        align-items: center;
+    }
+    .exam-title {
+        font-size: clamp(1.4rem, 2.4vw, 1.9rem);
+        font-weight: 700;
+        letter-spacing: 0.04em;
+        text-transform: uppercase;
+    }
+    .exam-badge {
+        padding: 0.2rem 0.8rem;
+        border: 1px solid rgba(255, 255, 255, 0.75);
+        border-radius: 999px;
+        font-size: 0.9rem;
+        font-weight: 600;
+        letter-spacing: 0.08em;
+    }
+    .exam-meta {
+        margin-left: auto;
+        display: flex;
+        flex-wrap: wrap;
+        gap: 1rem 2rem;
+        font-size: 0.9rem;
+    }
+    .exam-meta-item {
+        display: flex;
+        flex-direction: column;
+        line-height: 1.3;
+    }
+    .exam-meta-label {
+        opacity: 0.75;
+        font-size: 0.8rem;
+    }
+    .exam-content {
+        display: grid;
+        grid-template-columns: minmax(0, 2fr) minmax(260px, 1fr);
+        gap: clamp(1.5rem, 4vw, 3rem);
+        align-items: start;
+    }
+    .exam-question-box {
+        background: rgba(0, 0, 0, 0.12);
+        border: 2px solid rgba(255, 255, 255, 0.6);
+        border-radius: 0;
+        padding: clamp(1.5rem, 3vw, 2rem);
+        display: flex;
+        flex-direction: column;
+        gap: 1.5rem;
+    }
+    .exam-question-head {
+        font-size: 1rem;
+        font-weight: 400;
+        line-height: 1.4;
+        color: rgba(255, 255, 255, 0.9);
+    }
+    .exam-question-text {
+        font-size: 1.5rem;
+        font-weight: 400;
+        line-height: 1.6;
+    }
+    .exam-answers {
+        list-style: none;
+        padding: 0;
+        margin: 0;
+        display: grid;
+        gap: 0.75rem;
+    }
+    .exam-answer {
+        background: #d0d0d0;
+        color: #000000;
+        border: 2px solid #999999;
+        border-radius: 0;
+        padding: 1rem 1.25rem;
+        font-size: 1.35rem;
+        letter-spacing: 0;
+        display: flex;
+        gap: 1rem;
+        cursor: pointer;
+        transition: transform 0.15s ease, box-shadow 0.15s ease, background 0.15s ease, border-color 0.15s ease;
+        box-shadow: 0 2px 4px rgba(0, 0, 0, 0.15);
+        font-weight: 400;
+    }
+    .exam-answer:hover {
+        transform: translateY(-2px);
+        box-shadow: 0 4px 8px rgba(0, 0, 0, 0.25);
+        background: #e0e0e0;
+        border-color: #777777;
+    }
+    .exam-answer:active {
+        transform: translateY(0);
+        box-shadow: 0 1px 2px rgba(0, 0, 0, 0.2);
+    }
+    .exam-answer-number {
+        font-weight: 400;
+        min-width: 1.25rem;
+    }
+    .exam-answer.disabled {
+        pointer-events: none;
+    }
+    .exam-answer.correct {
+        background: #4caf50 !important;
+        color: white !important;
+        border-color: #388e3c !important;
+    }
+    .exam-answer.incorrect {
+        background: #f44336 !important;
+        color: white !important;
+        border-color: #d32f2f !important;
+    }
+    .exam-feedback {
+        background: #d4af37;
+        color: #000;
+        padding: 1rem 1.5rem;
+        font-size: 1.2rem;
+        font-weight: 600;
+        text-align: center;
+        margin-top: 1rem;
+        border-radius: 0;
+        display: none;
+    }
+    .exam-feedback.show {
+        display: block;
+    }
+    .exam-image-box {
+        background: transparent;
+        border-radius: 0;
+        padding: 1.5rem;
+        display: flex;
+        justify-content: center;
+        align-items: center;
+        min-height: 280px;
+    }
+    .exam-image-box img {
+        border-radius: 0;
+        box-shadow: none;
+        object-fit: contain;
+        display: block;
+        background-color: transparent;
+    }
+    /* Адаптивные размеры изображения в зависимости от пропорций */
+    .exam-image-box img.img-wide {
+        /* Широкие горизонтальные изображения (соотношение > 2:1) */
+        width: 100%;
+        max-height: 200px;
+    }
+    .exam-image-box img.img-landscape {
+        /* Обычные горизонтальные (1.3:1 - 2:1) */
+        width: 100%;
+        max-height: 300px;
+    }
+    .exam-image-box img.img-square {
+        /* Квадратные или близкие к квадрату (0.8:1 - 1.3:1) */
+        max-width: 90%;
+        max-height: 400px;
+    }
+    .exam-image-box img.img-portrait {
+        /* Вертикальные (0.5:1 - 0.8:1) */
+        max-width: 75%;
+        max-height: 500px;
+    }
+    .exam-image-box img.img-tall {
+        /* Высокие вертикальные (< 0.5:1) */
+        max-width: 60%;
+        max-height: 600px;
+    }
+    .exam-image-placeholder {
+        font-size: 0.95rem;
+        opacity: 0.8;
+        text-align: center;
+    }
+    .exam-footer {
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        gap: 1rem;
+    }
+    .exam-home-btn {
+        background: transparent;
+        color: #ffffff;
+        border: 2px solid rgba(255, 255, 255, 0.6);
+        padding: 0.75rem 2rem;
+        border-radius: 0;
+        font-weight: 600;
+        font-size: 1rem;
+        letter-spacing: 0.02em;
+        transition: transform 0.2s ease, background 0.2s ease, border-color 0.2s ease;
+    }
+    .exam-home-btn:hover {
+        transform: translateY(-2px);
+        background: rgba(255, 255, 255, 0.1);
+        border-color: rgba(255, 255, 255, 1);
+    }
+    .exam-skip-btn {
+        background: #ffffff;
+        color: #0b7a79;
+        border: 2px solid #ffffff;
+        padding: 0.6rem 1.75rem;
+        border-radius: 0;
+        font-weight: 600;
+        letter-spacing: 0.08em;
+        transition: transform 0.2s ease, background 0.2s ease, color 0.2s ease;
+    }
+    .exam-skip-btn:hover {
+        transform: translateY(-2px);
+        background: transparent;
+        color: #ffffff;
+    }
+    .exam-skip-btn:disabled {
+        opacity: 0.5;
+        cursor: not-allowed;
+        transform: none;
+        background: rgba(255, 255, 255, 0.4);
+        color: rgba(11, 122, 121, 0.7);
+    }
+    .exam-progress-bar {
+        width: 100%;
+        height: 6px;
+        border-radius: 999px;
+        background: rgba(255, 255, 255, 0.18);
+        overflow: hidden;
+        margin-top: 0.5rem;
+    }
+    .exam-progress-bar span {
+        display: block;
+        height: 100%;
+        background: linear-gradient(90deg, #f2b705 0%, #f26b1d 100%);
+        transition: width 0.4s ease;
+    }
+    .exam-modal-overlay {
+        display: none;
+        position: fixed;
+        top: 0;
+        left: 0;
+        right: 0;
+        bottom: 0;
+        background: rgba(0, 0, 0, 0.7);
+        z-index: 9999;
+        align-items: center;
+        justify-content: center;
+    }
+    .exam-modal-overlay.active {
+        display: flex;
+    }
+    .exam-modal {
+        background: #ffffff;
+        color: #123;
+        border-radius: 12px;
+        padding: 2rem;
+        max-width: 500px;
+        width: 90%;
+        box-shadow: 0 20px 60px rgba(0, 0, 0, 0.5);
+    }
+    .exam-modal-title {
+        font-size: 1.5rem;
+        font-weight: 700;
+        margin-bottom: 1rem;
+        color: #0b7a79;
+    }
+    .exam-modal-text {
+        font-size: 1rem;
+        line-height: 1.6;
+        margin-bottom: 1.5rem;
+        color: #333;
+    }
+    .exam-modal-buttons {
+        display: flex;
+        gap: 1rem;
+        justify-content: flex-end;
+    }
+    .exam-modal-btn {
+        padding: 0.75rem 1.5rem;
+        border-radius: 6px;
+        font-weight: 600;
+        border: none;
+        cursor: pointer;
+        transition: all 0.2s ease;
+    }
+    .exam-modal-btn-primary {
+        background: #0b7a79;
+        color: white;
+    }
+    .exam-modal-btn-primary:hover {
+        background: #096663;
+        transform: translateY(-1px);
+    }
+    .exam-modal-btn-secondary {
+        background: #e0e0e0;
+        color: #333;
+    }
+    .exam-modal-btn-secondary:hover {
+        background: #d0d0d0;
+    }
+    .exam-explanation-modal {
+        background: rgba(0, 0, 0, 0.85);
+        position: fixed;
+        top: 0;
+        left: 0;
+        right: 0;
+        bottom: 0;
+        z-index: 10000;
+        display: none;
+        align-items: center;
+        justify-content: center;
+    }
+    .exam-explanation-modal.show {
+        display: flex;
+    }
+    .exam-explanation-content {
+        background: white;
+        padding: 2rem;
+        max-width: 600px;
+        width: 90%;
+        max-height: 80vh;
+        overflow-y: auto;
+        color: #000;
+    }
+    .exam-explanation-title {
+        font-size: 1.3rem;
+        font-weight: 700;
+        margin-bottom: 1rem;
+        color: #0b7a79;
+    }
+    .exam-explanation-text {
+        font-size: 1rem;
+        line-height: 1.6;
+        margin-bottom: 1.5rem;
+    }
+    .exam-continue-btn {
+        background: #0b7a79;
+        color: white;
+        border: none;
+        padding: 0.75rem 2rem;
+        border-radius: 0;
+        font-weight: 600;
+        cursor: pointer;
+        transition: all 0.2s ease;
+        width: 100%;
+    }
+    .exam-continue-btn:hover {
+        background: #096663;
+    }
+
+    /* Планшеты (вертикальная ориентация) - показываем всё, но вертикально */
+    @media (max-width: 992px) {
+        .exam-content {
+            grid-template-columns: 1fr;
+        }
+        .exam-footer {
+            justify-content: space-between;
+        }
+        .exam-title {
+            font-size: 1.3rem;
+        }
+    }
+
+    /* Планшеты (горизонтальная ориентация) - две колонки */
+    @media (max-width: 992px) and (orientation: landscape) {
+        .exam-content {
+            grid-template-columns: 1fr 1fr;
+            gap: 1.5rem;
+        }
+    }
+
+    /* Мобильные устройства (смартфоны) - вертикальная компоновка */
+    /* Применяется для узких экранов или портретной ориентации */
+    @media (max-width: 576px), (max-width: 768px) and (orientation: portrait) {
+        .exam-layout {
+            padding: 0.75rem;
+            gap: 0.75rem;
+        }
+
+        /* Скрываем заголовок экзамена - экономим место */
+        .exam-title {
+            display: none;
+        }
+
+        .exam-badge {
+            display: none;
+        }
+
+        /* Компактная мета-информация */
+        .exam-header {
+            gap: 0.5rem;
+            padding: 0.5rem;
+            background: rgba(0, 0, 0, 0.1);
+            border-radius: 8px;
+        }
+
+        .exam-meta {
+            font-size: 0.8rem;
+            gap: 0.35rem 0.75rem;
+        }
+
+        .exam-meta-label {
+            font-size: 0.75rem;
+        }
+
+        .exam-meta-value {
+            font-size: 0.85rem;
+            font-weight: 600;
+        }
+
+        /* Вертикальная компоновка: вопрос -> изображение -> кнопки */
+        .exam-content {
+            display: flex;
+            flex-direction: column;
+            gap: 1rem;
+        }
+
+        .exam-question-box {
+            padding: 1rem;
+            gap: 0.75rem;
+        }
+
+        .exam-question-number {
+            font-size: 0.85rem;
+        }
+
+        .exam-question-text {
+            font-size: 1rem;
+            line-height: 1.5;
+        }
+
+        .exam-answer {
+            padding: 0.8rem 0.95rem;
+            font-size: 0.95rem;
+            border-radius: 6px;
+        }
+
+        /* Изображение внизу под вопросом */
+        .exam-image-box {
+            padding: 0.75rem;
+            min-height: auto;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            background: rgba(255, 255, 255, 0.05);
+            border-radius: 8px;
+        }
+
+        .exam-image-box img {
+            max-width: 100%;
+            max-height: 300px;
+            width: auto;
+            height: auto;
+            object-fit: contain;
+        }
+
+        /* Кнопки внизу на всю ширину */
+        .exam-footer {
+            flex-direction: column;
+            gap: 0.75rem;
+            margin-top: 0.5rem;
+        }
+
+        .exam-home-btn,
+        .exam-skip-btn {
+            width: 100%;
+            padding: 0.9rem 1.5rem;
+            font-size: 1rem;
+        }
+
+        /* Обратная связь */
+        .exam-feedback {
+            font-size: 1.1rem;
+            padding: 0.75rem;
+        }
+    }
+
+    /* Очень маленькие смартфоны */
+    @media (max-width: 360px) {
+        .exam-layout {
+            padding: 0.5rem;
+        }
+
+        .exam-question-text {
+            font-size: 1rem;
+        }
+
+        .exam-answer {
+            padding: 0.75rem 0.85rem;
+            font-size: 1rem;
+        }
+
+        .exam-meta {
+            font-size: 0.75rem;
+        }
+    }
+
+    /* Смартфоны в горизонтальной ориентации - тоже вертикально, но компактнее */
+    /* Используем max-height вместо max-width для landscape */
+    @media (max-height: 500px) and (orientation: landscape) {
+        .exam-layout {
+            padding: 0.5rem;
+            gap: 0.5rem;
+        }
+
+        /* Компактная мета-информация */
+        .exam-header {
+            padding: 0.35rem 0.5rem;
+        }
+
+        .exam-meta {
+            font-size: 0.7rem;
+            gap: 0.25rem 0.5rem;
+        }
+
+        .exam-meta-value {
+            font-size: 0.75rem;
+        }
+
+        /* Вертикальная компоновка: вопрос -> фото внизу */
+        .exam-content {
+            display: flex;
+            flex-direction: column;
+            gap: 0.5rem;
+            max-height: calc(100vh - 120px);
+            overflow-y: auto;
+        }
+
+        .exam-question-box {
+            padding: 0.6rem;
+            gap: 0.5rem;
+        }
+
+        .exam-question-number {
+            font-size: 0.75rem;
+            margin-bottom: 0.25rem;
+        }
+
+        .exam-question-text {
+            font-size: 0.9rem;
+            line-height: 1.4;
+            margin-bottom: 0.5rem;
+        }
+
+        .exam-answers {
+            gap: 0.4rem;
+        }
+
+        .exam-answer {
+            padding: 0.55rem 0.75rem;
+            font-size: 0.85rem;
+            line-height: 1.3;
+        }
+
+        /* Изображение внизу, компактное */
+        .exam-image-box {
+            padding: 0.5rem;
+            min-height: auto;
+        }
+
+        .exam-image-box img {
+            max-width: 100%;
+            max-height: 200px;
+            object-fit: contain;
+        }
+
+        /* Компактные кнопки в строку */
+        .exam-footer {
+            flex-direction: row;
+            gap: 0.4rem;
+            margin-top: 0.5rem;
+        }
+
+        .exam-home-btn,
+        .exam-skip-btn {
+            width: auto;
+            flex: 1;
+            padding: 0.55rem 0.85rem;
+            font-size: 0.85rem;
+        }
+
+        /* Обратная связь компактная */
+        .exam-feedback {
+            font-size: 0.9rem;
+            padding: 0.5rem;
+        }
+    }
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="exam-layout" id="exam-root"
+     data-answer-url="{% url 'directory:quiz:quiz_answer' attempt_id=attempt.id question_id=question.id %}"
+     data-result-url="{{ result_url }}"
+     data-home-url="{% url 'directory:quiz:exam_home' %}"
+     data-allow-skip="{{ allow_skip|yesno:'true,false' }}"
+     data-time-left="{{ time_left_seconds|default_if_none:'' }}"
+     data-allowed-incorrect="{{ allowed_incorrect|default_if_none:'' }}"
+     data-incorrect="{{ incorrect_answers }}"
+     data-question-number="{{ question_number }}"
+     data-total-questions="{{ total_questions }}">
+
+    <input type="hidden" id="csrf-token" value="{{ csrf_token }}">
+
+    <div class="exam-header">
+        <div>
+            <div class="exam-badge">{% if attempt.is_exam_mode %}Экзамен{% else %}Тренировка{% endif %}</div>
+            <div class="exam-title">{{ quiz.title }}</div>
+        </div>
+        <div class="exam-meta">
+            <div class="exam-meta-item">
+                <span class="exam-meta-label">Раздел</span>
+                <span>{{ question.category.name }}</span>
+            </div>
+            <div class="exam-meta-item">
+                <span class="exam-meta-label">Вопрос</span>
+                <span>№ {{ question_number }} из {{ total_questions }}</span>
+                <div class="exam-progress-bar">
+                    <span style="width: {{ progress_percent }}%"></span>
+                </div>
+            </div>
+            <div class="exam-meta-item">
+                <span class="exam-meta-label">Ошибки</span>
+                {% if allowed_incorrect %}
+                    <span><span id="exam-incorrect-count">{{ incorrect_answers }}</span> из {{ allowed_incorrect }}</span>
+                {% else %}
+                    <span><span id="exam-incorrect-count">{{ incorrect_answers }}</span> (без лимита)</span>
+                {% endif %}
+            </div>
+            <div class="exam-meta-item">
+                <span class="exam-meta-label">Время</span>
+                <span id="exam-timer">
+                    {% if time_left_seconds is not None %}
+                        {{ time_left_display }}
+                    {% else %}
+                        Без ограничений
+                    {% endif %}
+                </span>
+            </div>
+        </div>
+    </div>
+
+    <div class="exam-content">
+        <div class="exam-question-box">
+            <div class="exam-question-head">
+                Вопрос № {{ question_number }} из {{ total_questions }}{% if skipped_count %} (пропущено {{ skipped_count }}){% endif %}
+            </div>
+            <div class="exam-question-text">
+                {{ question.question_text|linebreaksbr }}
+            </div>
+            <div style="border: 2px solid rgba(255, 255, 255, 0.6); padding: 1rem; margin-bottom: 1rem;">
+                <div style="font-size: 0.9rem; font-weight: 600; margin-bottom: 0.75rem; color: rgba(255, 255, 255, 0.9);">
+                    Варианты ответа:
+                </div>
+                <ol class="exam-answers">
+                    {% for answer in answers %}
+                    <li class="exam-answer" data-answer="{{ answer.id }}">
+                        <span class="exam-answer-number">{{ forloop.counter }}.</span>
+                        <span class="exam-answer-text">{{ answer.answer_text|linebreaksbr }}</span>
+                    </li>
+                    {% endfor %}
+                </ol>
+            </div>
+
+            <!-- Блок обратной связи -->
+            <div class="exam-feedback" id="exam-feedback">
+                <span id="feedback-text">Совершенно верно!</span>
+            </div>
+        </div>
+        <div class="exam-image-box">
+            {% if question.image %}
+                <img src="{{ question.image.url }}"
+                     alt="Иллюстрация к вопросу"
+                     id="exam-question-image"
+                     onerror="console.error('Ошибка загрузки изображения:', this.src); this.parentElement.innerHTML = '<div class=\'exam-image-placeholder\' style=\'color: #dc3545;\'>❌ Ошибка загрузки изображения<br><small style=\'font-size: 0.8rem; opacity: 0.8;\'>' + this.src + '</small></div>';">
+            {% else %}
+                <div class="exam-image-placeholder">
+                    Изображение для вопроса не приложено.
+                </div>
+            {% endif %}
+        </div>
+    </div>
+
+    <div class="exam-footer">
+        <button class="exam-home-btn" id="exam-home-btn">
+            <i class="fas fa-home"></i> На главную
+        </button>
+        <button class="exam-skip-btn" id="exam-skip-btn" {% if not allow_skip %}disabled{% endif %}>
+            Пропустить
+        </button>
+    </div>
+</div>
+
+<!-- Модальное окно подтверждения выхода -->
+<div class="exam-modal-overlay" id="exam-modal-overlay">
+    <div class="exam-modal">
+        <h3 class="exam-modal-title">
+            <i class="fas fa-info-circle"></i> Выход на главную страницу
+        </h3>
+        <p class="exam-modal-text">
+            Вы можете вернуться к прохождению экзамена позже. Ваш прогресс будет сохранён, и вы сможете продолжить с того места, где остановились.
+        </p>
+        <p class="exam-modal-text" style="font-weight: 600; color: #0b7a79;">
+            Хотите выйти на главную страницу?
+        </p>
+        <div class="exam-modal-buttons">
+            <button class="exam-modal-btn exam-modal-btn-secondary" id="modal-cancel-btn">
+                Остаться
+            </button>
+            <button class="exam-modal-btn exam-modal-btn-primary" id="modal-confirm-btn">
+                Выйти на главную
+            </button>
+        </div>
+    </div>
+</div>
+
+<!-- Модальное окно с пояснением -->
+<div class="exam-explanation-modal" id="exam-explanation-modal">
+    <div class="exam-explanation-content">
+        <h3 class="exam-explanation-title">
+            <i class="fas fa-book"></i> Источник / Пояснение
+        </h3>
+        <div class="exam-explanation-text" id="exam-explanation-text">
+            <!-- Здесь будет текст пояснения -->
+        </div>
+        <button class="exam-continue-btn" id="exam-continue-btn">
+            Продолжить
+        </button>
+    </div>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+    (function () {
+        document.body.classList.add('exam-mode');
+
+        // Функция для определения класса изображения по его пропорциям
+        function applyImageClass() {
+            const img = document.getElementById('exam-question-image');
+            if (!img) return;
+
+            function classifyImage() {
+                const width = img.naturalWidth;
+                const height = img.naturalHeight;
+
+                if (width === 0 || height === 0) return; // Изображение еще не загружено
+
+                const aspectRatio = width / height;
+
+                // Удаляем все классы размеров
+                img.classList.remove('img-wide', 'img-landscape', 'img-square', 'img-portrait', 'img-tall');
+
+                // Применяем класс в зависимости от соотношения сторон
+                if (aspectRatio > 2.0) {
+                    img.classList.add('img-wide');
+                } else if (aspectRatio > 1.3) {
+                    img.classList.add('img-landscape');
+                } else if (aspectRatio > 0.8) {
+                    img.classList.add('img-square');
+                } else if (aspectRatio > 0.5) {
+                    img.classList.add('img-portrait');
+                } else {
+                    img.classList.add('img-tall');
+                }
+            }
+
+            // Если изображение уже загружено
+            if (img.complete) {
+                classifyImage();
+            } else {
+                // Иначе ждем загрузки
+                img.addEventListener('load', classifyImage);
+            }
+        }
+
+        // Применяем классификацию после загрузки DOM
+        applyImageClass();
+
+        const root = document.getElementById('exam-root');
+        if (!root) {
+            return;
+        }
+
+        const answerUrl = root.dataset.answerUrl;
+        const resultUrl = root.dataset.resultUrl;
+        const allowSkip = root.dataset.allowSkip === 'true';
+        const allowedIncorrect = root.dataset.allowedIncorrect ? parseInt(root.dataset.allowedIncorrect, 10) : null;
+        let incorrectCount = parseInt(root.dataset.incorrect || '0', 10);
+        const timerEl = document.getElementById('exam-timer');
+        const incorrectEl = document.getElementById('exam-incorrect-count');
+        const answers = Array.from(root.querySelectorAll('.exam-answer'));
+        const skipBtn = document.getElementById('exam-skip-btn');
+        const csrfTokenInput = document.getElementById('csrf-token');
+        const csrfToken = csrfTokenInput ? csrfTokenInput.value : '';
+        window.addEventListener('unload', () => {
+            document.body.classList.remove('exam-mode');
+        });
+
+        if (!allowSkip && skipBtn) {
+            skipBtn.disabled = true;
+        }
+
+        function formatTime(seconds) {
+            const mins = Math.floor(seconds / 60).toString().padStart(2, '0');
+            const secs = Math.max(0, seconds % 60).toString().padStart(2, '0');
+            return `${mins}:${secs}`;
+        }
+
+        let timeLeft = root.dataset.timeLeft ? parseInt(root.dataset.timeLeft, 10) : null;
+        if (timerEl) {
+            if (timeLeft !== null && !Number.isNaN(timeLeft)) {
+                timerEl.textContent = formatTime(timeLeft);
+            } else {
+                timerEl.textContent = 'Без ограничений';
+            }
+        }
+
+        let timerInterval = null;
+        if (timeLeft !== null && !Number.isNaN(timeLeft)) {
+            timerInterval = setInterval(() => {
+                timeLeft -= 1;
+                if (timerEl) {
+                    timerEl.textContent = formatTime(timeLeft);
+                }
+                if (timeLeft <= 0) {
+                    clearInterval(timerInterval);
+                    window.location.href = resultUrl;
+                }
+            }, 1000);
+        }
+
+        function lockAnswers() {
+            answers.forEach((item) => item.classList.add('disabled'));
+            if (skipBtn) {
+                skipBtn.disabled = true;
+            }
+        }
+
+        let currentExplanation = '';
+        let currentNextUrl = '';
+        let selectedAnswerId = null;
+
+        function handleResponse(data) {
+            console.log('Response data:', data); // Отладка
+
+            if (data.incorrect_answers !== undefined && incorrectEl) {
+                incorrectCount = data.incorrect_answers;
+                incorrectEl.textContent = incorrectCount;
+            }
+            if (data.time_left_seconds !== undefined && timerEl && data.time_left_seconds !== null) {
+                timeLeft = data.time_left_seconds;
+                timerEl.textContent = formatTime(timeLeft);
+            }
+
+            const targetUrl = data.redirect || data.next_url;
+            currentNextUrl = targetUrl;
+
+            // Если ответ был дан
+            if (data.is_correct !== undefined) {
+                const feedbackEl = document.getElementById('exam-feedback');
+                const feedbackText = document.getElementById('feedback-text');
+
+                console.log('Processing answer feedback'); // Отладка
+
+                // Подсветка ответов
+                answers.forEach((item) => {
+                    const answerId = parseInt(item.dataset.answer);
+
+                    console.log('Checking answer:', answerId, 'correct:', data.correct_answer_id, 'selected:', selectedAnswerId); // Отладка
+
+                    // Если это правильный ответ - подсвечиваем зеленым
+                    if (answerId === data.correct_answer_id) {
+                        item.classList.add('correct');
+                        console.log('Added correct class to', answerId); // Отладка
+                    }
+
+                    // Если это выбранный неправильный ответ - красный
+                    if (!data.is_correct && answerId === selectedAnswerId) {
+                        item.classList.add('incorrect');
+                        console.log('Added incorrect class to', answerId); // Отладка
+                    }
+                });
+
+                // Показ обратной связи
+                if (data.is_correct) {
+                    feedbackText.textContent = 'Совершенно верно!';
+                } else {
+                    feedbackText.textContent = 'Неверно!';
+                }
+
+                feedbackEl.classList.add('show');
+                console.log('Feedback shown'); // Отладка
+
+                // Сохраняем пояснение если есть
+                if (data.explanation) {
+                    currentExplanation = data.explanation;
+                } else {
+                    currentExplanation = 'Пояснение к этому вопросу отсутствует.';
+                }
+
+                // Автоматически переходим через 2 секунды
+                setTimeout(() => {
+                    if (targetUrl) {
+                        window.location.href = targetUrl;
+                    }
+                }, 2000);
+            } else {
+                // Для skip или других случаев
+                if (targetUrl) {
+                    window.location.href = targetUrl;
+                }
+            }
+        }
+
+        function sendAnswer(payload) {
+            lockAnswers();
+            fetch(answerUrl, {
+                method: 'POST',
+                headers: {
+                    'X-Requested-With': 'XMLHttpRequest',
+                    'Content-Type': 'application/x-www-form-urlencoded',
+                    'X-CSRFToken': csrfToken
+                },
+                body: new URLSearchParams(payload)
+            })
+                .then(response => response.json())
+                .then(handleResponse)
+                .catch(() => {
+                    window.location.href = resultUrl;
+                });
+        }
+
+        answers.forEach((item) => {
+            item.addEventListener('click', () => {
+                if (item.classList.contains('disabled')) {
+                    return;
+                }
+                // Сохраняем ID выбранного ответа
+                selectedAnswerId = parseInt(item.dataset.answer);
+                console.log('Selected answer:', selectedAnswerId); // Отладка
+
+                const answerId = item.dataset.answer;
+                sendAnswer({answer_id: answerId});
+            });
+        });
+
+        if (skipBtn) {
+            skipBtn.addEventListener('click', () => {
+                if (!allowSkip || skipBtn.disabled) {
+                    return;
+                }
+                sendAnswer({skip: 'true'});
+            });
+        }
+
+        // Обработка кнопки "На главную"
+        const homeBtn = document.getElementById('exam-home-btn');
+        const modalOverlay = document.getElementById('exam-modal-overlay');
+        const modalCancelBtn = document.getElementById('modal-cancel-btn');
+        const modalConfirmBtn = document.getElementById('modal-confirm-btn');
+        const homeUrl = root.dataset.homeUrl;
+
+        if (homeBtn && modalOverlay) {
+            homeBtn.addEventListener('click', () => {
+                modalOverlay.classList.add('active');
+            });
+
+            modalCancelBtn.addEventListener('click', () => {
+                modalOverlay.classList.remove('active');
+            });
+
+            modalConfirmBtn.addEventListener('click', () => {
+                if (homeUrl) {
+                    window.location.href = homeUrl;
+                }
+            });
+
+            // Закрытие модального окна при клике на оверлей
+            modalOverlay.addEventListener('click', (e) => {
+                if (e.target === modalOverlay) {
+                    modalOverlay.classList.remove('active');
+                }
+            });
+        }
+
+        // Обработчики для модального окна с пояснением
+        const explanationModal = document.getElementById('exam-explanation-modal');
+        const explanationText = document.getElementById('exam-explanation-text');
+        const continueBtn = document.getElementById('exam-continue-btn');
+
+        if (continueBtn) {
+            continueBtn.addEventListener('click', () => {
+                explanationModal.classList.remove('show');
+                if (currentNextUrl) {
+                    window.location.href = currentNextUrl;
+                }
+            });
+        }
+
+        // Обработчик клавиши F1
+        document.addEventListener('keydown', (e) => {
+            if (e.key === 'F1') {
+                e.preventDefault();
+                // Показываем пояснение даже если еще не ответили на вопрос
+                const textToShow = currentExplanation || 'Пояснение к этому вопросу будет доступно после ответа.';
+                explanationText.textContent = textToShow;
+                explanationModal.classList.add('show');
+            }
+        });
+
+        // Закрытие модального окна при клике на оверлей
+        if (explanationModal) {
+            explanationModal.addEventListener('click', (e) => {
+                if (e.target === explanationModal) {
+                    explanationModal.classList.remove('show');
+                }
+            });
+        }
+    })();
+</script>
+{% endblock %}

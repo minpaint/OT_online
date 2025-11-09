@@ -1,0 +1,247 @@
+{% extends request.session.quiz_token_mode|yesno:"base_token_mode.html,base.html" %}
+
+{% block title %}Результат — {{ quiz.title }}{% endblock %}
+
+{% block extra_css %}
+<style>
+    .sticky-results {
+        position: sticky;
+        top: 20px;
+        max-height: calc(100vh - 40px);
+        overflow-y: auto;
+    }
+
+    /* Компактные стили для карточки результатов */
+    .results-card .card-header {
+        padding: 0.75rem 1rem;
+    }
+
+    .results-card .card-body {
+        padding: 1rem;
+    }
+
+    .results-card .list-unstyled li {
+        margin-bottom: 0.5rem;
+        font-size: 0.95rem;
+    }
+
+    .results-card .text-muted.small {
+        font-size: 0.85rem;
+    }
+
+    .results-card .btn {
+        padding: 0.5rem 1rem;
+        font-size: 0.95rem;
+    }
+
+    .results-card .alert {
+        padding: 0.5rem 0.75rem;
+        margin-bottom: 0 !important;
+    }
+
+    /* Стили для блока ответов */
+    .answers-block .list-group-item {
+        padding: 1.5rem;
+        margin-bottom: 0.75rem;
+        border-radius: 8px;
+    }
+
+    .answers-block .list-group-item h6 {
+        font-size: 1.05rem;
+        font-weight: 600;
+        color: #495057;
+    }
+
+    /* Текст вопроса - крупный и жирный */
+    .answers-block .question-text {
+        font-size: 1.25rem;
+        font-weight: 700;
+        color: #212529;
+        line-height: 1.6;
+        margin-bottom: 1rem;
+    }
+
+    .answers-block .small {
+        font-size: 1.05rem;
+    }
+
+    .answers-block .badge {
+        font-size: 0.95rem;
+        padding: 0.4rem 0.8rem;
+    }
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="container-fluid px-4 py-3">
+<div class="row">
+    <div class="col-lg-2">
+        <div class="card shadow-sm mb-4 results-card sticky-results">
+            {% if attempt.is_exam_mode %}
+                {# Итоговый экзамен - показываем passed/failed #}
+                {% if attempt.passed %}
+                    <div class="card-header bg-success text-white">
+                        <h6 class="mb-0 text-center" style="font-weight: 700;">✅ ЭКЗАМЕН ПРОЙДЕН</h6>
+                    </div>
+                    <div class="card-body">
+                        <p class="mb-2">
+                            <span class="badge bg-success">Поздравляем!</span>
+                        </p>
+                {% else %}
+                    {# ПРОВАЛ ЭКЗАМЕНА - КРАСНЫЙ ЭКРАН #}
+                    <div class="card-header bg-danger text-white">
+                        <h5 class="mb-0 text-center" style="font-weight: 700;">❌ ЭКЗАМЕН НЕ СДАН</h5>
+                    </div>
+                    <div class="card-body" style="border: 2px solid #dc3545;">
+                        <div class="alert alert-danger mb-2 py-2" style="font-size: 0.95rem;">
+                            <strong>Вы не прошли экзамен</strong>
+                        </div>
+                        {% if attempt.failure_reason %}
+                            <p class="text-muted mb-2" style="font-size: 0.9rem;">
+                                <strong>Причина:</strong> {{ attempt.get_failure_reason_display }}
+                            </p>
+                        {% endif %}
+                {% endif %}
+            {% else %}
+                {# Тренировка - без оценки passed/failed #}
+                <div class="card-header bg-primary text-white">
+                    <h6 class="mb-0 text-center" style="font-weight: 700;">📚 ТРЕНИРОВКА</h6>
+                </div>
+                <div class="card-body">
+                    <p class="text-muted mb-2" style="font-size: 0.85rem;">
+                        Ниже показаны только неправильные ответы для разбора.
+                    </p>
+            {% endif %}
+                <ul class="list-unstyled mb-2">
+                    <li><strong>Всего вопросов:</strong> {{ attempt.total_questions }}</li>
+                    <li><strong>Правильных:</strong> {{ attempt.correct_answers }}</li>
+                    <li><strong>Неправильных:</strong> {{ attempt.incorrect_answers }}</li>
+                    <li><strong>Пропущено:</strong> {{ attempt.skipped_questions }}</li>
+                </ul>
+                <p class="text-muted small mb-0">
+                    <i class="fas fa-clock"></i> {{ attempt.started_at|date:"d.m.Y H:i" }}
+                </p>
+                {% if attempt.completed_at %}
+                <p class="text-muted small mb-2">
+                    <i class="fas fa-check"></i> {{ attempt.completed_at|date:"d.m.Y H:i" }}
+                </p>
+                {% endif %}
+                <div class="d-grid gap-2">
+                    {% if not request.session.quiz_token_mode %}
+                        <a href="{% url 'directory:quiz:quiz_list' %}" class="btn btn-primary">К экзаменам</a>
+                        <a href="{% url 'directory:quiz:quiz_history' %}" class="btn btn-outline-secondary">История попыток</a>
+                    {% else %}
+                        <a href="{% url 'directory:quiz:exam_home' %}" class="btn btn-outline-primary">
+                            <i class="fas fa-home"></i> На главную
+                        </a>
+                        {% if attempt.category %}
+                            {# Тренировка по разделу - начать снова тот же раздел #}
+                            <a href="{% url 'directory:quiz:quiz_start_category' quiz_id=quiz.id category_id=attempt.category.id %}" class="btn btn-success">
+                                <i class="fas fa-redo"></i> Пройти снова
+                            </a>
+                        {% else %}
+                            {# Итоговый экзамен - начать снова весь экзамен #}
+                            <a href="{% url 'directory:quiz:quiz_start' quiz_id=quiz.id %}" class="btn btn-success">
+                                <i class="fas fa-redo"></i> Пройти экзамен снова
+                            </a>
+                        {% endif %}
+                        <div class="alert alert-info mt-2 mb-0" style="font-size: 0.9rem;">
+                            <i class="fas fa-info-circle"></i> Результаты сохранены
+                        </div>
+                    {% endif %}
+                </div>
+            </div>
+        </div>
+    </div>
+    <div class="col-lg-10">
+        <div class="card shadow-sm">
+            <div class="card-header bg-light">
+                <h4 class="mb-0" style="font-weight: 600;">
+                    {% if attempt.is_exam_mode %}
+                        📋 Все ответы
+                    {% else %}
+                        ❌ Неправильные ответы для разбора
+                    {% endif %}
+                </h4>
+            </div>
+            <div class="card-body answers-block">
+                {% if user_answers %}
+                    {% if attempt.is_exam_mode %}
+                        {# Экзамен: показываем все ответы #}
+                        <div class="list-group">
+                            {% for entry in user_answers %}
+                                <div class="list-group-item list-group-item-action">
+                                    <div class="d-flex justify-content-between">
+                                        <h6 class="mb-1">Вопрос {{ forloop.counter }}</h6>
+                                        {% if entry.is_correct %}
+                                            <span class="badge bg-success">Верно</span>
+                                        {% elif entry.is_skipped %}
+                                            <span class="badge bg-warning text-dark">Пропущен</span>
+                                        {% else %}
+                                            <span class="badge bg-danger">Неверно</span>
+                                        {% endif %}
+                                    </div>
+                                    <p class="question-text">{{ entry.question.question_text }}</p>
+                                    {% if entry.selected_answer %}
+                                        {% if entry.is_correct %}
+                                            <p class="small mb-0 text-success"><strong>✅ Ваш ответ:</strong> {{ entry.selected_answer.answer_text }}</p>
+                                        {% else %}
+                                            <p class="small mb-0 text-danger"><strong>❌ Ваш ответ:</strong> {{ entry.selected_answer.answer_text }}</p>
+                                        {% endif %}
+                                    {% elif entry.is_skipped %}
+                                        <p class="small mb-0 text-warning"><strong>⚠️ Ответ не выбран</strong></p>
+                                    {% endif %}
+                                    {% if not entry.is_correct %}
+                                        {% with correct=entry.question.get_correct_answer %}
+                                            {% if correct %}
+                                                <p class="small text-success mb-0"><strong>✅ Правильный ответ:</strong> {{ correct.answer_text }}</p>
+                                            {% endif %}
+                                        {% endwith %}
+                                    {% endif %}
+                                </div>
+                            {% endfor %}
+                        </div>
+                    {% else %}
+                        {# Тренировка: показываем только неправильные #}
+                        <div class="list-group">
+                            {% for entry in user_answers %}
+                                {% if not entry.is_correct %}
+                                    <div class="list-group-item list-group-item-action">
+                                        <div class="d-flex justify-content-between">
+                                            <h6 class="mb-1">Вопрос {{ forloop.counter }}</h6>
+                                            {% if entry.is_skipped %}
+                                                <span class="badge bg-warning text-dark">Пропущен</span>
+                                            {% else %}
+                                                <span class="badge bg-danger">Неверно</span>
+                                            {% endif %}
+                                        </div>
+                                        <p class="question-text">{{ entry.question.question_text }}</p>
+                                        {% if entry.selected_answer %}
+                                            <p class="small mb-0 text-danger"><strong>❌ Ваш ответ:</strong> {{ entry.selected_answer.answer_text }}</p>
+                                        {% elif entry.is_skipped %}
+                                            <p class="small mb-0 text-warning"><strong>⚠️ Ответ не выбран</strong></p>
+                                        {% endif %}
+                                        {% with correct=entry.question.get_correct_answer %}
+                                            {% if correct %}
+                                                <p class="small text-success mb-0"><strong>✅ Правильный ответ:</strong> {{ correct.answer_text }}</p>
+                                            {% endif %}
+                                        {% endwith %}
+                                    </div>
+                                {% endif %}
+                            {% endfor %}
+                        </div>
+                        {% if attempt.incorrect_answers == 0 %}
+                            <div class="alert alert-success mt-3">
+                                <strong>Отлично!</strong> Вы ответили правильно на все вопросы.
+                            </div>
+                        {% endif %}
+                    {% endif %}
+                {% else %}
+                    <p class="text-muted mb-0">Ответов нет.</p>
+                {% endif %}
+            </div>
+        </div>
+    </div>
+</div>
+</div>
+{% endblock %}

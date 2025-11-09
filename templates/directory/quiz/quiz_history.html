@@ -1,0 +1,60 @@
+{% extends 'base.html' %}
+
+{% block title %}История экзаменов{% endblock %}
+
+{% block content %}
+<div class="card shadow-sm">
+    <div class="card-header bg-light">
+        <h5 class="mb-0">История прохождения</h5>
+    </div>
+    <div class="card-body">
+        {% if attempts %}
+            <div class="table-responsive">
+                <table class="table table-striped align-middle">
+                    <thead>
+                        <tr>
+                            <th>Дата</th>
+                            <th>Экзамен</th>
+                            <th>Статус</th>
+                            <th>Правильных</th>
+                            <th>Ошибок</th>
+                            <th>Действие</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {% for item in attempts %}
+                            <tr>
+                                <td>{{ item.started_at|date:"d.m.Y H:i" }}</td>
+                                <td>{{ item.quiz.title }}</td>
+                                <td>
+                                    {% if item.status == item.STATUS_COMPLETED %}
+                                        {% if item.passed %}
+                                            <span class="badge bg-success">Пройден</span>
+                                        {% else %}
+                                            <span class="badge bg-danger">Не пройден</span>
+                                        {% endif %}
+                                        {% if item.failure_reason %}
+                                            <span class="badge bg-light text-muted border">{{ item.get_failure_reason_display }}</span>
+                                        {% endif %}
+                                    {% else %}
+                                        <span class="badge bg-warning text-dark">В процессе</span>
+                                    {% endif %}
+                                </td>
+                                <td>{{ item.correct_answers }}/{{ item.total_questions }}</td>
+                                <td>{{ item.incorrect_answers }}</td>
+                                <td>
+                                    <a href="{% url 'directory:quiz:quiz_result' attempt_id=item.id %}" class="btn btn-sm btn-outline-primary">
+                                        Детали
+                                    </a>
+                                </td>
+                            </tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+            </div>
+        {% else %}
+            <p class="text-muted mb-0">Вы пока не проходили экзамены.</p>
+        {% endif %}
+    </div>
+</div>
+{% endblock %}

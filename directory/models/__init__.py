@@ -15,6 +15,8 @@ from .hiring import EmployeeHiring
 # Добавляем импорт медицинских моделей
 from .medical_examination import HarmfulFactor, MedicalExaminationType, MedicalSettings
 from .medical_norm import MedicalExaminationNorm, PositionMedicalFactor, EmployeeMedicalExamination
+# Добавляем импорт моделей экзаменов
+from .quiz import QuizCategory, QuizCategoryOrder, Quiz, Question, Answer, QuizAttempt, UserAnswer, QuizAccessToken, QuizQuestionOrder
 
 __all__ = [
     'Organization',
@@ -40,4 +42,14 @@ __all__ = [
     'MedicalExaminationNorm',
     'PositionMedicalFactor',
     'EmployeeMedicalExamination',
+    # Добавляем модели экзаменов в список экспорта
+    'QuizCategory',
+    'QuizCategoryOrder',
+    'Quiz',
+    'Question',
+    'Answer',
+    'QuizAttempt',
+    'UserAnswer',
+    'QuizAccessToken',
+    'QuizQuestionOrder',
 ]

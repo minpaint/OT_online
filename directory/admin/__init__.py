@@ -16,6 +16,7 @@ from .commission_admin import CommissionAdmin
 from django.utils.html import format_html
 from directory.models import EmployeeHiring
 from .medical_examination import *
+from .quiz_admin import *  # Импортируем админку экзаменов
 
 
 __all__ = [

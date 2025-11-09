@@ -22,7 +22,11 @@ from directory.views import (
     equipment,  # 🆕 Импортируем модуль с представлениями оборудования
     hiring,  # 📑 Импортируем модуль с представлениями приемов на работу
     medical_examination,  # 🏥 Импортируем модуль с представлениями медосмотров
+    employees,
 )
+
+from directory.views import quiz_views  # 📝 Импортируем модуль с представлениями экзаменов
+from directory.views import quiz_import_views  # 📥 Импорт вопросов
 
 from directory.views.documents import (
     DocumentSelectionView,
@@ -152,6 +156,27 @@ hiring_patterns = [
     path('api/position/<int:position_id>/requirements/', position_requirements_api, name='position_requirements_api'),
 ]
 
+# 📝 Экзамены (тестирование по охране труда)
+quiz_patterns = [
+    path('', quiz_views.quiz_list, name='quiz_list'),
+    path('home/', quiz_views.exam_home, name='exam_home'),  # Главная страница exam поддомена
+    # Итоговый экзамен (без category_id)
+    path('<int:quiz_id>/start/', quiz_views.quiz_start, name='quiz_start'),
+    # Тренировка по разделу (с category_id)
+    path('<int:quiz_id>/start/category/<int:category_id>/', quiz_views.quiz_start, name='quiz_start_category'),
+    path('<int:attempt_id>/question/<int:question_number>/', quiz_views.quiz_question, name='quiz_question'),
+    path('<int:attempt_id>/answer/<int:question_id>/', quiz_views.quiz_answer, name='quiz_answer'),
+    path('<int:attempt_id>/result/', quiz_views.quiz_result, name='quiz_result'),
+    path('history/', quiz_views.quiz_history, name='quiz_history'),
+    path('category/<int:category_id>/', quiz_views.category_detail, name='category_detail'),
+    # Доступ по токену
+    path('access/<uuid:token>/', quiz_views.token_access, name='token_access'),
+    # Импорт вопросов
+    path('import/', quiz_import_views.quiz_import_upload, name='quiz_import_upload'),
+    path('import/preview/', quiz_import_views.quiz_import_preview, name='quiz_import_preview'),
+    path('import/cancel/', quiz_import_views.quiz_import_cancel, name='quiz_import_cancel'),
+]
+
 # 🏥 Медосмотры
 medical_patterns = [
     # Виды медосмотров
@@ -235,6 +260,7 @@ urlpatterns = [
     path('commissions/', include((commission_patterns, 'commissions'))),
     path('hiring/', include((hiring_patterns, 'hiring'))),
     path('medical/', include((medical_patterns, 'medical'))),  # 🏥 Добавляем маршруты для медосмотров
+    path('quiz/', include((quiz_patterns, 'quiz'))),  # 📝 Добавляем маршруты для экзаменов
 
     # API для СИЗ
     path('api/positions/<int:position_id>/siz-norms/', siz.get_position_siz_norms, name='api_position_siz_norms'),
@@ -248,4 +274,5 @@ urlpatterns = [
          name='api_employee_medical_status'),
     path('api/medical/position/<int:position_id>/norms/', medical_examination.api_position_medical_norms,
          name='api_position_medical_norms'),
+    path('api/subdivisions/', employees.get_subdivisions, name='api-subdivisions'),
 ]

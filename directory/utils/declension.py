@@ -1,8 +1,8 @@
-import pymorphy2
+import pymorphy3
 import re
 
 # Создаем анализатор морфологии один раз при импорте модуля
-morph = pymorphy2.MorphAnalyzer()
+morph = pymorphy3.MorphAnalyzer()
 
 CASE_CODES = {
     'nomn': 'именительный',  # Кто? Что? (работает Иванов)

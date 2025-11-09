@@ -91,8 +91,8 @@ class PositionMedicalFactorInline(admin.TabularInline):
     model = PositionMedicalFactor
     extra = 0
     # Удалено поле notes из списка полей
-    fields = ('harmful_factor', 'examination_type', 'periodicity', 'periodicity_override', 'is_disabled')
-    readonly_fields = ('examination_type', 'periodicity')
+    fields = ('harmful_factor', 'periodicity', 'periodicity_override', 'is_disabled')
+    readonly_fields = ('periodicity',)
     verbose_name = "Вредный фактор медосмотра"
     verbose_name_plural = "Вредные факторы медосмотров"
     autocomplete_fields = ['harmful_factor']
@@ -104,16 +104,10 @@ class PositionMedicalFactorInline(admin.TabularInline):
     def get_queryset(self, request):
         """Оптимизированный запрос"""
         return super().get_queryset(request).select_related(
-            'harmful_factor', 'harmful_factor__examination_type'
+            'harmful_factor'
         ).filter(
             harmful_factor__isnull=False
         ).order_by('harmful_factor__short_name')
-
-    def examination_type(self, obj):
-        """🏥 Отображение типа медосмотра"""
-        return obj.harmful_factor.examination_type.name if obj.harmful_factor and obj.harmful_factor.examination_type else ""
-
-    examination_type.short_description = "Вид медосмотра"
 
     def periodicity(self, obj):
         """⏱️ Отображение базовой периодичности"""

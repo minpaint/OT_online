@@ -1,7 +1,8 @@
 from django.contrib import admin
-from django.urls import path, include
+from django.urls import path, include, re_path
 from django.conf import settings
 from django.conf.urls.static import static
+from django.views.static import serve
 from directory.error_handlers import error_400, error_403, error_404, error_500
 # Импортируем представление главной страницы
 from directory.views.home import HomePageView
@@ -19,10 +20,22 @@ urlpatterns = [
     path('directory/', include('directory.urls')),
 ]
 
+# Обслуживание media файлов для ВСЕХ доменов (включая exam.localhost)
+# ВАЖНО: В продакшене используйте nginx/apache для обслуживания media
+if settings.DEBUG:
+    # Явно добавляем serve view для media файлов
+    urlpatterns += [
+        re_path(r'^media/(?P<path>.*)$', serve, {
+            'document_root': settings.MEDIA_ROOT,
+        }),
+    ]
+else:
+    # Для продакшена используем static helper
+    urlpatterns += static(settings.MEDIA_URL, document_root=settings.MEDIA_ROOT)
+
 # Настройки для режима разработки
 if settings.DEBUG:
     urlpatterns += static(settings.STATIC_URL, document_root=settings.STATIC_ROOT)
-    urlpatterns += static(settings.MEDIA_URL, document_root=settings.MEDIA_ROOT)
 
     if 'debug_toolbar' in settings.INSTALLED_APPS:
         import debug_toolbar

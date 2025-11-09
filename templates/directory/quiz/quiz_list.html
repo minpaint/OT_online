@@ -1,0 +1,137 @@
+{% extends 'base.html' %}
+
+{% block title %}Проверка знаний - OT Online{% endblock %}
+
+{% block content %}
+<div class="container">
+    <h1 class="mb-4">📝 Проверка знаний по охране труда</h1>
+
+    <div class="row">
+        <div class="col-md-8">
+            <!-- Обучающие экзамены по разделам -->
+            <h2 class="h4 mb-3">📚 Обучение по темам</h2>
+
+            {% if categories %}
+                <div class="accordion" id="categoriesAccordion">
+                    {% for category in categories %}
+                    <div class="accordion-item">
+                        <h2 class="accordion-header" id="heading{{ category.id }}">
+                            <button class="accordion-button collapsed" type="button"
+                                    data-bs-toggle="collapse"
+                                    data-bs-target="#collapse{{ category.id }}"
+                                    aria-expanded="false"
+                                    aria-controls="collapse{{ category.id }}">
+                                {{ category.name }}
+                                <span class="badge bg-secondary ms-2">{{ category.get_questions_count }} вопросов</span>
+                            </button>
+                        </h2>
+                        <div id="collapse{{ category.id }}"
+                             class="accordion-collapse collapse"
+                             aria-labelledby="heading{{ category.id }}"
+                             data-bs-parent="#categoriesAccordion">
+                            <div class="accordion-body">
+                                <p class="text-muted">{{ category.description|default:"" }}</p>
+
+                                <div class="d-flex flex-wrap gap-2 mb-3">
+                                    {% if category.get_questions_count and category.quiz_for_training %}
+                                    <a href="{% url 'directory:quiz:quiz_start_category' quiz_id=category.quiz_for_training.id category_id=category.id %}"
+                                       class="btn btn-primary btn-sm">
+                                        <i class="fas fa-dumbbell me-1"></i> Тренировка по разделу
+                                    </a>
+                                    {% else %}
+                                    <button class="btn btn-primary btn-sm" disabled>
+                                        <i class="fas fa-dumbbell me-1"></i> Тренировка недоступна
+                                    </button>
+                                    {% endif %}
+                                    <a href="{% url 'directory:quiz:category_detail' category_id=category.id %}"
+                                       class="btn btn-outline-primary btn-sm">
+                                        Посмотреть раздел
+                                    </a>
+                                </div>
+
+                                {# Убрали отдельный список тренировочных квизов - теперь только тренировка по разделу #}
+
+                            </div>
+                        </div>
+                    </div>
+                    {% endfor %}
+                </div>
+            {% else %}
+                <div class="alert alert-info">
+                    <i class="fas fa-info-circle"></i> Пока нет доступных категорий для обучения.
+                </div>
+            {% endif %}
+
+            <!-- Экзамены -->
+            <h2 class="h4 mb-3 mt-5">🎓 Доступные экзамены</h2>
+
+            {% if quizzes %}
+                <div class="row">
+                    {% for quiz in quizzes %}
+                    <div class="col-md-6 mb-3">
+                        <div class="card">
+                            <div class="card-body">
+                                <h5 class="card-title">{{ quiz.title }}</h5>
+                                <p class="card-text">{{ quiz.description|truncatewords:15 }}</p>
+                                <ul class="list-unstyled small text-muted">
+                                    <li>📝 Вопросов: {{ quiz.exam_total_questions }}</li>
+                                    <li>⏱ Время: {{ quiz.exam_time_limit }} мин</li>
+                                    <li>⚠ Допустимые ошибки: {% if quiz.exam_allowed_incorrect %}{{ quiz.exam_allowed_incorrect }}{% else %}без лимита{% endif %}</li>
+                                    <li>🔀 {{ quiz.random_order|yesno:"Случайный порядок вопросов,Фиксированный порядок" }}</li>
+                                </ul>
+                                <a href="{% url 'directory:quiz:quiz_start' quiz_id=quiz.id %}"
+                                   class="btn btn-success">Начать экзамен</a>
+                            </div>
+                        </div>
+                    </div>
+                    {% endfor %}
+                </div>
+            {% else %}
+                <div class="alert alert-info">
+                    <i class="fas fa-info-circle"></i> Пока нет доступных экзаменов.
+                </div>
+            {% endif %}
+        </div>
+
+        <!-- Боковая панель со статистикой -->
+        <div class="col-md-4">
+            <div class="card mb-3">
+                <div class="card-header bg-primary text-white">
+                    <h5 class="mb-0">📊 Ваша статистика</h5>
+                </div>
+                <div class="card-body">
+                    <p class="mb-2"><strong>Завершенных попыток:</strong> {{ user_attempts.count }}</p>
+                    <a href="{% url 'directory:quiz:quiz_history' %}" class="btn btn-outline-primary btn-sm w-100">
+                        История прохождения
+                    </a>
+                </div>
+            </div>
+
+            <!-- Последние результаты -->
+            {% if user_attempts %}
+            <div class="card">
+                <div class="card-header">
+                    <h6 class="mb-0">Последние результаты</h6>
+                </div>
+                <div class="list-group list-group-flush">
+                    {% for attempt in user_attempts|slice:":5" %}
+                    <a href="{% url 'directory:quiz:quiz_result' attempt_id=attempt.id %}"
+                       class="list-group-item list-group-item-action">
+                        <div class="d-flex w-100 justify-content-between">
+                            <h6 class="mb-1">{{ attempt.quiz.title|truncatewords:5 }}</h6>
+                            <small>{{ attempt.completed_at|date:"d.m.Y" }}</small>
+                        </div>
+                        <p class="mb-1">
+                            <span class="badge {% if attempt.passed %}bg-success{% else %}bg-danger{% endif %}">
+                                {{ attempt.score_percentage }}%
+                            </span>
+                        </p>
+                    </a>
+                    {% endfor %}
+                </div>
+            </div>
+            {% endif %}
+        </div>
+    </div>
+</div>
+{% endblock %}
