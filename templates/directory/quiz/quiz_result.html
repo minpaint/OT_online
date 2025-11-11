@@ -1,4 +1,4 @@
-{% extends request.session.quiz_token_mode|yesno:"base_token_mode.html,base.html" %}
+{% extends "base_exam.html" %}
 
 {% block title %}Результат — {{ quiz.title }}{% endblock %}
 
@@ -6,74 +6,75 @@
 <style>
     .sticky-results {
         position: sticky;
-        top: 20px;
-        max-height: calc(100vh - 40px);
+        top: 10px;
+        max-height: calc(100vh - 20px);
         overflow-y: auto;
     }
 
     /* Компактные стили для карточки результатов */
     .results-card .card-header {
-        padding: 0.75rem 1rem;
+        padding: 0.5rem 0.75rem;
     }
 
     .results-card .card-body {
-        padding: 1rem;
+        padding: 0.75rem;
     }
 
     .results-card .list-unstyled li {
-        margin-bottom: 0.5rem;
-        font-size: 0.95rem;
-    }
-
-    .results-card .text-muted.small {
+        margin-bottom: 0.35rem;
         font-size: 0.85rem;
     }
 
+    .results-card .text-muted.small {
+        font-size: 0.75rem;
+    }
+
     .results-card .btn {
-        padding: 0.5rem 1rem;
-        font-size: 0.95rem;
+        padding: 0.4rem 0.75rem;
+        font-size: 0.85rem;
     }
 
     .results-card .alert {
-        padding: 0.5rem 0.75rem;
+        padding: 0.4rem 0.6rem;
         margin-bottom: 0 !important;
+        font-size: 0.8rem;
     }
 
     /* Стили для блока ответов */
     .answers-block .list-group-item {
-        padding: 1.5rem;
-        margin-bottom: 0.75rem;
-        border-radius: 8px;
+        padding: 1rem;
+        margin-bottom: 0.5rem;
+        border-radius: 6px;
     }
 
     .answers-block .list-group-item h6 {
-        font-size: 1.05rem;
+        font-size: 0.9rem;
         font-weight: 600;
         color: #495057;
     }
 
     /* Текст вопроса - крупный и жирный */
     .answers-block .question-text {
-        font-size: 1.25rem;
+        font-size: 1.1rem;
         font-weight: 700;
         color: #212529;
-        line-height: 1.6;
-        margin-bottom: 1rem;
+        line-height: 1.4;
+        margin-bottom: 0.75rem;
     }
 
     .answers-block .small {
-        font-size: 1.05rem;
+        font-size: 0.95rem;
     }
 
     .answers-block .badge {
-        font-size: 0.95rem;
-        padding: 0.4rem 0.8rem;
+        font-size: 0.85rem;
+        padding: 0.3rem 0.6rem;
     }
 </style>
 {% endblock %}
 
 {% block content %}
-<div class="container-fluid px-4 py-3">
+<div class="container-fluid px-3 py-2">
 <div class="row">
     <div class="col-lg-2">
         <div class="card shadow-sm mb-4 results-card sticky-results">

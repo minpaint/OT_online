@@ -2,14 +2,19 @@
 from django.contrib import admin
 from django.utils.html import format_html
 from django.utils.translation import gettext_lazy as _
-from django.urls import reverse
+from django.urls import reverse, path
 from django.utils.safestring import mark_safe
 from django.conf import settings
 from django import forms
+from django.http import HttpResponse
+from django.shortcuts import redirect
+from django.contrib import messages
+from tablib import Dataset
 from nested_admin import NestedModelAdmin, NestedTabularInline
 from directory.models import (
     QuizCategory, QuizCategoryOrder, Quiz, Question, Answer, QuizAttempt, UserAnswer, QuizAccessToken
 )
+from directory.resources.quiz import QuizQuestionResource
 
 
 class QuizAdminForm(forms.ModelForm):
@@ -202,6 +207,7 @@ class QuestionAdmin(NestedModelAdmin):
     list_editable = ['is_active']
     ordering = ['category', 'order', 'id']
     inlines = [AnswerInline]
+    change_list_template = "admin/directory/question/change_list.html"
 
     fieldsets = (
         (_('Основная информация'), {
@@ -212,6 +218,146 @@ class QuestionAdmin(NestedModelAdmin):
             'fields': ('image', 'explanation', 'is_active')
         }),
     )
+
+    def get_urls(self):
+        """🔗 Добавляем кастомный URL для экспорта"""
+        urls = super().get_urls()
+        custom_urls = [
+            path('export/', self.admin_site.admin_view(self.export_view), name='directory_question_export'),
+        ]
+        return custom_urls + urls
+
+    def export_view(self, request):
+        """📤 Экспорт вопросов викторины в Excel с выделением правильных ответов"""
+        from openpyxl import Workbook
+        from openpyxl.styles import Font, PatternFill, Alignment
+        from openpyxl.utils import get_column_letter
+
+        # Фильтрация по категории (если указана)
+        category_id = request.GET.get('category_id')
+
+        if category_id:
+            queryset = Question.objects.filter(category_id=category_id)
+        else:
+            queryset = Question.objects.all()
+
+        queryset = queryset.select_related('category').prefetch_related('answers').order_by('category__order', 'order', 'id')
+
+        # Создаем книгу Excel
+        wb = Workbook()
+        ws = wb.active
+        ws.title = "Вопросы викторины"
+
+        # Заголовки
+        headers = [
+            'Номер вопроса', 'Раздел', 'Текст вопроса',
+            'Ответ 1', 'Ответ 2', 'Ответ 3', 'Ответ 4', 'Ответ 5',
+            'Ответ 6', 'Ответ 7', 'Ответ 8', 'Ответ 9', 'Ответ 10',
+            'Пояснение', 'Путь к изображению', 'Есть изображение', 'Активен'
+        ]
+
+        # Стиль для заголовка
+        header_font = Font(bold=True, size=11)
+        header_fill = PatternFill(start_color='D3D3D3', end_color='D3D3D3', fill_type='solid')
+
+        # Записываем заголовки
+        for col_num, header in enumerate(headers, 1):
+            cell = ws.cell(row=1, column=col_num)
+            cell.value = header
+            cell.font = header_font
+            cell.fill = header_fill
+            cell.alignment = Alignment(horizontal='center', vertical='center')
+
+        # Стиль для правильного ответа
+        correct_answer_font = Font(bold=True, color='006100', size=11)  # Темно-зеленый текст
+        correct_answer_fill = PatternFill(start_color='C6EFCE', end_color='C6EFCE', fill_type='solid')  # Светло-зеленый фон
+
+        # Заполняем данные
+        row_num = 2
+        for question in queryset:
+            answers = list(question.answers.order_by('order'))
+
+            # Номер вопроса
+            ws.cell(row=row_num, column=1).value = question.order
+
+            # Раздел
+            ws.cell(row=row_num, column=2).value = question.category.name if question.category else ''
+
+            # Текст вопроса
+            ws.cell(row=row_num, column=3).value = question.question_text
+            ws.cell(row=row_num, column=3).alignment = Alignment(wrap_text=True, vertical='top')
+
+            # Ответы (до 10 вариантов)
+            for idx in range(10):
+                col_num = 4 + idx  # Колонки 4-13 для ответов
+                cell = ws.cell(row=row_num, column=col_num)
+
+                if idx < len(answers):
+                    answer = answers[idx]
+                    cell.value = answer.answer_text
+                    cell.alignment = Alignment(wrap_text=True, vertical='top')
+
+                    # Выделяем правильный ответ
+                    if answer.is_correct:
+                        cell.font = correct_answer_font
+                        cell.fill = correct_answer_fill
+                else:
+                    cell.value = ''
+
+            # Пояснение
+            ws.cell(row=row_num, column=14).value = question.explanation
+            ws.cell(row=row_num, column=14).alignment = Alignment(wrap_text=True, vertical='top')
+
+            # Путь к изображению
+            ws.cell(row=row_num, column=15).value = question.image.name if question.image else ''
+
+            # Есть изображение
+            ws.cell(row=row_num, column=16).value = 'Да' if question.image else 'Нет'
+
+            # Активен
+            ws.cell(row=row_num, column=17).value = 'Да' if question.is_active else 'Нет'
+
+            row_num += 1
+
+        # Настраиваем ширину столбцов
+        ws.column_dimensions['A'].width = 12  # Номер вопроса
+        ws.column_dimensions['B'].width = 30  # Раздел
+        ws.column_dimensions['C'].width = 50  # Текст вопроса
+
+        # Ответы
+        for i in range(10):
+            col_letter = get_column_letter(4 + i)
+            ws.column_dimensions[col_letter].width = 40
+
+        ws.column_dimensions['N'].width = 50  # Пояснение
+        ws.column_dimensions['O'].width = 30  # Путь к изображению
+        ws.column_dimensions['P'].width = 15  # Есть изображение
+        ws.column_dimensions['Q'].width = 12  # Активен
+
+        # Закрепляем первую строку (заголовки)
+        ws.freeze_panes = 'A2'
+
+        # Формируем имя файла
+        if category_id:
+            try:
+                from directory.models import QuizCategory
+                category = QuizCategory.objects.get(id=category_id)
+                filename = f"quiz_questions_{category.name}.xlsx"
+            except:
+                filename = "quiz_questions.xlsx"
+        else:
+            filename = "quiz_questions_all.xlsx"
+
+        # Создаем HTTP response
+        response = HttpResponse(
+            content_type='application/vnd.openxmlformats-officedocument.spreadsheetml.sheet'
+        )
+        response['Content-Disposition'] = f'attachment; filename="{filename}"'
+
+        # Сохраняем книгу в response
+        wb.save(response)
+
+        return response
 
     def question_number_display(self, obj):
         """Отображение номера вопроса из импорта"""

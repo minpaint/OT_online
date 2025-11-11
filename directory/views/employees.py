@@ -21,15 +21,23 @@ class EmployeeListView(LoginRequiredMixin, ListView):
 
     def get_queryset(self):
         queryset = super().get_queryset()
-        # Фильтрация
+
+        # Фильтрация по организациям профиля пользователя
+        if not self.request.user.is_superuser and hasattr(self.request.user, 'profile'):
+            allowed_orgs = self.request.user.profile.organizations.all()
+            queryset = queryset.filter(organization__in=allowed_orgs)
+
+        # Фильтрация по подразделению
         subdivision = self.request.GET.get('subdivision')
         if subdivision:
             queryset = queryset.filter(subdivision_id=subdivision)
 
+        # Фильтрация по должности
         position = self.request.GET.get('position')
         if position:
             queryset = queryset.filter(position_id=position)
 
+        # Поиск по имени
         search = self.request.GET.get('search')
         if search:
             queryset = queryset.filter(full_name_nominative__icontains=search)
@@ -39,8 +47,16 @@ class EmployeeListView(LoginRequiredMixin, ListView):
     def get_context_data(self, **kwargs):
         context = super().get_context_data(**kwargs)
         context['title'] = 'Сотрудники'
-        context['subdivisions'] = StructuralSubdivision.objects.all()
-        context['positions'] = Position.objects.all()
+
+        # Фильтрация списков подразделений и должностей по организациям профиля
+        if not self.request.user.is_superuser and hasattr(self.request.user, 'profile'):
+            allowed_orgs = self.request.user.profile.organizations.all()
+            context['subdivisions'] = StructuralSubdivision.objects.filter(organization__in=allowed_orgs)
+            context['positions'] = Position.objects.filter(organization__in=allowed_orgs)
+        else:
+            context['subdivisions'] = StructuralSubdivision.objects.all()
+            context['positions'] = Position.objects.all()
+
         return context
 
 

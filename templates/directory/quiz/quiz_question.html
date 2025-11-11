@@ -1,4 +1,4 @@
-{% extends request.session.quiz_token_mode|yesno:"base_token_mode.html,base.html" %}
+{% extends "base_exam.html" %}
 {% load static %}
 
 {% block title %}{{ quiz.title }} — вопрос {{ question_number }}{% endblock %}
@@ -25,36 +25,38 @@
         min-height: 100vh;
         display: flex;
         flex-direction: column;
-        padding: 2rem clamp(1rem, 4vw, 3rem);
-        gap: 2rem;
+        padding: 1.25rem clamp(1rem, 2.5vw, 2rem);
+        gap: 1.25rem;
         font-family: "Arial", "Helvetica", sans-serif;
     }
     .exam-header {
         display: flex;
         flex-wrap: wrap;
-        gap: 1.5rem;
+        gap: 1rem;
         align-items: center;
     }
     .exam-title {
-        font-size: clamp(1.4rem, 2.4vw, 1.9rem);
+        font-size: clamp(1.3rem, 2.2vw, 1.7rem);
         font-weight: 700;
-        letter-spacing: 0.04em;
+        letter-spacing: 0.03em;
         text-transform: uppercase;
     }
     .exam-badge {
-        padding: 0.2rem 0.8rem;
-        border: 1px solid rgba(255, 255, 255, 0.75);
+        padding: 0.4rem 1rem;
+        border: 2px solid rgba(255, 255, 255, 0.8);
         border-radius: 999px;
         font-size: 0.9rem;
         font-weight: 600;
-        letter-spacing: 0.08em;
+        letter-spacing: 0.06em;
+        display: inline-block;
+        white-space: nowrap;
     }
     .exam-meta {
         margin-left: auto;
         display: flex;
         flex-wrap: wrap;
-        gap: 1rem 2rem;
-        font-size: 0.9rem;
+        gap: 0.65rem 1.25rem;
+        font-size: 0.85rem;
     }
     .exam-meta-item {
         display: flex;
@@ -63,51 +65,51 @@
     }
     .exam-meta-label {
         opacity: 0.75;
-        font-size: 0.8rem;
+        font-size: 0.75rem;
     }
     .exam-content {
         display: grid;
-        grid-template-columns: minmax(0, 2fr) minmax(260px, 1fr);
-        gap: clamp(1.5rem, 4vw, 3rem);
+        grid-template-columns: minmax(0, 2fr) minmax(240px, 1fr);
+        gap: clamp(1.25rem, 2.5vw, 2rem);
         align-items: start;
     }
     .exam-question-box {
         background: rgba(0, 0, 0, 0.12);
         border: 2px solid rgba(255, 255, 255, 0.6);
         border-radius: 0;
-        padding: clamp(1.5rem, 3vw, 2rem);
+        padding: clamp(1.25rem, 2.5vw, 1.75rem);
         display: flex;
         flex-direction: column;
-        gap: 1.5rem;
+        gap: 1.25rem;
     }
     .exam-question-head {
-        font-size: 1rem;
+        font-size: 0.95rem;
         font-weight: 400;
         line-height: 1.4;
         color: rgba(255, 255, 255, 0.9);
     }
     .exam-question-text {
-        font-size: 1.5rem;
+        font-size: 1.4rem;
         font-weight: 400;
-        line-height: 1.6;
+        line-height: 1.5;
     }
     .exam-answers {
         list-style: none;
         padding: 0;
         margin: 0;
         display: grid;
-        gap: 0.75rem;
+        gap: 0.65rem;
     }
     .exam-answer {
         background: #d0d0d0;
         color: #000000;
         border: 2px solid #999999;
         border-radius: 0;
-        padding: 1rem 1.25rem;
-        font-size: 1.35rem;
+        padding: 0.8rem 1.1rem;
+        font-size: 1.25rem;
         letter-spacing: 0;
         display: flex;
-        gap: 1rem;
+        gap: 0.9rem;
         cursor: pointer;
         transition: transform 0.15s ease, box-shadow 0.15s ease, background 0.15s ease, border-color 0.15s ease;
         box-shadow: 0 2px 4px rgba(0, 0, 0, 0.15);
@@ -143,11 +145,11 @@
     .exam-feedback {
         background: #d4af37;
         color: #000;
-        padding: 1rem 1.5rem;
-        font-size: 1.2rem;
+        padding: 0.75rem 1.25rem;
+        font-size: 1.1rem;
         font-weight: 600;
         text-align: center;
-        margin-top: 1rem;
+        margin-top: 0.75rem;
         border-radius: 0;
         display: none;
     }
@@ -157,11 +159,11 @@
     .exam-image-box {
         background: transparent;
         border-radius: 0;
-        padding: 1.5rem;
+        padding: 1rem;
         display: flex;
         justify-content: center;
         align-items: center;
-        min-height: 280px;
+        min-height: 240px;
     }
     .exam-image-box img {
         border-radius: 0;
@@ -174,27 +176,27 @@
     .exam-image-box img.img-wide {
         /* Широкие горизонтальные изображения (соотношение > 2:1) */
         width: 100%;
-        max-height: 200px;
+        max-height: 180px;
     }
     .exam-image-box img.img-landscape {
         /* Обычные горизонтальные (1.3:1 - 2:1) */
         width: 100%;
-        max-height: 300px;
+        max-height: 260px;
     }
     .exam-image-box img.img-square {
         /* Квадратные или близкие к квадрату (0.8:1 - 1.3:1) */
         max-width: 90%;
-        max-height: 400px;
+        max-height: 340px;
     }
     .exam-image-box img.img-portrait {
         /* Вертикальные (0.5:1 - 0.8:1) */
         max-width: 75%;
-        max-height: 500px;
+        max-height: 420px;
     }
     .exam-image-box img.img-tall {
         /* Высокие вертикальные (< 0.5:1) */
         max-width: 60%;
-        max-height: 600px;
+        max-height: 480px;
     }
     .exam-image-placeholder {
         font-size: 0.95rem;
@@ -211,10 +213,10 @@
         background: transparent;
         color: #ffffff;
         border: 2px solid rgba(255, 255, 255, 0.6);
-        padding: 0.75rem 2rem;
+        padding: 0.65rem 1.5rem;
         border-radius: 0;
         font-weight: 600;
-        font-size: 1rem;
+        font-size: 0.95rem;
         letter-spacing: 0.02em;
         transition: transform 0.2s ease, background 0.2s ease, border-color 0.2s ease;
     }
@@ -227,10 +229,11 @@
         background: #ffffff;
         color: #0b7a79;
         border: 2px solid #ffffff;
-        padding: 0.6rem 1.75rem;
+        padding: 0.65rem 1.5rem;
         border-radius: 0;
         font-weight: 600;
-        letter-spacing: 0.08em;
+        font-size: 0.95rem;
+        letter-spacing: 0.06em;
         transition: transform 0.2s ease, background 0.2s ease, color 0.2s ease;
     }
     .exam-skip-btn:hover {
@@ -617,7 +620,7 @@
 <div class="exam-layout" id="exam-root"
      data-answer-url="{% url 'directory:quiz:quiz_answer' attempt_id=attempt.id question_id=question.id %}"
      data-result-url="{{ result_url }}"
-     data-home-url="{% url 'directory:quiz:exam_home' %}"
+     data-home-url="{% if request.session.quiz_token_mode %}{% url 'directory:quiz:exam_home' %}{% else %}{% url 'directory:quiz:quiz_list' %}{% endif %}"
      data-allow-skip="{{ allow_skip|yesno:'true,false' }}"
      data-time-left="{{ time_left_seconds|default_if_none:'' }}"
      data-allowed-incorrect="{{ allowed_incorrect|default_if_none:'' }}"
@@ -628,7 +631,7 @@
     <input type="hidden" id="csrf-token" value="{{ csrf_token }}">
 
     <div class="exam-header">
-        <div>
+        <div style="display: flex; align-items: center; gap: 1rem;">
             <div class="exam-badge">{% if attempt.is_exam_mode %}Экзамен{% else %}Тренировка{% endif %}</div>
             <div class="exam-title">{{ quiz.title }}</div>
         </div>

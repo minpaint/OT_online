@@ -45,6 +45,12 @@
 {% block extrahead %}
     {{ block.super }}
     <meta charset="UTF-8">
+
+    {# Защита от индексации админки поисковыми системами #}
+    <meta name="robots" content="noindex, nofollow, noarchive, nosnippet">
+    <meta name="googlebot" content="noindex, nofollow">
+    <meta name="yandex" content="noindex, nofollow">
+
     {# Дополнительные скрипты smart‑selects удалены, так как они больше не используются. #}
 {% endblock %}
 

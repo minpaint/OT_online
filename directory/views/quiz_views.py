@@ -60,8 +60,6 @@ def _finalize_attempt(attempt: QuizAttempt, request, failure_reason: str = QuizA
 @login_required
 def quiz_list(request):
     """Список доступных экзаменов"""
-    categories = QuizCategory.objects.filter(is_active=True)
-
     # Администраторы (суперпользователи) имеют доступ ко всем экзаменам
     is_admin = request.user.is_superuser
 
@@ -73,15 +71,18 @@ def quiz_list(request):
         quiz_filter = (Q(assigned_users__isnull=True) | Q(assigned_users=request.user)) & Q(is_active=True)
 
     # Все доступные квизы (без разделения на типы)
-    all_quizzes = Quiz.objects.filter(quiz_filter).distinct()
+    all_quizzes = Quiz.objects.filter(quiz_filter).distinct().prefetch_related('categories')
 
-    # Добавляем к каждой категории первый доступный quiz для тренировки
-    categories_with_quiz = []
-    for category in categories:
-        # Находим первый квиз, который содержит эту категорию
-        category_quiz = all_quizzes.filter(categories=category).first()
-        category.quiz_for_training = category_quiz
-        categories_with_quiz.append(category)
+    # Группируем квизы с их категориями
+    quizzes_with_categories = []
+    for quiz in all_quizzes:
+        # Получаем категории для этого квиза с сортировкой
+        quiz_categories = quiz.get_exam_categories()
+
+        quizzes_with_categories.append({
+            'quiz': quiz,
+            'categories': quiz_categories,
+        })
 
     # Статистика пользователя
     user_attempts = QuizAttempt.objects.filter(
@@ -90,8 +91,7 @@ def quiz_list(request):
     ).select_related('quiz')
 
     context = {
-        'categories': categories_with_quiz,
-        'quizzes': all_quizzes,
+        'quizzes_with_categories': quizzes_with_categories,
         'user_attempts': user_attempts,
         'is_admin': is_admin,
     }

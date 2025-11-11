@@ -13,23 +13,42 @@ class PositionListView(LoginRequiredMixin, ListView):
 
     def get_queryset(self):
         queryset = super().get_queryset()
-        # Фильтрация
+
+        # Фильтрация по организациям профиля пользователя
+        if not self.request.user.is_superuser and hasattr(self.request.user, 'profile'):
+            allowed_orgs = self.request.user.profile.organizations.all()
+            queryset = queryset.filter(organization__in=allowed_orgs)
+
+        # Фильтрация по организации (из GET-параметров)
         organization = self.request.GET.get('organization')
         if organization:
             queryset = queryset.filter(organization_id=organization)
+
+        # Фильтрация по подразделению
         subdivision = self.request.GET.get('subdivision')
         if subdivision:
             queryset = queryset.filter(subdivision_id=subdivision)
+
+        # Поиск по названию должности
         search = self.request.GET.get('search')
         if search:
             queryset = queryset.filter(position_name__icontains=search)
+
         return queryset.select_related('organization', 'subdivision', 'department')
 
     def get_context_data(self, **kwargs):
         context = super().get_context_data(**kwargs)
         context['title'] = 'Должности'
-        context['organizations'] = Organization.objects.all()
-        context['subdivisions'] = StructuralSubdivision.objects.all()
+
+        # Фильтрация списков организаций и подразделений по профилю пользователя
+        if not self.request.user.is_superuser and hasattr(self.request.user, 'profile'):
+            allowed_orgs = self.request.user.profile.organizations.all()
+            context['organizations'] = allowed_orgs
+            context['subdivisions'] = StructuralSubdivision.objects.filter(organization__in=allowed_orgs)
+        else:
+            context['organizations'] = Organization.objects.all()
+            context['subdivisions'] = StructuralSubdivision.objects.all()
+
         return context
 
 class PositionCreateView(LoginRequiredMixin, CreateView):

@@ -66,6 +66,7 @@ MIDDLEWARE = [
     'django.contrib.messages.middleware.MessageMiddleware', # Сообщения 📨
     'django.middleware.clickjacking.XFrameOptionsMiddleware', # Защита от clickjacking 🖱️
     'directory.middleware.ExamSubdomainMiddleware',      # Изоляция exam.* поддомена 🔐
+    'directory.middleware.anti_indexation.AntiIndexationMiddleware',  # Защита от индексации 🚫🔍
 ]
 
 # Добавляем debug_toolbar middleware только если не в режиме тестирования и DEBUG=True
@@ -239,6 +240,13 @@ SECURE_BROWSER_XSS_FILTER = True
 SECURE_CONTENT_TYPE_NOSNIFF = True
 X_FRAME_OPTIONS = 'DENY' # Защита от clickjacking
 SECURE_REFERRER_POLICY = os.getenv('SECURE_REFERRER_POLICY', 'same-origin') # Контроль заголовка Referer
+
+# 🚫🔍 Защита от индексации поисковыми системами
+# Middleware AntiIndexationMiddleware автоматически добавляет:
+# - X-Robots-Tag: noindex, nofollow, noarchive, nosnippet
+# - Cache-Control для приватных разделов
+# - Обрабатывает /robots.txt с Disallow: /admin/, /directory/, /media/
+
 # В production с HTTPS рекомендуется включить:
 # SECURE_HSTS_SECONDS = 31536000 # 1 год. Включать только после уверенности в HTTPS
 # SECURE_HSTS_INCLUDE_SUBDOMAINS = True

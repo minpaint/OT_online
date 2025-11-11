@@ -1,0 +1,157 @@
+{% extends 'admin/base_site.html' %}
+{% load static %}
+
+{% block title %}{{ title }}{% endblock %}
+
+{% block content %}
+<div class="container-fluid" style="max-width: 1200px; margin: 20px auto;">
+    <h1>🔍 {{ title }}</h1>
+
+    <div class="card mb-4">
+        <div class="card-header {% if images_only %}bg-info{% else %}bg-success{% endif %} text-white">
+            <h5 class="mb-0">📊 {% if images_only %}🖼️ Привязка изображений{% else %}Статистика импорта{% endif %}</h5>
+        </div>
+        <div class="card-body">
+            <div class="row">
+                <div class="col-md-6">
+                    <p><strong>Раздел:</strong> {{ category.name }}</p>
+
+                    {% if images_only %}
+                        <!-- Режим только изображений -->
+                        <p><strong>Режим:</strong> <span class="badge bg-info">Привязка изображений к существующим вопросам</span></p>
+                        <p><strong>Изображений в архиве:</strong> {{ images_count }}</p>
+                        <p><strong>Текущих вопросов в разделе:</strong> {{ existing_questions_count }}</p>
+
+                        <div class="alert alert-info mt-3">
+                            <strong>ℹ️ Как это работает:</strong>
+                            <ul class="mb-0 mt-2">
+                                <li>Изображение <code>1.jpg</code> → Вопрос №1</li>
+                                <li>Изображение <code>2.jpg</code> → Вопрос №2</li>
+                                <li>И так далее...</li>
+                            </ul>
+                            <p class="mb-0 mt-2">Если у вопроса уже есть изображение, оно будет заменено.</p>
+                        </div>
+                    {% else %}
+                        <!-- Режим импорта вопросов -->
+                        <p><strong>Всего вопросов для импорта:</strong> {{ total_questions }}</p>
+                        <p><strong>С правильными ответами:</strong> {{ questions_with_correct }} ({{ questions_with_correct|floatformat:0 }}/{{ total_questions }})</p>
+                        {% if images_count %}
+                        <p><strong>Изображений найдено:</strong> {{ images_count }}</p>
+                        {% endif %}
+                    {% endif %}
+                </div>
+                <div class="col-md-6">
+                    {% if not images_only %}
+                        <p><strong>Текущих вопросов в разделе:</strong> {{ existing_questions_count }}</p>
+                        {% if replace_existing %}
+                        <p class="text-danger"><strong>⚠️ Действие:</strong> Заменить все (удалить {{ existing_questions_count }}, добавить {{ total_questions }})</p>
+                        {% else %}
+                        <p class="text-success"><strong>Действие:</strong> Добавить к существующим</p>
+                        {% endif %}
+                        <p><strong>Итого вопросов в разделе:</strong> <span class="badge bg-primary">{{ final_count }}</span></p>
+                    {% else %}
+                        <div class="alert alert-success">
+                            <strong>✅ Готово к импорту</strong>
+                            <p class="mb-0 mt-2">Будет обработано до {{ existing_questions_count }} вопросов</p>
+                        </div>
+                    {% endif %}
+                </div>
+            </div>
+
+            {% if not images_only %}
+                {% if questions_with_errors > 0 %}
+                <div class="alert alert-danger mt-3">
+                    <strong>❌ Найдено проблем: {{ questions_with_errors }}</strong>
+                    <ul class="mt-2 mb-0">
+                        {% for error in validation_errors %}
+                        <li>{{ error }}</li>
+                        {% endfor %}
+                        {% if validation_errors|length > 10 %}
+                        <li><em>... и еще {{ questions_with_errors|add:"-10" }} ошибок</em></li>
+                        {% endif %}
+                    </ul>
+                    <p class="mt-2 mb-0"><strong>⚠️ Рекомендуется исправить ошибки в файле перед импортом!</strong></p>
+                </div>
+                {% else %}
+                <div class="alert alert-success mt-3">
+                    <strong>✅ Валидация пройдена!</strong> Все вопросы корректны.
+                </div>
+                {% endif %}
+            {% endif %}
+        </div>
+    </div>
+
+    {% if not images_only %}
+    <div class="card mb-4">
+        <div class="card-header bg-info text-white">
+            <h5 class="mb-0">📋 Примеры вопросов (первые 5)</h5>
+        </div>
+        <div class="card-body">
+            {% for question in questions %}
+            <div class="card mb-3 {% if forloop.counter0 < questions_with_errors %}border-danger{% endif %}">
+                <div class="card-header">
+                    <strong>Вопрос №{{ forloop.counter }}</strong>
+                </div>
+                <div class="card-body">
+                    <p><strong>Текст:</strong> {{ question.text }}</p>
+
+                    <p><strong>Варианты ответа:</strong></p>
+                    <ul class="list-unstyled">
+                        {% for answer in question.answers %}
+                        <li class="{% if answer.is_correct %}text-success fw-bold{% endif %}">
+                            {% if answer.is_correct %}✓{% else %}○{% endif %}
+                            {{ answer.text }}
+                            {% if answer.is_correct %}
+                            <span class="badge bg-success">ПРАВИЛЬНЫЙ</span>
+                            {% endif %}
+                        </li>
+                        {% endfor %}
+                    </ul>
+                </div>
+            </div>
+            {% endfor %}
+
+            {% if total_questions > 5 %}
+            <p class="text-muted text-center">
+                <em>... и еще {{ total_questions|add:"-5" }} вопросов</em>
+            </p>
+            {% endif %}
+        </div>
+    </div>
+    {% endif %}
+
+    <div class="card">
+        <div class="card-body">
+            <form method="post">
+                {% csrf_token %}
+
+                <div class="d-flex gap-2 justify-content-between">
+                    <a href="{% url 'directory:quiz:quiz_import_cancel' %}" class="btn btn-danger">
+                        ❌ Отменить импорт
+                    </a>
+
+                    {% if images_only %}
+                        <button type="submit" class="btn btn-success btn-lg">
+                            🖼️ Подтвердить привязку {{ images_count }} изображений
+                        </button>
+                    {% elif questions_with_errors == 0 %}
+                        <button type="submit" class="btn btn-success btn-lg">
+                            ✅ Подтвердить импорт {{ total_questions }} вопросов
+                        </button>
+                    {% else %}
+                        <button type="submit" class="btn btn-warning btn-lg" onclick="return confirm('Обнаружены ошибки валидации. Продолжить импорт?')">
+                            ⚠️ Импортировать несмотря на ошибки
+                        </button>
+                    {% endif %}
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
+
+<style>
+    .card {
+        box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+    }
+</style>
+{% endblock %}

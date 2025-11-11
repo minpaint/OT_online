@@ -1,0 +1,21 @@
+{% extends "admin/change_list.html" %}
+{% load static %}
+
+{% block object-tools-items %}
+  {{ block.super }}
+  <li>
+    <a href="{% url 'admin:directory_question_export' %}" class="addlink" style="background-position: 0 -96px;">
+      📤 Экспорт в Excel
+    </a>
+  </li>
+{% endblock %}
+
+{% block extrahead %}
+  {{ block.super }}
+  <style>
+    /* Стили для кнопки экспорта */
+    .object-tools li a.addlink {
+      padding-left: 16px;
+    }
+  </style>
+{% endblock %}

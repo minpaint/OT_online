@@ -1,23 +1,39 @@
+# Django Core
 Django>=5.0,<5.1
 django-cors-headers>=4.3.0
 django-extensions>=3.2.3
+
+# Django Admin & Forms
 django-import-export>=3.3.1
 django-select2>=8.1.2
 django-model-utils>=4.4.0
 django-autocomplete-light>=3.11.0
 django-crispy-forms>=2.1
 crispy-bootstrap4>=2022.1
+django-nested-admin>=4.0.2
+django-debug-toolbar>=4.3.0
+
+# Document Processing
 python-docx>=1.0.1
 docxtpl>=0.19.1
 openpyxl>=3.1.2
 xlrd>=2.0.1
-Pillow>=10.1.0
-python-dotenv>=1.0.0
-gunicorn>=21.2.0
-dj-database-url>=2.1.0
-pymorphy2>=0.9.1
-django-nested-admin>=4.0.2
-django-debug-toolbar>=4.3.0
 xhtml2pdf>=0.2.9
 WeasyPrint>=60.1
+
+# Images & Media
+Pillow>=10.1.0
+
+# Database & Server
+psycopg2-binary>=2.9.9
+dj-database-url>=2.1.0
+gunicorn>=21.2.0
+
+# Utilities
+python-dotenv>=1.0.0
+pymorphy2>=0.9.1
 pyperclip
+
+# Production (optional)
+whitenoise>=6.6.0
+django-redis>=5.4.0

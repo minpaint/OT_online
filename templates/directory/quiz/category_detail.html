@@ -1,0 +1,162 @@
+{% extends 'base.html' %}
+
+{% block title %}{{ category.name }} - OT Online{% endblock %}
+
+{% block content %}
+<div class="container">
+    <nav aria-label="breadcrumb">
+        <ol class="breadcrumb">
+            <li class="breadcrumb-item"><a href="{% url 'directory:quiz:quiz_list' %}">Проверка знаний</a></li>
+            <li class="breadcrumb-item active" aria-current="page">{{ category.name }}</li>
+        </ol>
+    </nav>
+
+    <h1 class="mb-4">{{ category.name }}</h1>
+
+    {% if category.description %}
+    <div class="alert alert-info mb-4">
+        <i class="fas fa-info-circle me-2"></i>{{ category.description }}
+    </div>
+    {% endif %}
+
+    <div class="row mb-4">
+        <div class="col-md-12">
+            <div class="card">
+                <div class="card-body">
+                    <h5 class="card-title">Статистика раздела</h5>
+                    <div class="row">
+                        <div class="col-md-6">
+                            <p class="mb-2"><i class="fas fa-question-circle me-2"></i><strong>Всего вопросов:</strong> {{ questions.count }}</p>
+                        </div>
+                        <div class="col-md-6">
+                            {% if questions.count and quiz_for_training %}
+                            <a href="{% url 'directory:quiz:quiz_start_category' quiz_id=quiz_for_training.id category_id=category.id %}"
+                               class="btn btn-primary w-100">
+                                <i class="fas fa-dumbbell me-2"></i>Начать тренировку по разделу
+                            </a>
+                            {% else %}
+                            <button class="btn btn-primary w-100" disabled>
+                                <i class="fas fa-dumbbell me-2"></i>Тренировка недоступна (нет вопросов)
+                            </button>
+                            {% endif %}
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Тренировочные тесты -->
+    {% if quizzes %}
+    <h2 class="h4 mb-3">Тренировочные тесты</h2>
+    <div class="row mb-4">
+        {% for quiz in quizzes %}
+        <div class="col-md-6 mb-3">
+            <div class="card h-100">
+                <div class="card-body">
+                    <h5 class="card-title">{{ quiz.title }}</h5>
+                    <p class="card-text">{{ quiz.description|truncatewords:20 }}</p>
+                    <ul class="list-unstyled small text-muted mb-3">
+                        <li><i class="fas fa-question me-1"></i>Вопросов: {{ quiz.get_total_questions }}</li>
+                        {% if quiz.show_correct_answer %}
+                        <li><i class="fas fa-check-circle me-1 text-success"></i>С показом правильных ответов</li>
+                        {% endif %}
+                        {% if quiz.allow_skip %}
+                        <li><i class="fas fa-forward me-1"></i>Можно пропускать вопросы</li>
+                        {% endif %}
+                        {% if quiz.random_order %}
+                        <li><i class="fas fa-random me-1"></i>Случайный порядок</li>
+                        {% endif %}
+                    </ul>
+                    <a href="{% url 'directory:quiz:quiz_start' quiz_id=quiz.id %}"
+                       class="btn btn-primary btn-sm">
+                        <i class="fas fa-play me-1"></i>Начать тест
+                    </a>
+                </div>
+            </div>
+        </div>
+        {% endfor %}
+    </div>
+    {% endif %}
+
+    <!-- Список вопросов -->
+    <h2 class="h4 mb-3">Вопросы раздела</h2>
+    {% if questions %}
+    <div class="accordion" id="questionsAccordion">
+        {% for question in questions %}
+        <div class="accordion-item">
+            <h2 class="accordion-header" id="headingQ{{ question.id }}">
+                <button class="accordion-button collapsed" type="button"
+                        data-bs-toggle="collapse"
+                        data-bs-target="#collapseQ{{ question.id }}"
+                        aria-expanded="false"
+                        aria-controls="collapseQ{{ question.id }}">
+                    <span class="badge bg-secondary me-2">{{ forloop.counter }}</span>
+                    {{ question.text|truncatewords:15 }}
+                </button>
+            </h2>
+            <div id="collapseQ{{ question.id }}"
+                 class="accordion-collapse collapse"
+                 aria-labelledby="headingQ{{ question.id }}"
+                 data-bs-parent="#questionsAccordion">
+                <div class="accordion-body">
+                    <h6 class="fw-bold mb-3">{{ question.text }}</h6>
+
+                    {% if question.image %}
+                    <div class="mb-3">
+                        <img src="{{ question.image.url }}" alt="Изображение к вопросу" class="img-fluid rounded" style="max-height: 300px;">
+                    </div>
+                    {% endif %}
+
+                    <h6 class="mb-2">Варианты ответов:</h6>
+                    <div class="list-group mb-3">
+                        {% for answer in question.answers.all %}
+                        <div class="list-group-item {% if answer.is_correct %}list-group-item-success{% endif %}">
+                            <div class="d-flex align-items-start">
+                                {% if answer.is_correct %}
+                                <i class="fas fa-check-circle text-success me-2 mt-1"></i>
+                                {% else %}
+                                <i class="far fa-circle text-muted me-2 mt-1"></i>
+                                {% endif %}
+                                <div>
+                                    {{ answer.text }}
+                                    {% if answer.is_correct %}
+                                    <span class="badge bg-success ms-2">Правильный ответ</span>
+                                    {% endif %}
+                                </div>
+                            </div>
+                        </div>
+                        {% endfor %}
+                    </div>
+
+                    {% if question.explanation %}
+                    <div class="alert alert-info">
+                        <strong><i class="fas fa-lightbulb me-2"></i>Пояснение:</strong>
+                        <p class="mb-0 mt-2">{{ question.explanation }}</p>
+                    </div>
+                    {% endif %}
+
+                    <div class="text-muted small">
+                        <i class="fas fa-folder me-1"></i>Категория: {{ question.category.name }}
+                        {% if question.subcategory %}
+                        | <i class="fas fa-tag me-1"></i>Подкатегория: {{ question.subcategory }}
+                        {% endif %}
+                    </div>
+                </div>
+            </div>
+        </div>
+        {% endfor %}
+    </div>
+    {% else %}
+    <div class="alert alert-warning">
+        <i class="fas fa-exclamation-triangle me-2"></i>В этом разделе пока нет вопросов.
+    </div>
+    {% endif %}
+
+    <div class="mt-4">
+        <a href="{% url 'directory:quiz:quiz_list' %}" class="btn btn-outline-secondary">
+            <i class="fas fa-arrow-left me-2"></i>Вернуться к списку
+        </a>
+    </div>
+</div>
+{% endblock %}

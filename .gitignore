@@ -73,3 +73,22 @@ node_modules/
 
 # Misc
 .python-version
+
+# Claude Code settings (local development only)
+.claude/
+
+# Temporary files
+temp_images/
+Screenshot_*.jpg
+Screenshot_*.png
+nul
+=2.0.1
+
+# Test scripts
+test_*.py
+utility_scripts/
+
+# Development documentation (not needed in production)
+AGENTS.md
+GEMINI.md
+CHECK_INDEXATION_PROTECTION.md

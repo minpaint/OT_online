@@ -1,0 +1,19 @@
+{% extends "admin/change_form.html" %}
+{% load i18n static %}
+
+{% block submit_buttons_bottom %}
+{{ block.super }}
+
+{% if show_import_button and original %}
+<div class="submit-row" style="margin-top: 15px; padding: 10px; background: #f8f9fa; border-radius: 4px;">
+    <a href="{% url 'directory:quiz:quiz_import_upload' %}"
+       class="button"
+       style="background: #28a745; color: white; padding: 10px 20px; text-decoration: none; border-radius: 4px; display: inline-block;">
+        📥 Импортировать вопросы в этот раздел
+    </a>
+    <span style="margin-left: 15px; color: #666;">
+        Текущих вопросов: <strong>{{ original.questions.count }}</strong>
+    </span>
+</div>
+{% endif %}
+{% endblock %}

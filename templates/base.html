@@ -5,120 +5,308 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>{% block title %}OT Online{% endblock %}</title>
 
+    <!-- Защита от индексации поисковыми системами -->
+    <meta name="robots" content="noindex, nofollow, noarchive, nosnippet">
+    <meta name="googlebot" content="noindex, nofollow">
+    <meta name="yandex" content="noindex, nofollow">
+
     <!-- Bootstrap CSS через CDN 📡 -->
     <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css"
           rel="stylesheet"
           integrity="sha384-9ndCyUaIbzAi2FUVXJi0CjmCapSmO7SnpJef0486qhLnuZ2cdeRhO02iuK6FUUVM"
           crossorigin="anonymous">
     {% load static %}
-    <!-- Основной стиль приложения 🎨 -->
-    <link href="{% static 'directory/css/style.css' %}" rel="stylesheet">
     <!-- Select2 CSS через CDN для автодополнения 🔍 -->
     <link href="https://cdn.jsdelivr.net/npm/select2@4.1.0-rc.0/dist/css/select2.min.css" rel="stylesheet">
+
+    <!-- Стили для бокового меню -->
+    <style>
+        body {
+            min-height: 100vh;
+        }
+
+        .sidebar {
+            position: fixed;
+            top: 0;
+            left: 0;
+            height: 100vh;
+            width: 260px;
+            background: linear-gradient(180deg, #2c3e50 0%, #34495e 100%);
+            padding: 20px 0;
+            overflow-y: auto;
+            z-index: 1000;
+            box-shadow: 2px 0 10px rgba(0,0,0,0.1);
+            transition: transform 0.3s ease;
+        }
+
+        .sidebar-brand {
+            padding: 15px 20px;
+            font-size: 1.5rem;
+            font-weight: bold;
+            color: #fff;
+            text-decoration: none;
+            display: block;
+            border-bottom: 1px solid rgba(255,255,255,0.1);
+            margin-bottom: 20px;
+        }
+
+        .sidebar-brand:hover {
+            color: #3498db;
+            text-decoration: none;
+        }
+
+        .sidebar-nav {
+            list-style: none;
+            padding: 0;
+            margin: 0;
+        }
+
+        .sidebar-nav .nav-item {
+            margin-bottom: 5px;
+        }
+
+        .sidebar-nav .nav-link {
+            color: rgba(255,255,255,0.8);
+            padding: 12px 20px;
+            display: block;
+            text-decoration: none;
+            transition: all 0.3s ease;
+            border-left: 3px solid transparent;
+        }
+
+        .sidebar-nav .nav-link:hover {
+            background: rgba(255,255,255,0.1);
+            color: #fff;
+            border-left-color: #3498db;
+        }
+
+        .sidebar-nav .nav-link.active {
+            background: rgba(52, 152, 219, 0.2);
+            color: #fff;
+            border-left-color: #3498db;
+        }
+
+        .sidebar-section {
+            padding: 10px 20px 5px;
+            color: rgba(255,255,255,0.5);
+            font-size: 0.75rem;
+            font-weight: 600;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+            margin-top: 15px;
+        }
+
+        .main-content {
+            margin-left: 260px;
+            min-height: 100vh;
+            background: #f8f9fa;
+        }
+
+        .top-bar {
+            background: #fff;
+            padding: 15px 30px;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+
+        .user-menu {
+            display: flex;
+            align-items: center;
+            gap: 15px;
+        }
+
+        .user-menu .dropdown-toggle {
+            color: #2c3e50;
+            text-decoration: none;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+
+        .content-area {
+            padding: 30px;
+        }
+
+        /* Мобильная адаптация */
+        .sidebar-toggle {
+            display: none;
+            position: fixed;
+            top: 15px;
+            left: 15px;
+            z-index: 1001;
+            background: #2c3e50;
+            color: white;
+            border: none;
+            padding: 10px 15px;
+            border-radius: 5px;
+            cursor: pointer;
+        }
+
+        @media (max-width: 768px) {
+            .sidebar {
+                transform: translateX(-100%);
+            }
+
+            .sidebar.show {
+                transform: translateX(0);
+            }
+
+            .main-content {
+                margin-left: 0;
+            }
+
+            .sidebar-toggle {
+                display: block;
+            }
+
+            .content-area {
+                padding: 15px;
+            }
+        }
+
+        /* Стили для dropdown в сайдбаре */
+        .sidebar-nav .dropdown-menu {
+            background: #1a252f;
+            border: none;
+            margin: 0;
+            padding: 0;
+        }
+
+        .sidebar-nav .dropdown-item {
+            color: rgba(255,255,255,0.7);
+            padding: 10px 20px 10px 40px;
+            border-left: 3px solid transparent;
+        }
+
+        .sidebar-nav .dropdown-item:hover {
+            background: rgba(255,255,255,0.1);
+            color: #fff;
+            border-left-color: #3498db;
+        }
+    </style>
+
     {% block extra_css %}{% endblock %}
 </head>
 <body>
-    <!-- Навигационная панель 🚀 -->
-    <nav class="navbar navbar-expand-lg navbar-light bg-light">
-        <div class="container">
-            <a class="navbar-brand" href="/">🏢 OT Online</a>
-            <button class="navbar-toggler" type="button"
-                    data-bs-toggle="collapse"
-                    data-bs-target="#navbarNav"
-                    aria-controls="navbarNav"
-                    aria-expanded="false"
-                    aria-label="Toggle navigation">
-                <span class="navbar-toggler-icon"></span>
-            </button>
-            <div class="collapse navbar-collapse" id="navbarNav">
-                <ul class="navbar-nav me-auto">
-                    {% if user.is_authenticated %}
-                    <li class="nav-item">
-                        <a class="nav-link" href="{% url 'directory:employees:employee_list' %}">👥 Сотрудники</a>
-                    </li>
-                    <li class="nav-item">
-                        <a class="nav-link" href="{% url 'directory:positions:position_list' %}">👔 Должности</a>
-                    </li>
-                    <!-- Добавляем вкладку СИЗ -->
-                    <li class="nav-item">
-                        <a class="nav-link" href="{% url 'directory:siz:siz_list' %}">🛡️ СИЗ</a>
-                    </li>
-                    <!-- Добавляем вкладку Оборудование -->
-                    <li class="nav-item">
-                        <a class="nav-link" href="{% url 'directory:equipment:equipment_list' %}">⚙️ Оборудование</a>
-                    </li>
-                    <!-- Добавляем вкладку Проверка знаний -->
-                    <li class="nav-item">
-                        <a class="nav-link" href="{% url 'directory:quiz:quiz_list' %}">📝 Проверка знаний</a>
-                    </li>
-                    <li class="nav-item dropdown">
-                        <a class="nav-link dropdown-toggle" href="#" id="commissionDropdown" role="button" data-bs-toggle="dropdown" aria-expanded="false">
-                            <i class="fas fa-users"></i> Комиссии
+    <!-- Кнопка переключения меню для мобильных устройств -->
+    <button class="sidebar-toggle" onclick="toggleSidebar()">
+        ☰
+    </button>
+
+    <!-- Боковое меню 🚀 -->
+    <div class="sidebar" id="sidebar">
+        <a class="sidebar-brand" href="/">
+            🏢 OT Online
+        </a>
+
+        {% if user.is_authenticated %}
+        <ul class="sidebar-nav">
+            <div class="sidebar-section">Основное</div>
+
+            <li class="nav-item">
+                <a class="nav-link" href="{% url 'directory:employees:employee_list' %}">
+                    👥 Сотрудники
+                </a>
+            </li>
+
+            <li class="nav-item">
+                <a class="nav-link" href="{% url 'directory:positions:position_list' %}">
+                    👔 Должности
+                </a>
+            </li>
+
+            <li class="nav-item">
+                <a class="nav-link" href="{% url 'directory:siz:siz_list' %}">
+                    🛡️ СИЗ
+                </a>
+            </li>
+
+            <li class="nav-item">
+                <a class="nav-link" href="{% url 'directory:equipment:equipment_list' %}">
+                    ⚙️ Оборудование
+                </a>
+            </li>
+
+            <li class="nav-item">
+                <a class="nav-link" href="{% url 'directory:quiz:quiz_list' %}">
+                    📝 Проверка знаний
+                </a>
+            </li>
+
+            <div class="sidebar-section">Дополнительно</div>
+
+            <li class="nav-item">
+                <a class="nav-link" href="{% url 'directory:commissions:commission_list' %}">
+                    👥 Список комиссий
+                </a>
+            </li>
+
+            <li class="nav-item">
+                <a class="nav-link" href="{% url 'directory:commissions:commission_tree' %}">
+                    🌳 Структура комиссий
+                </a>
+            </li>
+
+            <li class="nav-item">
+                <a class="nav-link" href="{% url 'directory:hiring:hiring_tree' %}">
+                    ➕ Приемы на работу
+                </a>
+            </li>
+        </ul>
+        {% endif %}
+    </div>
+
+    <!-- Основная область контента -->
+    <div class="main-content">
+        <!-- Верхняя панель с пользовательским меню -->
+        <div class="top-bar">
+            <div></div>
+            <div class="user-menu">
+                {% if user.is_authenticated %}
+                    {% if user.is_staff %}
+                    <a href="{% url 'admin:index' %}" class="btn btn-sm btn-outline-primary">
+                        ⚙️ Администрирование
+                    </a>
+                    {% endif %}
+
+                    <div class="dropdown">
+                        <a class="dropdown-toggle" href="#" id="userDropdown" role="button"
+                           data-bs-toggle="dropdown" aria-expanded="false">
+                            👤 {{ user.get_full_name|default:user.username }}
                         </a>
-                        <ul class="dropdown-menu" aria-labelledby="commissionDropdown">
+                        <ul class="dropdown-menu dropdown-menu-end" aria-labelledby="userDropdown">
                             <li>
-                                <a class="dropdown-item" href="{% url 'directory:commissions:commission_list' %}">
-                                    <i class="fas fa-list"></i> Список комиссий
+                                <a class="dropdown-item" href="{% url 'directory:auth:logout' %}">
+                                    🚪 Выйти
                                 </a>
                             </li>
-                            <li>
-                                <a class="dropdown-item" href="{% url 'directory:commissions:commission_tree' %}">
-                                    <i class="fas fa-sitemap"></i> Структура комиссий
-                                </a>
-                            </li>
-                            <!-- другие пункты меню -->
-                            <li class="nav-item">
-    <a class="nav-link {% if 'hiring' in request.path %}active{% endif %}" href="{% url 'directory:hiring:hiring_tree' %}">
-        <i class="fas fa-user-plus"></i> Приемы на работу
-    </a>
-</li>
                         </ul>
-                    </li>
-                    {% endif %}
-                </ul>
-                <ul class="navbar-nav">
-                    {% if user.is_authenticated %}
-                        {% if user.is_staff %}
-                        <li class="nav-item">
-                            <a class="nav-link" href="{% url 'admin:index' %}">⚙️ Администрирование</a>
-                        </li>
-                        {% endif %}
-                        <li class="nav-item dropdown">
-                            <a class="nav-link dropdown-toggle" href="#"
-                               id="userDropdown" role="button"
-                               data-bs-toggle="dropdown" aria-expanded="false">
-                                👤 {{ user.get_full_name|default:user.username }}
-                            </a>
-                            <ul class="dropdown-menu dropdown-menu-end" aria-labelledby="userDropdown">
-                                <li>
-                                    <a class="dropdown-item" href="{% url 'directory:auth:logout' %}">🚪 Выйти</a>
-                                </li>
-                            </ul>
-                        </li>
-                    {% else %}
-                        <li class="nav-item">
-                            <a class="nav-link" href="{% url 'directory:auth:login' %}">🔑 Войти</a>
-                        </li>
-                        <li class="nav-item">
-                            <a class="nav-link" href="{% url 'directory:auth:register' %}">✨ Регистрация</a>
-                        </li>
-                    {% endif %}
-                </ul>
+                    </div>
+                {% else %}
+                    <a class="btn btn-sm btn-outline-primary" href="{% url 'directory:auth:login' %}">
+                        🔑 Войти
+                    </a>
+                    <a class="btn btn-sm btn-primary" href="{% url 'directory:auth:register' %}">
+                        ✨ Регистрация
+                    </a>
+                {% endif %}
             </div>
         </div>
-    </nav>
 
-    <!-- Основной контент страницы 💻 -->
-    <div class="container mt-4">
-        {% if messages %}
-            {% for message in messages %}
-                <div class="alert alert-{{ message.tags }} alert-dismissible fade show" role="alert">
-                    {{ message }}
-                    <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
-                </div>
-            {% endfor %}
-        {% endif %}
-        {% block content %}{% endblock %}
+        <!-- Область контента страницы 💻 -->
+        <div class="content-area">
+            {% if messages %}
+                {% for message in messages %}
+                    <div class="alert alert-{{ message.tags }} alert-dismissible fade show" role="alert">
+                        {{ message }}
+                        <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
+                    </div>
+                {% endfor %}
+            {% endif %}
+            {% block content %}{% endblock %}
+        </div>
     </div>
 
     <!-- Подключаем JavaScript через CDN 📡 -->
@@ -138,6 +326,23 @@
         } else if (typeof jQuery !== 'undefined') {
             console.log('Select2 загружен');
         }
+
+        // Функция для переключения сайдбара на мобильных устройствах
+        function toggleSidebar() {
+            document.getElementById('sidebar').classList.toggle('show');
+        }
+
+        // Закрытие сайдбара при клике вне его на мобильных устройствах
+        document.addEventListener('click', function(event) {
+            const sidebar = document.getElementById('sidebar');
+            const toggle = document.querySelector('.sidebar-toggle');
+
+            if (window.innerWidth <= 768) {
+                if (!sidebar.contains(event.target) && !toggle.contains(event.target)) {
+                    sidebar.classList.remove('show');
+                }
+            }
+        });
     </script>
 
     {% block extra_js %}{% endblock %}

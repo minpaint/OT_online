@@ -24,13 +24,21 @@ class SIZListView(LoginRequiredMixin, ListView):
         context = super().get_context_data(**kwargs)
         context['title'] = 'Средства индивидуальной защиты'
 
-        # Добавляем список сотрудников для модального окна
-        context['employees'] = Employee.objects.all().order_by('full_name_nominative')
+        # Фильтрация списка сотрудников по организациям профиля
+        employees = Employee.objects.all()
+        if not self.request.user.is_superuser and hasattr(self.request.user, 'profile'):
+            allowed_orgs = self.request.user.profile.organizations.all()
+            employees = employees.filter(organization__in=allowed_orgs)
 
-        # Добавляем последние выданные СИЗ
-        context['recent_issued'] = SIZIssued.objects.select_related(
-            'employee', 'siz'
-        ).order_by('-issue_date')[:10]
+        context['employees'] = employees.order_by('full_name_nominative')
+
+        # Фильтрация последних выданных СИЗ по организациям профиля
+        recent_issued = SIZIssued.objects.select_related('employee', 'siz')
+        if not self.request.user.is_superuser and hasattr(self.request.user, 'profile'):
+            allowed_orgs = self.request.user.profile.organizations.all()
+            recent_issued = recent_issued.filter(employee__organization__in=allowed_orgs)
+
+        context['recent_issued'] = recent_issued.order_by('-issue_date')[:10]
 
         return context
 

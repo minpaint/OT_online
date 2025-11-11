@@ -1,0 +1,66 @@
+name: Deploy to Production
+
+# Триггер: автоматический запуск при push в main
+on:
+  push:
+    branches:
+      - main
+  workflow_dispatch:  # Возможность запустить вручную
+
+jobs:
+  deploy:
+    name: Deploy to Home Server
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: 📥 Checkout code
+        uses: actions/checkout@v4
+
+      - name: 🔑 Setup SSH
+        uses: webfactory/ssh-agent@v0.9.0
+        with:
+          ssh-private-key: ${{ secrets.SSH_PRIVATE_KEY }}
+
+      - name: 📋 Add server to known hosts
+        run: |
+          mkdir -p ~/.ssh
+          ssh-keyscan -H ${{ secrets.SERVER_HOST }} >> ~/.ssh/known_hosts
+
+      - name: 🚀 Deploy to server
+        env:
+          SERVER_USER: ${{ secrets.SERVER_USER }}
+          SERVER_HOST: ${{ secrets.SERVER_HOST }}
+          PROJECT_DIR: ${{ secrets.PROJECT_DIR }}
+        run: |
+          ssh $SERVER_USER@$SERVER_HOST << 'ENDSSH'
+            set -e
+            cd $PROJECT_DIR || cd /var/www/ot_online
+
+            echo "🔄 Pulling latest changes..."
+            git pull origin main
+
+            echo "📦 Installing dependencies..."
+            source venv/bin/activate
+            pip install -r requirements.txt
+
+            echo "🗄️ Running migrations..."
+            python manage.py migrate --noinput
+
+            echo "📁 Collecting static files..."
+            python manage.py collectstatic --noinput
+
+            echo "🔄 Restarting service..."
+            sudo systemctl restart ot_online || (pkill -f "gunicorn.*ot_online" && gunicorn --daemon --workers 3 --bind unix:/var/www/ot_online/ot_online.sock --env DJANGO_SETTINGS_MODULE=settings_prod wsgi:application)
+
+            echo "✅ Deployment completed!"
+          ENDSSH
+
+      - name: ✅ Deployment Success
+        if: success()
+        run: |
+          echo "::notice::Deployment to production completed successfully!"
+
+      - name: ❌ Deployment Failed
+        if: failure()
+        run: |
+          echo "::error::Deployment failed! Check the logs above for details."
