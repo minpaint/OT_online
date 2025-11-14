@@ -9,8 +9,9 @@
 {# 🎯 Блок брендинга – шапка админки с логотипом и ссылкой на главную страницу админки. #}
 {% block branding %}
     <h1 id="site-name">
-        <a href="{% url 'admin:index' %}">
-            🏢 Система управления ОТ
+        <a href="{% url 'admin:index' %}" style="display: flex; align-items: center; gap: 10px;">
+            <img src="{% static 'logo.png' %}" alt="OT" style="height: 40px; width: auto; object-fit: contain;">
+            <span>Система управления ОТ</span>
         </a>
     </h1>
 {% endblock %}

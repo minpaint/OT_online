@@ -3,6 +3,10 @@ import sys
 from pathlib import Path
 from dotenv import load_dotenv
 from django.contrib.messages import constants as messages
+import warnings
+
+# 📌 Подавление предупреждений о pkg_resources от docxcompose
+warnings.filterwarnings('ignore', message='.*pkg_resources is deprecated.*')
 
 # 📌 Загрузка переменных окружения из файла .env
 load_dotenv()
@@ -16,7 +20,7 @@ TESTING = len(sys.argv) > 1 and sys.argv[1] == 'test'
 # 🔐 Основные настройки безопасности
 SECRET_KEY = os.getenv('DJANGO_SECRET_KEY')
 DEBUG = os.getenv('DJANGO_DEBUG', 'False') == 'True' and not TESTING
-ALLOWED_HOSTS = os.getenv('DJANGO_ALLOWED_HOSTS', '127.0.0.1,localhost,exam.localhost,localhost:8001,exam.localhost:8001,127.0.0.1:8001').split(',')
+ALLOWED_HOSTS = os.getenv('DJANGO_ALLOWED_HOSTS', 'pot.by,www.pot.by,192.168.37.10,127.0.0.1,localhost').split(',')
 SECURE_PROXY_SSL_HEADER = ('HTTP_X_FORWARDED_PROTO', 'https')
 
 
@@ -307,7 +311,7 @@ LOGGING = {
         },
         'file': { # Запись в файл
             'class': 'logging.FileHandler',
-            'filename': BASE_DIR / 'django.log', # Путь к файлу логов
+            'filename': BASE_DIR / 'logs/django.log', # Путь к файлу логов
             'formatter': 'verbose',
             'level': 'DEBUG', # Уровень для файла (более детальный)
             'encoding': 'utf-8', # Явно указываем кодировку UTF-8
@@ -352,6 +356,11 @@ LOGGING = {
         'exam_security': { # Логгер для безопасности exam поддомена
             'handlers': ['file', 'console'],
             'level': 'WARNING', # Логируем только предупреждения и ошибки
+            'propagate': False,
+        },
+        'pymorphy3.opencorpora_dict.wrapper': { # Логгер для pymorphy3
+            'handlers': ['file'],
+            'level': 'WARNING', # Скрываем INFO сообщения о загрузке словарей
             'propagate': False,
         },
     },

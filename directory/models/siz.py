@@ -14,6 +14,8 @@ class SIZ(models.Model):
     classification = models.CharField(
         "Классификация (маркировка)",
         max_length=100,
+        blank=True,
+        default='',
         help_text="Маркировка СИЗ по защитным свойствам или конструктивным особенностям"
     )
     unit = models.CharField(
@@ -24,7 +26,14 @@ class SIZ(models.Model):
     wear_period = models.PositiveIntegerField(
         "Срок носки в месяцах",
         default=12,
-        help_text="0 означает 'До износа'"
+        help_text="0 означает особые случаи (До износа, Дежурные и т.д.)"
+    )
+    wear_type = models.CharField(
+        "Тип выдачи",
+        max_length=50,
+        blank=True,
+        default='',
+        help_text="Для wear_period=0: 'До износа', 'Дежурный', 'Дежурная', 'Дежурные'"
     )
 
     class Meta:
@@ -37,8 +46,10 @@ class SIZ(models.Model):
 
     @property
     def wear_period_display(self):
-        """🕒 Отображение срока носки (с учетом 'До износа')"""
-        return "До износа" if self.wear_period == 0 else f"{self.wear_period}"
+        """🕒 Отображение срока носки (с учетом особых случаев)"""
+        if self.wear_period == 0:
+            return self.wear_type if self.wear_type else "До износа"
+        return f"{self.wear_period} мес."
 
 
 class SIZNorm(models.Model):

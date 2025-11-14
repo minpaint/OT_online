@@ -4,7 +4,7 @@ from django.utils.html import format_html
 from directory.models.siz import SIZ, SIZNorm
 from directory.models.position import Position
 from directory.forms.siz import SIZForm, SIZNormForm
-from import_export import resources
+from import_export import resources, fields, widgets
 from import_export.admin import ImportExportModelAdmin
 from django.db.models import Count, Case, When, Value, IntegerField, Q
 from django.utils.translation import ngettext
@@ -12,14 +12,56 @@ from django.contrib import messages
 from django.db.models.functions import Lower
 
 
+class WearPeriodWidget(widgets.IntegerWidget):
+    """Виджет для обработки поля 'Срок носки' с поддержкой текста 'До износа' и 'Дежурный/ая/ые'"""
+
+    def clean(self, value, row=None, **kwargs):
+        """Преобразует текст 'До износа' и 'Дежурный/ая/ые' в 0 и сохраняет тип в wear_type"""
+        if isinstance(value, str):
+            value_stripped = value.strip()
+            value_lower = value_stripped.lower()
+
+            # Список особых типов выдачи
+            special_types = {
+                'до износа': 'До износа',
+                'доизноса': 'До износа',
+                'до_износа': 'До износа',
+                'дежурный': 'Дежурный',
+                'дежурная': 'Дежурная',
+                'дежурные': 'Дежурные',
+                'дежурное': 'Дежурное'
+            }
+
+            if value_lower in special_types:
+                # Сохраняем тип выдачи в row для последующего использования
+                if row is not None:
+                    row['wear_type'] = special_types[value_lower]
+                return 0
+
+        # Для числовых значений очищаем wear_type
+        if row is not None:
+            row['wear_type'] = ''
+
+        # Для остальных значений используем стандартную обработку
+        return super().clean(value, row, **kwargs)
+
+
 class SIZResource(resources.ModelResource):
     """🔄 Ресурс для импорта/экспорта данных СИЗ"""
 
+    wear_period = fields.Field(
+        column_name='wear_period',
+        attribute='wear_period',
+        widget=WearPeriodWidget()
+    )
+
     class Meta:
         model = SIZ
-        fields = ('name', 'classification', 'unit', 'wear_period')
-        export_order = ('name', 'classification', 'unit', 'wear_period')
+        fields = ('name', 'classification', 'unit', 'wear_period', 'wear_type')
+        export_order = ('name', 'classification', 'unit', 'wear_period', 'wear_type')
         import_id_fields = []  # Пустой список означает "всегда создавать новые записи"
+        skip_unchanged = False
+        report_skipped = False
 
 
 @admin.register(SIZ)
@@ -32,13 +74,15 @@ class SIZAdmin(ImportExportModelAdmin):
     search_fields = ('name', 'classification')
     fieldsets = (
         ('Основная информация', {
-            'fields': ('name', 'classification', 'unit', 'wear_period')
+            'fields': ('name', 'classification', 'unit', 'wear_period', 'wear_type')
         }),
     )
 
     def get_wear_period(self, obj):
         """🕒 Получение отображаемого значения срока носки"""
-        return "До износа" if obj.wear_period == 0 else f"{obj.wear_period} мес."
+        if obj.wear_period == 0:
+            return obj.wear_type if obj.wear_type else "До износа"
+        return f"{obj.wear_period} мес."
 
     get_wear_period.short_description = "Срок носки"
 
