@@ -6,7 +6,6 @@ import logging
 import traceback
 from typing import Dict, Any, Optional
 
-from directory.models.document_template import GeneratedDocument
 from directory.document_generators.base import (
     get_document_template, prepare_employee_context, generate_docx_from_template
 )
@@ -14,7 +13,7 @@ from directory.document_generators.base import (
 # Настройка логирования
 logger = logging.getLogger(__name__)
 
-def generate_personal_ot_card(employee, user=None, custom_context: Optional[Dict[str, Any]] = None) -> Optional[GeneratedDocument]:
+def generate_personal_ot_card(employee, user=None, custom_context: Optional[Dict[str, Any]] = None) -> Optional[Dict[str, Any]]:
     """
     Генерирует личную карточку по охране труда.
     Args:
@@ -22,7 +21,7 @@ def generate_personal_ot_card(employee, user=None, custom_context: Optional[Dict
         user: Пользователь, создающий документ (опционально)
         custom_context: Пользовательский контекст (опционально)
     Returns:
-        Optional[GeneratedDocument]: Объект сгенерированного документа или None при ошибке
+        Optional[Dict]: Словарь с 'content' и 'filename' или None при ошибке
     """
     try:
         template = get_document_template('personal_ot_card', employee)
@@ -44,7 +43,7 @@ def generate_personal_ot_card(employee, user=None, custom_context: Optional[Dict
 
         result = generate_docx_from_template(template, context, employee, user)
         if result:
-            logger.info(f"Личная карточка по ОТ успешно сгенерирована: {result.id}")
+            logger.info(f"Личная карточка по ОТ успешно сгенерирована: {result['filename']}")
             return result
         else:
             logger.error("Ошибка при генерации личной карточки по ОТ: функция generate_docx_from_template вернула None")

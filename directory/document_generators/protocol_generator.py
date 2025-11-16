@@ -3,7 +3,6 @@ import datetime
 import traceback
 from typing import Dict, Any, Optional
 
-from directory.models.document_template import GeneratedDocument
 from directory.document_generators.base import (
     get_document_template,
     prepare_employee_context,
@@ -22,7 +21,7 @@ def generate_knowledge_protocol(
     employee,
     user=None,
     custom_context: Optional[Dict[str, Any]] = None
-) -> Optional[GeneratedDocument]:
+) -> Optional[Dict[str, Any]]:
     """
     Генерирует протокол проверки знаний по вопросам охраны труда для сотрудника.
     """
@@ -82,7 +81,9 @@ def generate_knowledge_protocol(
             elif commission.subdivision:
                 binding = decline_phrase(commission.subdivision.name, 'gent')
             elif commission.organization:
-                binding = decline_phrase(commission.organization.short_name_ru, 'gent')
+                # Название организации НЕ склоняется - это имя собственное в кавычках
+                # "Комиссия ООО "Безопасность Плюс"", а не "ооо безопасности Плюс"
+                binding = commission.organization.short_name_ru
             else:
                 binding = ""
         else:

@@ -9,7 +9,7 @@ from django.contrib import admin
 from django.utils.translation import gettext_lazy as _
 from django.contrib import messages
 
-from directory.models.document_template import DocumentTemplate, GeneratedDocument
+from directory.models.document_template import DocumentTemplate, GeneratedDocument, DocumentGenerationLog
 
 
 @admin.register(DocumentTemplate)
@@ -72,4 +72,30 @@ class GeneratedDocumentAdmin(admin.ModelAdmin):
         """
         Запрещает добавление документов через админку
         """
+        return False
+
+
+@admin.register(DocumentGenerationLog)
+class DocumentGenerationLogAdmin(admin.ModelAdmin):
+    """
+    Административный интерфейс для логов генерации документов
+    """
+    list_display = ('employee', 'get_document_types', 'created_at', 'created_by')
+    list_filter = ('created_at', 'created_by')
+    search_fields = ('employee__full_name_nominative',)
+    readonly_fields = ('employee', 'document_types', 'created_at', 'created_by')
+    date_hierarchy = 'created_at'
+
+    def get_document_types(self, obj):
+        """Возвращает читаемые названия типов документов"""
+        return obj.get_document_types_display()
+
+    get_document_types.short_description = _('Типы документов')
+
+    def has_add_permission(self, request):
+        """Запрещает добавление логов через админку"""
+        return False
+
+    def has_change_permission(self, request, obj=None):
+        """Запрещает редактирование логов"""
         return False

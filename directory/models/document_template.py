@@ -131,3 +131,50 @@ class GeneratedDocument(models.Model):
 
     def __str__(self):
         return f"Документ для {self.employee} ({self.created_at.strftime('%d.%m.%Y')})"
+
+
+class DocumentGenerationLog(models.Model):
+    """
+    📋 Лог генерации документов для сотрудника
+
+    Записывает факт генерации документов без сохранения файлов.
+    """
+    employee = models.ForeignKey(
+        'directory.Employee',
+        verbose_name=_("Сотрудник"),
+        on_delete=models.CASCADE,
+        related_name="document_generation_logs"
+    )
+    document_types = models.JSONField(
+        _("Типы документов"),
+        default=list,
+        help_text=_("Список типов сгенерированных документов")
+    )
+    created_by = models.ForeignKey(
+        'auth.User',
+        verbose_name=_("Создан пользователем"),
+        on_delete=models.SET_NULL,
+        null=True,
+        blank=True
+    )
+    created_at = models.DateTimeField(_("Дата генерации"), auto_now_add=True)
+
+    class Meta:
+        verbose_name = _("Лог генерации документов")
+        verbose_name_plural = _("Логи генерации документов")
+        ordering = ['-created_at']
+
+    def __str__(self):
+        return f"Документы для {self.employee} ({self.created_at.strftime('%d.%m.%Y %H:%M')})"
+
+    def get_document_types_display(self):
+        """Возвращает читаемые названия типов документов"""
+        type_names = {
+            'all_orders': 'Распоряжения',
+            'knowledge_protocol': 'Протокол',
+            'doc_familiarization': 'Лист ознакомления',
+            'siz_card': 'Карточка СИЗ',
+            'personal_ot_card': 'Личная карточка',
+            'journal_example': 'Образец журнала',
+        }
+        return ', '.join([type_names.get(t, t) for t in self.document_types])

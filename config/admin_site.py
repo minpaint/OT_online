@@ -25,27 +25,33 @@ class OTAdminSite(AdminSite):
             "PositionMedicalFactor",
             "EmployeeMedicalExamination",
             "MedicalExaminationNorm",
+            "MedicalReferral",
             "MedicalSettings",
+        ]),
+        (_("\u23f1️ Контроль сроков"), [
+            "Equipment",
+            "KeyDeadlineCategory",
+            "EmployeeMedicalExamination",
         ]),
         (_("🛡️ СИЗ"), [
             "SIZ", "SIZNorm",
         ]),
         (_("📄 Документы и шаблоны"), [
-            "DocumentTemplate", "Document", "Equipment",
+            "DocumentTemplate", "Document", "DocumentGenerationLog",
         ]),
         (_("📑 Прием на работу"), [
-            "EmployeeHiring", "Commission", "GeneratedDocument",
+            "EmployeeHiring", "Commission",
         ]),
         (_("📊 Импорт/Экспорт данных"), [
             "ImportExportMenu",
         ]),
     ])
 
-    def get_app_list(self, request):
+    def get_app_list(self, request, app_label=None):
         """
         Возвращает меню, сгруппированное по логическим блокам.
         """
-        app_list = super().get_app_list(request)
+        app_list = super().get_app_list(request, app_label)
 
         # Плоский список всех моделей
         all_models = []

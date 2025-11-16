@@ -17,7 +17,6 @@ from docx.shared import Pt
 from docx.oxml import OxmlElement
 from docx.oxml.ns import qn
 
-from directory.models.document_template import GeneratedDocument
 from directory.document_generators.base import (
     get_document_template,
     prepare_employee_context,
@@ -36,7 +35,7 @@ def generate_familiarization_document(
     document_list: Optional[List[str]] = None,
     user=None,
     custom_context: Optional[Dict[str, Any]] = None,
-) -> Optional[GeneratedDocument]:
+) -> Optional[Dict[str, Any]]:
     """Генерирует лист ознакомления для сотрудника."""
 
     try:

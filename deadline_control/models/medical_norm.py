@@ -1,7 +1,7 @@
 from django.db import models
 from django.core.validators import MinValueValidator, FileExtensionValidator
 from django.utils import timezone
-from directory.models.medical_examination import MedicalExaminationType, HarmfulFactor
+from .medical_examination import MedicalExaminationType, HarmfulFactor
 from directory.models.position import Position
 from directory.models.employee import Employee
 

@@ -7,7 +7,6 @@ import datetime
 import traceback
 from typing import Dict, Any, Optional
 
-from directory.models.document_template import GeneratedDocument
 from directory.document_generators.base import (
     get_document_template, prepare_employee_context, generate_docx_from_template
 )
@@ -72,17 +71,28 @@ def prepare_internship_context(employee, context):
         logger.warning("Не удалось получить объект руководителя стажировки или success=False для определения отдела/подразделения.")
 
 
+    # Формируем полную строку должности руководителя без лишних пробелов
+    head_position_parts = []
+    if position_success and leader_position:
+        head_position_parts.append(decline_phrase(leader_position, 'accs'))
+    if head_subdiv_genitive:
+        head_position_parts.append(head_subdiv_genitive)
+    if head_dept_genitive:
+        head_position_parts.append(head_dept_genitive)
+    head_position_full_accusative = ' '.join(head_position_parts)
+
     context.update({
         'head_of_internship_position': leader_position,
         'head_of_internship_name': leader_name,
         'head_of_internship_name_initials': leader_initials,
-        'head_of_internship_position_genitive': decline_phrase(leader_position, 'gent') if position_success else leader_position, # Оставляем для совместимости
+        'head_of_internship_position_genitive': decline_phrase(leader_position, 'gent') if position_success else leader_position,
         'head_of_internship_name_accusative': decline_full_name(leader_name, 'accs') if name_success else leader_name,
-        'head_of_internship_position_accusative': decline_phrase(leader_position, 'accs') if position_success else leader_position, # Добавлено
+        'head_of_internship_position_accusative': decline_phrase(leader_position, 'accs') if position_success else leader_position,
         'internship_leader_level': level,
-        # >>> Новые добавленные ключи <<<
         'head_of_internship_department_genitive': head_dept_genitive,
         'head_of_internship_subdivision_genitive': head_subdiv_genitive,
+        # Полная строка должности руководителя (без лишних пробелов)
+        'head_of_internship_position_full_accusative': head_position_full_accusative,
     })
 
     logger.debug(f"Обновленный контекст для руководителя стажировки: department_genitive='{head_dept_genitive}', subdivision_genitive='{head_subdiv_genitive}'")
@@ -95,7 +105,7 @@ def prepare_internship_context(employee, context):
     return context
 
 # Остальная часть файла generate_all_orders без изменений...
-def generate_all_orders(employee, user=None, custom_context: Optional[Dict[str, Any]] = None) -> Optional[GeneratedDocument]:
+def generate_all_orders(employee, user=None, custom_context: Optional[Dict[str, Any]] = None) -> Optional[Dict[str, Any]]:
     """
     Генерирует комбинированное распоряжение о приеме/стажировке.
     Args:
@@ -103,7 +113,7 @@ def generate_all_orders(employee, user=None, custom_context: Optional[Dict[str, 
         user: Пользователь, создающий документ (опционально)
         custom_context: Пользовательский контекст (опционально)
     Returns:
-        Optional[GeneratedDocument]: Объект сгенерированного документа или None при ошибке
+        Optional[Dict]: Словарь с 'content' и 'filename' или None при ошибке
     """
     try:
         template = get_document_template('all_orders', employee)
@@ -150,7 +160,7 @@ def generate_all_orders(employee, user=None, custom_context: Optional[Dict[str, 
         # Вызываем базовую функцию генерации
         result = generate_docx_from_template(template, context, employee, user)
         if result:
-            logger.info(f"Документ 'all_orders' успешно сгенерирован: {result.id}")
+            logger.info(f"Документ 'all_orders' успешно сгенерирован: {result['filename']}")
             return result
         else:
             logger.error("Ошибка при генерации документа: функция generate_docx_from_template вернула None")

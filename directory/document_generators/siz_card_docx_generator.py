@@ -23,7 +23,6 @@ from docx.oxml import OxmlElement
 from docx.oxml.ns import qn
 from docx.enum.text import WD_ALIGN_PARAGRAPH
 
-from directory.models.document_template import GeneratedDocument
 from directory.document_generators.base import (
     get_document_template,
     prepare_employee_context,
@@ -43,7 +42,7 @@ def generate_siz_card_docx(
         employee,
         user=None,
         custom_context: Optional[Dict[str, Any]] = None,
-) -> Optional[GeneratedDocument]:
+) -> Optional[Dict[str, Any]]:
     """Генерирует карточку учёта СИЗ для сотрудника."""
 
     try:

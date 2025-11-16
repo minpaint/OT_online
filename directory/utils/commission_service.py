@@ -4,7 +4,7 @@ import logging
 from typing import Dict, Optional
 
 from directory.models import Commission, Employee
-from directory.utils.declension import get_initials_from_name  # <-- Пример использования declension
+from directory.utils.declension import get_initials_before_surname  # Формат "И.О. Фамилия" для комиссий
 
 logger = logging.getLogger(__name__)
 
@@ -67,7 +67,7 @@ def get_commission_members_formatted(commission: Commission) -> Dict[str, any]:
     # Загружаем всех участников комиссии
     for member in commission.members.filter(is_active=True).select_related('employee', 'employee__position'):
         full_name = member.employee.full_name_nominative or ""
-        initials = get_initials_from_name(full_name)
+        initials = get_initials_before_surname(full_name)  # Формат "И.О. Фамилия"
         position = member.employee.position.position_name if member.employee.position else ""
 
         entry = {
