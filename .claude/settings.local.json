@@ -51,7 +51,17 @@
       "Bash(c:venvsOT_onlineScriptspython.exe -m pip install django-model-utils)",
       "Bash(where:*)",
       "Bash(requirements.txt)",
-      "Bash(copy:*)"
+      "Bash(copy:*)",
+      "Bash(git reset:*)",
+      "Bash(c:\\venvs\\OT_online\\Scripts\\python.exe:*)",
+      "Bash(c:\\venvs\\OT_online\\Scripts\\python.exe manage.py makemigrations:*)",
+      "Bash(del directorymodelsequipment.py)",
+      "Bash(del directoryadminequipment.py)",
+      "Bash(del directoryformsequipment.py)",
+      "Bash(del directoryresourcesequipment.py)",
+      "Bash(del directoryviewsequipment.py)",
+      "Bash(rm:*)",
+      "WebFetch(domain:prnt.sc)"
     ],
     "deny": [],
     "ask": []

@@ -71,22 +71,22 @@
                 <table class="table table-hover mb-0">
                     <thead class="thead-light">
                         <tr>
+                            <th>Дата приема</th>
                             <th>ФИО</th>
                             <th>Должность</th>
                             <th>Подразделение</th>
                             <th>Отдел</th>
-                            <th>Дата приема</th>
                             <th>Действия</th>
                         </tr>
                     </thead>
                     <tbody>
                         {% for employee in employees %}
                         <tr>
+                            <td>{{ employee.hire_date|date:"d.m.Y"|default:"-" }}</td>
                             <td>{{ employee.full_name_nominative }}</td>
                             <td>{{ employee.position.position_name }}</td>
                             <td>{{ employee.subdivision.name|default:"-" }}</td>
                             <td>{{ employee.department.name|default:"-" }}</td>
-                            <td>{{ employee.hire_date|date:"d.m.Y"|default:"-" }}</td>
                             <td>
                                 <div class="btn-group btn-group-sm">
                                     <a href="{% url 'directory:employees:employee_update' employee.id %}" class="btn btn-primary" title="Редактировать">

@@ -10,6 +10,7 @@ from django.db.models import Count, Case, When, Value, IntegerField, Q
 from django.utils.translation import ngettext
 from django.contrib import messages
 from django.db.models.functions import Lower
+from directory.resources.siz_norm import SIZNormResource
 
 
 class WearPeriodWidget(widgets.IntegerWidget):
@@ -141,13 +142,14 @@ class SIZNormInlineForPosition(admin.TabularInline):
 
 
 @admin.register(SIZNorm)
-class SIZNormAdmin(admin.ModelAdmin):
+class SIZNormAdmin(ImportExportModelAdmin):
     """📊 Административный интерфейс для норм выдачи СИЗ"""
+    resource_class = SIZNormResource
     form = SIZNormForm
     list_display = ('position', 'siz', 'quantity', 'get_condition', 'order')
     list_filter = ('position', 'condition', 'siz')
     search_fields = ('position__position_name', 'siz__name', 'condition')
-    autocomplete_fields = ['siz']
+    # autocomplete_fields убран - виджет настраивается в форме через formfield_overrides
     # Указываем шаблон для отображения древовидной структуры
     change_list_template = "admin/directory/siznorm/change_list_tree.html"
 

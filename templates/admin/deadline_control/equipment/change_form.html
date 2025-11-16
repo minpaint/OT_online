@@ -1,0 +1,24 @@
+{# templates/admin/deadline_control/equipment/change_form.html #}
+{% extends "admin/change_form.html" %}
+{% load i18n static admin_urls %}
+
+{% block after_related_objects %}
+  {{ block.super }}
+  <fieldset class="module aligned">
+    <h2>Провести ТО</h2>
+    <div class="form-row">
+      <label for="maintenance_date">Дата ТО:</label>
+      <input type="date" id="maintenance_date" name="maintenance_date"
+             value="{{ original.last_maintenance_date|date:'Y-m-d' }}">
+    </div>
+    <div class="form-row">
+      <label for="comment">Комментарий:</label>
+      <input type="text" id="comment" name="comment" style="width: 50%;">
+    </div>
+    <div class="form-row">
+      <button type="submit" name="perform_maintenance" class="button btn-success">
+        Провести ТО
+      </button>
+    </div>
+  </fieldset>
+{% endblock %}

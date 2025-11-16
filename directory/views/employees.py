@@ -6,8 +6,9 @@ from django.shortcuts import render, redirect
 from django.contrib import messages
 from django.utils.translation import gettext_lazy as _
 from django.utils import timezone
+from django.db.models import Q
 
-from directory.models import Employee, StructuralSubdivision, Position
+from directory.models import Employee, StructuralSubdivision, Position, Organization
 from directory.forms import EmployeeForm
 from directory.forms.employee_hiring import EmployeeHiringForm
 from directory.utils.declension import decline_full_name
@@ -56,6 +57,117 @@ class EmployeeListView(LoginRequiredMixin, ListView):
         else:
             context['subdivisions'] = StructuralSubdivision.objects.all()
             context['positions'] = Position.objects.all()
+
+        return context
+
+
+class EmployeeTreeView(LoginRequiredMixin, ListView):
+    """
+    🌳 Древовидное представление сотрудников по организационной структуре
+    """
+    model = Employee
+    template_name = 'directory/employees/tree_view.html'
+    context_object_name = 'employees'
+
+    def get_queryset(self):
+        queryset = super().get_queryset()
+
+        # Фильтрация по организациям профиля пользователя
+        if not self.request.user.is_superuser and hasattr(self.request.user, 'profile'):
+            allowed_orgs = self.request.user.profile.organizations.all()
+            queryset = queryset.filter(organization__in=allowed_orgs)
+
+        # Фильтрация по должности
+        position = self.request.GET.get('position')
+        if position:
+            queryset = queryset.filter(position_id=position)
+
+        # Поиск по имени
+        search = self.request.GET.get('search')
+        if search:
+            queryset = queryset.filter(full_name_nominative__icontains=search)
+
+        return queryset.select_related('position', 'subdivision', 'organization', 'department')
+
+    def get_context_data(self, **kwargs):
+        context = super().get_context_data(**kwargs)
+        context['title'] = 'Сотрудники'
+
+        # Получаем доступные организации
+        if not self.request.user.is_superuser and hasattr(self.request.user, 'profile'):
+            allowed_orgs = self.request.user.profile.organizations.all()
+        else:
+            allowed_orgs = Organization.objects.all()
+
+        # Создаем древовидную структуру данных
+        tree_data = []
+
+        for org in allowed_orgs:
+            # Сотрудники на уровне организации (без подразделения)
+            org_employees = self.get_queryset().filter(
+                organization=org,
+                subdivision__isnull=True,
+                department__isnull=True
+            )
+
+            org_data = {
+                'id': org.id,
+                'name': org.short_name_ru or org.full_name_ru,
+                'employees': list(org_employees),
+                'subdivisions': []
+            }
+
+            # Получаем подразделения
+            for subdivision in org.subdivisions.all():
+                sub_employees = self.get_queryset().filter(
+                    organization=org,
+                    subdivision=subdivision,
+                    department__isnull=True
+                )
+
+                sub_data = {
+                    'id': subdivision.id,
+                    'name': subdivision.name,
+                    'employees': list(sub_employees),
+                    'departments': []
+                }
+
+                # Получаем отделы
+                for department in subdivision.departments.all():
+                    dept_employees = self.get_queryset().filter(
+                        organization=org,
+                        subdivision=subdivision,
+                        department=department
+                    )
+
+                    if dept_employees.exists():
+                        dept_data = {
+                            'id': department.id,
+                            'name': department.name,
+                            'employees': list(dept_employees)
+                        }
+                        sub_data['departments'].append(dept_data)
+
+                # Добавляем подразделение только если есть сотрудники или отделы
+                if sub_employees.exists() or sub_data['departments']:
+                    org_data['subdivisions'].append(sub_data)
+
+            # Добавляем организацию только если есть сотрудники или подразделения
+            if org_employees.exists() or org_data['subdivisions']:
+                tree_data.append(org_data)
+
+        context['tree_data'] = tree_data
+
+        # Фильтры
+        if not self.request.user.is_superuser and hasattr(self.request.user, 'profile'):
+            allowed_orgs = self.request.user.profile.organizations.all()
+            context['positions'] = Position.objects.filter(organization__in=allowed_orgs)
+        else:
+            context['positions'] = Position.objects.all()
+
+        # Параметры фильтрации
+        context['current_position'] = self.request.GET.get('position', '')
+        context['search_query'] = self.request.GET.get('search', '')
 
         return context
 

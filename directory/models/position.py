@@ -112,7 +112,7 @@ class Position(models.Model):
         verbose_name="Документы"
     )
     equipment = models.ManyToManyField(
-        'directory.Equipment',
+        'deadline_control.Equipment',
         blank=True,
         related_name="positions",
         verbose_name="Оборудование"

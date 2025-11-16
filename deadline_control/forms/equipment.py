@@ -1,10 +1,10 @@
-# directory/forms/equipment.py
+# deadline_control/forms/equipment.py
 from django import forms
 from django.utils import timezone
 from crispy_forms.helper import FormHelper
 from crispy_forms.layout import Submit, Layout, Fieldset, Div, HTML
 from dal import autocomplete
-from directory.models import Equipment
+from deadline_control.models import Equipment
 from directory.forms.mixins import OrganizationRestrictionFormMixin
 
 
@@ -63,7 +63,7 @@ class EquipmentForm(OrganizationRestrictionFormMixin, forms.ModelForm):
             HTML('<hr>'),
             Div(
                 Submit('submit', '💾 Сохранить', css_class='btn-primary'),
-                HTML('<a href="{% url "directory:equipment:equipment_list" %}" class="btn btn-secondary">Отмена</a>'),
+                HTML('<a href="{% url "admin:deadline_control_equipment_changelist" %}" class="btn btn-secondary">Отмена</a>'),
                 css_class='d-flex justify-content-between mt-3'
             )
         )

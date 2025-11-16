@@ -3,7 +3,8 @@
 """
 from import_export import resources, fields
 from import_export.widgets import CharWidget, DateWidget
-from directory.models import Equipment, Organization, StructuralSubdivision, Department
+from deadline_control.models import Equipment
+from directory.models import Organization, StructuralSubdivision, Department
 from django.core.exceptions import ValidationError
 from datetime import datetime
 

@@ -1,0 +1,87 @@
+{% extends "base.html" %}
+
+{% block title %}📅 Ключевые сроки{% endblock %}
+
+{% block content %}
+<div class="container-fluid mt-4">
+    <div class="row mb-3">
+        <div class="col-md-12">
+            <h2>📅 Ключевые сроки мероприятий</h2>
+        </div>
+    </div>
+
+    <div class="row mb-3">
+        <div class="col-md-12">
+            <a href="{% url 'deadline_control:key_deadline:category_create' %}" class="btn btn-primary">
+                ➕ Добавить категорию
+            </a>
+            <a href="{% url 'deadline_control:key_deadline:item_create' %}" class="btn btn-success">
+                ➕ Добавить мероприятие
+            </a>
+        </div>
+    </div>
+
+    {% if categories %}
+        {% for category in categories %}
+        <div class="card mb-3">
+            <div class="card-header d-flex justify-content-between align-items-center">
+                <h5 class="mb-0">{{ category.name }}</h5>
+                <div>
+                    <a href="{% url 'deadline_control:key_deadline:category_update' category.pk %}" class="btn btn-sm btn-info">✏️</a>
+                    <a href="{% url 'deadline_control:key_deadline:category_delete' category.pk %}" class="btn btn-sm btn-danger">🗑️</a>
+                </div>
+            </div>
+            <div class="card-body">
+                {% if category.description %}
+                <p class="text-muted">{{ category.description }}</p>
+                {% endif %}
+
+                {% if category.items.all %}
+                <table class="table table-sm">
+                    <thead>
+                        <tr>
+                            <th>Мероприятие</th>
+                            <th>Периодичность</th>
+                            <th>Текущая дата</th>
+                            <th>Следующая дата</th>
+                            <th>Дней до</th>
+                            <th>Ответственный</th>
+                            <th>Действия</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {% for item in category.items.all %}
+                        <tr {% if item.is_overdue %}class="table-danger"{% elif item.is_upcoming %}class="table-warning"{% endif %}>
+                            <td>{{ item.name }}</td>
+                            <td>{{ item.periodicity_months }} мес.</td>
+                            <td>{{ item.current_date|date:"d.m.Y" }}</td>
+                            <td>{{ item.next_date|date:"d.m.Y"|default:"-" }}</td>
+                            <td>
+                                {% if item.days_until_next is not None %}
+                                    {{ item.days_until_next }}
+                                {% else %}
+                                    -
+                                {% endif %}
+                            </td>
+                            <td>{{ item.responsible_person|default:"-" }}</td>
+                            <td>
+                                <a href="{% url 'deadline_control:key_deadline:item_update' item.pk %}" class="btn btn-sm btn-info">✏️</a>
+                                <a href="{% url 'deadline_control:key_deadline:item_delete' item.pk %}" class="btn btn-sm btn-danger">🗑️</a>
+                            </td>
+                        </tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+                {% else %}
+                <p class="text-muted">Нет мероприятий в этой категории</p>
+                {% endif %}
+            </div>
+        </div>
+        {% endfor %}
+    {% else %}
+    <div class="alert alert-info">
+        Нет категорий. <a href="{% url 'deadline_control:key_deadline:category_create' %}">Добавить категорию</a>
+    </div>
+    {% endif %}
+</div>
+{% endblock %}

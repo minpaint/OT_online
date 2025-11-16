@@ -1,0 +1,93 @@
+# deadline_control/views/key_deadline.py
+from django.contrib.auth.mixins import LoginRequiredMixin
+from django.views.generic import ListView, CreateView, UpdateView, DeleteView, DetailView
+from django.urls import reverse_lazy
+from django.contrib import messages
+
+from deadline_control.models import KeyDeadlineCategory, KeyDeadlineItem
+
+
+class KeyDeadlineListView(LoginRequiredMixin, ListView):
+    """Список категорий ключевых сроков"""
+    model = KeyDeadlineCategory
+    template_name = 'deadline_control/key_deadline/list.html'
+    context_object_name = 'categories'
+
+    def get_queryset(self):
+        qs = super().get_queryset()
+        if not self.request.user.is_superuser and hasattr(self.request.user, 'profile'):
+            allowed_orgs = self.request.user.profile.organizations.all()
+            qs = qs.filter(organization__in=allowed_orgs)
+        return qs.prefetch_related('items').order_by('name')
+
+
+class KeyDeadlineCategoryCreateView(LoginRequiredMixin, CreateView):
+    """Создание новой категории"""
+    model = KeyDeadlineCategory
+    template_name = 'deadline_control/key_deadline/category_form.html'
+    fields = ['name', 'organization', 'description', 'is_active']
+    success_url = reverse_lazy('deadline_control:key_deadline:list')
+
+    def form_valid(self, form):
+        messages.success(self.request, f'Категория "{form.instance.name}" успешно создана')
+        return super().form_valid(form)
+
+
+class KeyDeadlineCategoryUpdateView(LoginRequiredMixin, UpdateView):
+    """Редактирование категории"""
+    model = KeyDeadlineCategory
+    template_name = 'deadline_control/key_deadline/category_form.html'
+    fields = ['name', 'organization', 'description', 'is_active']
+    success_url = reverse_lazy('deadline_control:key_deadline:list')
+
+    def form_valid(self, form):
+        messages.success(self.request, f'Категория "{form.instance.name}" успешно обновлена')
+        return super().form_valid(form)
+
+
+class KeyDeadlineCategoryDeleteView(LoginRequiredMixin, DeleteView):
+    """Удаление категории"""
+    model = KeyDeadlineCategory
+    template_name = 'deadline_control/key_deadline/category_confirm_delete.html'
+    success_url = reverse_lazy('deadline_control:key_deadline:list')
+
+    def delete(self, request, *args, **kwargs):
+        category = self.get_object()
+        messages.success(request, f'Категория "{category.name}" успешно удалена')
+        return super().delete(request, *args, **kwargs)
+
+
+class KeyDeadlineItemCreateView(LoginRequiredMixin, CreateView):
+    """Создание нового мероприятия"""
+    model = KeyDeadlineItem
+    template_name = 'deadline_control/key_deadline/item_form.html'
+    fields = ['category', 'name', 'periodicity_months', 'current_date', 'responsible_person', 'notes']
+    success_url = reverse_lazy('deadline_control:key_deadline:list')
+
+    def form_valid(self, form):
+        messages.success(self.request, f'Мероприятие "{form.instance.name}" успешно создано')
+        return super().form_valid(form)
+
+
+class KeyDeadlineItemUpdateView(LoginRequiredMixin, UpdateView):
+    """Редактирование мероприятия"""
+    model = KeyDeadlineItem
+    template_name = 'deadline_control/key_deadline/item_form.html'
+    fields = ['category', 'name', 'periodicity_months', 'current_date', 'responsible_person', 'notes']
+    success_url = reverse_lazy('deadline_control:key_deadline:list')
+
+    def form_valid(self, form):
+        messages.success(self.request, f'Мероприятие "{form.instance.name}" успешно обновлено')
+        return super().form_valid(form)
+
+
+class KeyDeadlineItemDeleteView(LoginRequiredMixin, DeleteView):
+    """Удаление мероприятия"""
+    model = KeyDeadlineItem
+    template_name = 'deadline_control/key_deadline/item_confirm_delete.html'
+    success_url = reverse_lazy('deadline_control:key_deadline:list')
+
+    def delete(self, request, *args, **kwargs):
+        item = self.get_object()
+        messages.success(request, f'Мероприятие "{item.name}" успешно удалено')
+        return super().delete(request, *args, **kwargs)

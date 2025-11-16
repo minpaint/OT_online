@@ -248,19 +248,57 @@
                 </a>
             </li>
 
+            <div class="sidebar-section">
+                ⏰ Контроль сроков
+                {% if deadline_notifications_count > 0 %}
+                <span class="badge badge-{% if deadline_overdue_total > 0 %}danger{% else %}warning{% endif %} float-right">
+                    {{ deadline_notifications_count }}
+                </span>
+                {% endif %}
+            </div>
+
             <li class="nav-item">
-                <a class="nav-link" href="{% url 'directory:equipment:equipment_list' %}">
-                    ⚙️ Оборудование
+                <a class="nav-link" href="{% url 'deadline_control:dashboard' %}">
+                    📊 Dashboard
+                    {% if deadline_overdue_total > 0 %}
+                    <span class="badge badge-danger">{{ deadline_overdue_total }}</span>
+                    {% elif deadline_upcoming_total > 0 %}
+                    <span class="badge badge-warning">{{ deadline_upcoming_total }}</span>
+                    {% endif %}
                 </a>
             </li>
 
             <li class="nav-item">
-                <a class="nav-link" href="{% url 'directory:quiz:quiz_list' %}">
-                    📝 Проверка знаний
+                <a class="nav-link" href="{% url 'deadline_control:equipment:list' %}">
+                    ⚙️ ТО оборудования
+                </a>
+            </li>
+
+            <li class="nav-item">
+                <a class="nav-link" href="{% url 'deadline_control:key_deadline:list' %}">
+                    📅 Ключевые сроки
+                </a>
+            </li>
+
+            <li class="nav-item">
+                <a class="nav-link" href="{% url 'deadline_control:medical:list' %}">
+                    🏥 Медосмотры
                 </a>
             </li>
 
             <div class="sidebar-section">Дополнительно</div>
+
+            <li class="nav-item">
+                <a class="nav-link" href="{% url 'directory:quiz:quiz_list' %}">
+                    📝 Экзамены
+                </a>
+            </li>
+
+            <li class="nav-item">
+                <a class="nav-link" href="{% url 'directory:hiring:hiring_list' %}">
+                    ➕ Приемы на работу
+                </a>
+            </li>
 
             <li class="nav-item">
                 <a class="nav-link" href="{% url 'directory:commissions:commission_list' %}">
@@ -273,12 +311,6 @@
                     🌳 Структура комиссий
                 </a>
             </li>
-
-            <li class="nav-item">
-                <a class="nav-link" href="{% url 'directory:hiring:hiring_tree' %}">
-                    ➕ Приемы на работу
-                </a>
-            </li>
         </ul>
         {% endif %}
     </div>
@@ -287,7 +319,13 @@
     <div class="main-content">
         <!-- Верхняя панель с пользовательским меню -->
         <div class="top-bar">
-            <div></div>
+            <div>
+                {% if user.is_authenticated %}
+                <a href="{% url 'directory:hiring:simple_hiring' %}" class="btn btn-success">
+                    ➕ Принять на работу
+                </a>
+                {% endif %}
+            </div>
             <div class="user-menu">
                 {% if user.is_authenticated %}
                     {% if user.is_staff %}

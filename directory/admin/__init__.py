@@ -4,7 +4,6 @@ from django.contrib import admin  # noqa: F401
 from .department import DepartmentAdmin
 from .document import DocumentAdmin
 from .employee import EmployeeAdmin
-from .equipment import EquipmentAdmin
 from .organization import OrganizationAdmin
 from .position import PositionAdmin
 # Вместо файла subdivision_nested импортируем оригинальный файл subdivision.py с MPTTModelAdmin
@@ -23,7 +22,6 @@ __all__ = [
     'DepartmentAdmin',
     'DocumentAdmin',
     'EmployeeAdmin',
-    'EquipmentAdmin',
     'OrganizationAdmin',
     'PositionAdmin',
     'StructuralSubdivisionAdmin',

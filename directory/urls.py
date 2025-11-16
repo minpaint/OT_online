@@ -19,11 +19,12 @@ from directory.views import (
     PositionUpdateView,
     PositionDeleteView,
     UserRegistrationView,
-    equipment,  # 🆕 Импортируем модуль с представлениями оборудования
     hiring,  # 📑 Импортируем модуль с представлениями приемов на работу
     medical_examination,  # 🏥 Импортируем модуль с представлениями медосмотров
     employees,
 )
+
+from directory.views.employees import EmployeeTreeView
 
 from directory.views import quiz_views  # 📝 Импортируем модуль с представлениями экзаменов
 from directory.views import quiz_import_views  # 📥 Импорт вопросов
@@ -78,7 +79,8 @@ autocomplete_patterns = [
 
 # 👥 Сотрудники
 employee_patterns = [
-    path('', EmployeeListView.as_view(), name='employee_list'),
+    path('', EmployeeTreeView.as_view(), name='employee_list'),  # 🌳 Древовидное представление по умолчанию
+    path('table/', EmployeeListView.as_view(), name='employee_list_table'),  # 📋 Табличное представление
     path('create/', EmployeeCreateView.as_view(), name='employee_create'),
     path('hire/', EmployeeHiringView.as_view(), name='employee_hire'),
     path('<int:pk>/', EmployeeProfileView.as_view(), name='employee_profile'),  # ← добавлено
@@ -113,16 +115,6 @@ commission_patterns = [
          name='commission_member_add'),
     path('member/<int:pk>/update/', commissions.CommissionMemberUpdateView.as_view(), name='commission_member_update'),
     path('member/<int:pk>/delete/', commissions.CommissionMemberDeleteView.as_view(), name='commission_member_delete'),
-]
-
-# ⚙️ Оборудование (🆕 добавлено полностью)
-equipment_patterns = [
-    path('', equipment.EquipmentListView.as_view(), name='equipment_list'),
-    path('create/', equipment.EquipmentCreateView.as_view(), name='equipment_create'),
-    path('<int:pk>/', equipment.EquipmentDetailView.as_view(), name='equipment_detail'),
-    path('<int:pk>/update/', equipment.EquipmentUpdateView.as_view(), name='equipment_update'),
-    path('<int:pk>/delete/', equipment.EquipmentDeleteView.as_view(), name='equipment_delete'),
-    path('<int:pk>/perform-maintenance/', equipment.perform_maintenance, name='perform_maintenance'),
 ]
 
 # 🛡️ СИЗ
@@ -254,7 +246,6 @@ urlpatterns = [
     path('employees/', include((employee_patterns, 'employees'))),
     path('positions/', include((position_patterns, 'positions'))),
     path('documents/', include((document_patterns, 'documents'))),
-    path('equipment/', include((equipment_patterns, 'equipment'))),
     path('positions/<int:position_id>/siz-norms/', siz.position_siz_norms, name='position_siz_norms'),
     path('siz/', include((siz_patterns, 'siz'))),
     path('commissions/', include((commission_patterns, 'commissions'))),

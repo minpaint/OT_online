@@ -1,0 +1,309 @@
+{% extends "base.html" %}
+{% load static %}
+
+{% block title %}⏰ Контроль сроков - Dashboard{% endblock %}
+
+{% block content %}
+<div class="container-fluid mt-4">
+    <h2>⏰ Контроль сроков - Dashboard</h2>
+
+    <!-- Общая статистика -->
+    <div class="row mt-4">
+        <div class="col-md">
+            <div class="card bg-danger text-white">
+                <div class="card-body">
+                    <h5 class="card-title">🚨 Просрочено</h5>
+                    <h2 class="card-text">{{ total_overdue }}</h2>
+                    <small>требуют немедленного внимания</small>
+                </div>
+            </div>
+        </div>
+        <div class="col-md">
+            <div class="card bg-warning text-dark">
+                <div class="card-body">
+                    <h5 class="card-title">⚠️ Скоро истекает</h5>
+                    <h2 class="card-text">{{ total_upcoming }}</h2>
+                    <small>в течение 14 дней</small>
+                </div>
+            </div>
+        </div>
+        <div class="col-md">
+            <div class="card bg-info text-white">
+                <div class="card-body">
+                    <h5 class="card-title">⚙️ Оборудование</h5>
+                    <h2 class="card-text">{{ total_equipment }}</h2>
+                    <small>на контроле</small>
+                </div>
+            </div>
+        </div>
+        <div class="col-md">
+            <div class="card bg-success text-white">
+                <div class="card-body">
+                    <h5 class="card-title">📅 Мероприятия</h5>
+                    <h2 class="card-text">{{ total_deadlines }}</h2>
+                    <small>в графике</small>
+                </div>
+            </div>
+        </div>
+        <div class="col-md">
+            <div class="card bg-primary text-white">
+                <div class="card-body">
+                    <h5 class="card-title">🏥 Медосмотры</h5>
+                    <h2 class="card-text">{{ total_medical }}</h2>
+                    <small>на контроле</small>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Просроченное оборудование -->
+    {% if overdue_equipment %}
+    <div class="row mt-4">
+        <div class="col-md-12">
+            <div class="card border-danger">
+                <div class="card-header bg-danger text-white">
+                    <h5 class="mb-0">🚨 Просроченное ТО оборудования ({{ overdue_equipment_count }})</h5>
+                </div>
+                <div class="card-body">
+                    <table class="table table-hover">
+                        <thead>
+                            <tr>
+                                <th>Оборудование</th>
+                                <th>Организация</th>
+                                <th>Следующее ТО</th>
+                                <th>Просрочено дней</th>
+                                <th>Действия</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            {% for eq in overdue_equipment %}
+                            <tr>
+                                <td><strong>{{ eq.equipment_name }}</strong></td>
+                                <td>{{ eq.organization.short_name_ru }}</td>
+                                <td>{{ eq.next_maintenance_date|date:"d.m.Y" }}</td>
+                                <td><span class="badge badge-danger">{{ eq.days_until_maintenance|add:"-1"|stringformat:"d"|slice:"1:" }}</span></td>
+                                <td>
+                                    <a href="{% url 'deadline_control:equipment:detail' eq.pk %}" class="btn btn-sm btn-primary">Подробнее</a>
+                                </td>
+                            </tr>
+                            {% endfor %}
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        </div>
+    </div>
+    {% endif %}
+
+    <!-- Скоро ТО оборудования -->
+    {% if upcoming_equipment %}
+    <div class="row mt-4">
+        <div class="col-md-12">
+            <div class="card border-warning">
+                <div class="card-header bg-warning text-dark">
+                    <h5 class="mb-0">⚠️ Скоро ТО оборудования ({{ upcoming_equipment_count }})</h5>
+                </div>
+                <div class="card-body">
+                    <table class="table table-hover">
+                        <thead>
+                            <tr>
+                                <th>Оборудование</th>
+                                <th>Организация</th>
+                                <th>Следующее ТО</th>
+                                <th>Осталось дней</th>
+                                <th>Действия</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            {% for eq in upcoming_equipment %}
+                            <tr>
+                                <td><strong>{{ eq.equipment_name }}</strong></td>
+                                <td>{{ eq.organization.short_name_ru }}</td>
+                                <td>{{ eq.next_maintenance_date|date:"d.m.Y" }}</td>
+                                <td><span class="badge badge-warning">{{ eq.days_until_maintenance }}</span></td>
+                                <td>
+                                    <a href="{% url 'deadline_control:equipment:detail' eq.pk %}" class="btn btn-sm btn-primary">Подробнее</a>
+                                </td>
+                            </tr>
+                            {% endfor %}
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        </div>
+    </div>
+    {% endif %}
+
+    <!-- Просроченные мероприятия -->
+    {% if overdue_deadlines %}
+    <div class="row mt-4">
+        <div class="col-md-12">
+            <div class="card border-danger">
+                <div class="card-header bg-danger text-white">
+                    <h5 class="mb-0">🚨 Просроченные мероприятия ({{ overdue_deadlines_count }})</h5>
+                </div>
+                <div class="card-body">
+                    <table class="table table-hover">
+                        <thead>
+                            <tr>
+                                <th>Мероприятие</th>
+                                <th>Категория</th>
+                                <th>Следующая дата</th>
+                                <th>Просрочено дней</th>
+                                <th>Ответственный</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            {% for item in overdue_deadlines %}
+                            <tr>
+                                <td><strong>{{ item.name }}</strong></td>
+                                <td>{{ item.category.name }}</td>
+                                <td>{{ item.next_date|date:"d.m.Y" }}</td>
+                                <td><span class="badge badge-danger">{{ item.days_until_next|add:"-1"|stringformat:"d"|slice:"1:" }}</span></td>
+                                <td>{{ item.responsible_person|default:"-" }}</td>
+                            </tr>
+                            {% endfor %}
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        </div>
+    </div>
+    {% endif %}
+
+    <!-- Скоро мероприятия -->
+    {% if upcoming_deadlines %}
+    <div class="row mt-4">
+        <div class="col-md-12">
+            <div class="card border-warning">
+                <div class="card-header bg-warning text-dark">
+                    <h5 class="mb-0">⚠️ Предстоящие мероприятия ({{ upcoming_deadlines_count }})</h5>
+                </div>
+                <div class="card-body">
+                    <table class="table table-hover">
+                        <thead>
+                            <tr>
+                                <th>Мероприятие</th>
+                                <th>Категория</th>
+                                <th>Следующая дата</th>
+                                <th>Осталось дней</th>
+                                <th>Ответственный</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            {% for item in upcoming_deadlines %}
+                            <tr>
+                                <td><strong>{{ item.name }}</strong></td>
+                                <td>{{ item.category.name }}</td>
+                                <td>{{ item.next_date|date:"d.m.Y" }}</td>
+                                <td><span class="badge badge-warning">{{ item.days_until_next }}</span></td>
+                                <td>{{ item.responsible_person|default:"-" }}</td>
+                            </tr>
+                            {% endfor %}
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        </div>
+    </div>
+    {% endif %}
+
+    <!-- Просроченные медосмотры -->
+    {% if overdue_medical %}
+    <div class="row mt-4">
+        <div class="col-md-12">
+            <div class="card border-danger">
+                <div class="card-header bg-danger text-white">
+                    <h5 class="mb-0">🚨 Просроченные медосмотры ({{ overdue_medical_count }})</h5>
+                </div>
+                <div class="card-body">
+                    <table class="table table-hover">
+                        <thead>
+                            <tr>
+                                <th>Сотрудник</th>
+                                <th>Организация</th>
+                                <th>Вредный фактор</th>
+                                <th>Следующий осмотр</th>
+                                <th>Просрочено дней</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            {% for exam in overdue_medical %}
+                            <tr>
+                                <td><strong>{{ exam.employee.full_name_nominative }}</strong></td>
+                                <td>{{ exam.employee.organization.short_name_ru }}</td>
+                                <td>{{ exam.harmful_factor.name }}</td>
+                                <td>{{ exam.next_date|date:"d.m.Y" }}</td>
+                                <td><span class="badge badge-danger">{{ exam.days_until_next|add:"-1"|stringformat:"d"|slice:"1:" }}</span></td>
+                            </tr>
+                            {% endfor %}
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        </div>
+    </div>
+    {% endif %}
+
+    <!-- Предстоящие медосмотры -->
+    {% if upcoming_medical %}
+    <div class="row mt-4">
+        <div class="col-md-12">
+            <div class="card border-warning">
+                <div class="card-header bg-warning text-dark">
+                    <h5 class="mb-0">⚠️ Предстоящие медосмотры ({{ upcoming_medical_count }})</h5>
+                </div>
+                <div class="card-body">
+                    <table class="table table-hover">
+                        <thead>
+                            <tr>
+                                <th>Сотрудник</th>
+                                <th>Организация</th>
+                                <th>Вредный фактор</th>
+                                <th>Следующий осмотр</th>
+                                <th>Осталось дней</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            {% for exam in upcoming_medical %}
+                            <tr>
+                                <td><strong>{{ exam.employee.full_name_nominative }}</strong></td>
+                                <td>{{ exam.employee.organization.short_name_ru }}</td>
+                                <td>{{ exam.harmful_factor.name }}</td>
+                                <td>{{ exam.next_date|date:"d.m.Y" }}</td>
+                                <td><span class="badge badge-warning">{{ exam.days_until_next }}</span></td>
+                            </tr>
+                            {% endfor %}
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        </div>
+    </div>
+    {% endif %}
+
+    <!-- Если всё в порядке -->
+    {% if not total_overdue and not total_upcoming %}
+    <div class="row mt-4">
+        <div class="col-md-12">
+            <div class="alert alert-success text-center">
+                <h4>✅ Все сроки под контролем!</h4>
+                <p>Нет просроченных или истекающих в ближайшее время мероприятий.</p>
+            </div>
+        </div>
+    </div>
+    {% endif %}
+
+    <!-- Быстрые действия -->
+    <div class="row mt-4 mb-4">
+        <div class="col-md-12">
+            <h5>Быстрые действия</h5>
+            <a href="{% url 'deadline_control:equipment:list' %}" class="btn btn-primary mr-2">⚙️ Список оборудования</a>
+            <a href="{% url 'deadline_control:key_deadline:list' %}" class="btn btn-success mr-2">📅 Ключевые сроки</a>
+            <a href="{% url 'deadline_control:medical:list' %}" class="btn btn-secondary mr-2">🏥 Медосмотры</a>
+            <a href="{% url 'deadline_control:equipment:create' %}" class="btn btn-info mr-2">➕ Добавить оборудование</a>
+            <a href="{% url 'deadline_control:key_deadline:item_create' %}" class="btn btn-warning">➕ Добавить мероприятие</a>
+        </div>
+    </div>
+</div>
+{% endblock %}

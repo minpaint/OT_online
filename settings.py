@@ -48,7 +48,8 @@ THIRD_PARTY_APPS = [
 
 # 🏠 Локальные приложения
 LOCAL_APPS = [
-    'directory.apps.DirectoryConfig', # Наше приложение "directory" 📦
+    'directory.apps.DirectoryConfig',  # Наше приложение "directory" 📦
+    'deadline_control.apps.DeadlineControlConfig',  # Контроль сроков ⏰
 ]
 
 # Добавляем debug_toolbar только если не в режиме тестирования и DEBUG=True
@@ -97,6 +98,7 @@ TEMPLATES = [
                 'django.contrib.auth.context_processors.auth',
                 'django.contrib.messages.context_processors.messages',
                 'django.template.context_processors.media', # Добавлен процессор для MEDIA_URL
+                'deadline_control.context_processors.notifications.deadline_notifications', # Уведомления о сроках
             ],
         },
     },

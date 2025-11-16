@@ -25,7 +25,7 @@ from directory.resources.organization_structure import OrganizationStructureReso
 class SIZNormInlineForPosition(admin.TabularInline):
     """📋 Встроенные нормы СИЗ для должности с отображением всех полей"""
     model = SIZNorm
-    extra = 0  # Изменено с 1 на 0, чтобы не добавлять пустую строку автоматически
+    extra = 3  # Показываем 3 пустые строки для быстрого добавления нескольких СИЗ
     fields = ('siz', 'classification', 'unit', 'quantity', 'wear_period', 'condition', 'order')
     readonly_fields = ('classification', 'unit', 'wear_period')
     verbose_name = "Норма СИЗ"
@@ -34,10 +34,10 @@ class SIZNormInlineForPosition(admin.TabularInline):
     # Восстанавливаем autocomplete_fields с добавлением формы
     autocomplete_fields = ['siz']
 
-    # Предотвращаем отображение пустых форм
+    # Предотвращаем отображение слишком много пустых форм
     def get_extra(self, request, obj=None, **kwargs):
-        """Возвращает 0 для существующих объектов, 1 для новых"""
-        return 0 if obj else 1
+        """Возвращает 3 пустые строки для добавления новых СИЗ"""
+        return 3
 
     # Улучшаем фильтрацию запросов
     def get_queryset(self, request):

@@ -1,4 +1,4 @@
-# directory/admin/equipment.py
+# deadline_control/admin/equipment.py
 from django.contrib import admin
 from django.contrib import messages
 from django.shortcuts import redirect, render
@@ -8,15 +8,15 @@ from django.http import HttpResponse
 from tablib import Dataset
 
 from directory.admin.mixins.tree_view import TreeViewMixin
-from directory.models import Equipment
-from directory.forms.equipment import EquipmentForm
-from directory.resources.equipment import EquipmentResource
+from deadline_control.models import Equipment
+from deadline_control.forms import EquipmentForm
+from deadline_control.resources import EquipmentResource
 
 
 class EquipmentTreeViewMixin(TreeViewMixin):
     """Расширяет TreeViewMixin, добавляя данные о ТО."""
 
-    change_list_template = "admin/directory/equipment/change_list_tree.html"
+    change_list_template = "admin/deadline_control/equipment/change_list_tree.html"
 
     tree_settings = {
         'icons': {
@@ -90,7 +90,7 @@ class EquipmentTreeViewMixin(TreeViewMixin):
 @admin.register(Equipment)
 class EquipmentAdmin(EquipmentTreeViewMixin, admin.ModelAdmin):
     form = EquipmentForm
-    change_list_template = "admin/directory/equipment/change_list_tree.html"
+    change_list_template = "admin/deadline_control/equipment/change_list_tree.html"
 
     list_display = [
         'equipment_name', 'inventory_number',
@@ -104,8 +104,8 @@ class EquipmentAdmin(EquipmentTreeViewMixin, admin.ModelAdmin):
         """🔗 Добавляем кастомные URL для импорта/экспорта"""
         urls = super().get_urls()
         custom_urls = [
-            path('import/', self.admin_site.admin_view(self.import_view), name='directory_equipment_import'),
-            path('export/', self.admin_site.admin_view(self.export_view), name='directory_equipment_export'),
+            path('import/', self.admin_site.admin_view(self.import_view), name='deadline_control_equipment_import'),
+            path('export/', self.admin_site.admin_view(self.export_view), name='deadline_control_equipment_export'),
         ]
         return custom_urls + urls
 
@@ -142,7 +142,7 @@ class EquipmentAdmin(EquipmentTreeViewMixin, admin.ModelAdmin):
                 dataset_data = request.session.get('equipment_dataset')
                 if not dataset_data:
                     messages.error(request, 'Данные для импорта не найдены. Загрузите файл заново.')
-                    return redirect('admin:directory_equipment_import')
+                    return redirect('admin:deadline_control_equipment_import')
 
                 dataset = Dataset().load(dataset_data)
                 resource = EquipmentResource()
@@ -151,18 +151,18 @@ class EquipmentAdmin(EquipmentTreeViewMixin, admin.ModelAdmin):
                 del request.session['equipment_dataset']
 
                 messages.success(request, f'✅ Импорт завершен! Создано: {result.totals["new"]}, обновлено: {result.totals["update"]}')
-                return redirect('admin:directory_equipment_changelist')
+                return redirect('admin:deadline_control_equipment_changelist')
             else:
                 # Предпросмотр импорта
                 import_file = request.FILES.get('import_file')
                 if not import_file:
                     messages.error(request, 'Файл не выбран')
-                    return redirect('admin:directory_equipment_import')
+                    return redirect('admin:deadline_control_equipment_import')
 
                 file_format = import_file.name.split('.')[-1].lower()
                 if file_format not in ['xlsx', 'xls']:
                     messages.error(request, 'Поддерживаются только файлы XLSX и XLS')
-                    return redirect('admin:directory_equipment_import')
+                    return redirect('admin:deadline_control_equipment_import')
 
                 try:
                     dataset = Dataset().load(import_file.read(), format=file_format)
@@ -177,20 +177,20 @@ class EquipmentAdmin(EquipmentTreeViewMixin, admin.ModelAdmin):
                         'result': result,
                         'dataset': dataset,
                     })
-                    return render(request, 'admin/directory/equipment/import_preview.html', context)
+                    return render(request, 'admin/deadline_control/equipment/import_preview.html', context)
                 except Exception as e:
                     messages.error(request, f'Ошибка при обработке файла: {str(e)}')
-                    return redirect('admin:directory_equipment_import')
+                    return redirect('admin:deadline_control_equipment_import')
 
         context.update({
             'title': 'Импорт оборудования',
             'subtitle': None,
         })
-        return render(request, 'admin/directory/equipment/import.html', context)
+        return render(request, 'admin/deadline_control/equipment/import.html', context)
 
     def export_view(self, request):
         """📤 Экспорт оборудования"""
-        from directory.models import Equipment
+        from deadline_control.models import Equipment
 
         # Фильтрация по организации (если указана)
         organization_id = request.GET.get('organization_id')

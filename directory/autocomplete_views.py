@@ -7,10 +7,10 @@ from directory.models import (
     Department,
     Position,
     Document,
-    Equipment,
     Employee,
     Commission
 )
+from deadline_control.models import Equipment
 
 
 class OrganizationAutocomplete(autocomplete.Select2QuerySetView):
@@ -306,10 +306,22 @@ class SIZAutocomplete(autocomplete.Select2QuerySetView):
         🔍 Получение отфильтрованного набора СИЗ
         на основе поискового запроса
         """
+        from django.db.models import Q
+
+        if not self.request.user.is_authenticated:
+            return SIZ.objects.none()
+
         qs = SIZ.objects.all()
 
         if self.q:
-            qs = qs.filter(name__icontains=self.q)
+            # Используем Q-объекты для поиска с учетом регистра и без
+            # Это решает проблему с SQLite, где icontains не всегда работает корректно
+            qs = qs.filter(
+                Q(name__icontains=self.q) |
+                Q(name__icontains=self.q.capitalize()) |
+                Q(name__icontains=self.q.lower()) |
+                Q(name__icontains=self.q.upper())
+            ).distinct()
 
         return qs.order_by('name')
 

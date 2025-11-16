@@ -1,0 +1,172 @@
+{# templates/admin/deadline_control/equipment/change_list_tree.html #}
+{% extends "admin/change_list.html" %}
+{% load static admin_urls %}
+
+{% block content %}
+<div id="content-main">
+  <div class="object-tools">
+    <a href="{% url 'admin:deadline_control_equipment_add' %}" class="addlink">
+      Добавить оборудование
+    </a>
+    <a href="{% url 'admin:deadline_control_equipment_import' %}" class="addlink" style="background-position: 0 -96px;">
+      📥 Импорт
+    </a>
+    <a href="{% url 'admin:deadline_control_equipment_export' %}" class="addlink" style="background-position: 0 -96px;">
+      📤 Экспорт
+    </a>
+  </div>
+  <form id="changelist-form" method="post"
+        {% if cl.formset and cl.formset.is_multipart %}enctype="multipart/form-data"{% endif %}
+        novalidate>
+    {% csrf_token %}
+    {% if action_form and actions_on_top and cl.show_admin_actions %}
+      <div class="actions">
+        {% for field in action_form %}
+          {% if field.label %}<label>{{ field.label }}</label>{% endif %}
+          {{ field }}
+        {% endfor %}
+        <button type="submit" class="button">Выполнить</button>
+        <span class="action-counter" style="display: none;">0 из {{ cl.result_count }} выбрано</span>
+      </div>
+    {% endif %}
+    <div class="tree-controls">
+      <button type="button" class="tree-btn expand-all">↓ Развернуть все</button>
+      <button type="button" class="tree-btn collapse-all">↑ Свернуть все</button>
+      <div class="tree-search-container">
+        <input type="text" class="tree-search" placeholder="🔍 Поиск по дереву…">
+      </div>
+    </div>
+    <div class="results">
+      <table id="result_list" class="table table-bordered">
+        <thead>
+          <tr>
+            <th></th>
+            <th>Наименование</th>
+            <th>След. ТО</th>
+            <th>Дней до ТО</th>
+            <th>Провести ТО</th>
+            <th>Действия</th>
+          </tr>
+        </thead>
+        <tbody>
+          {% for org, org_data in tree.items %}
+            {# ─────────── Организация ─────────── #}
+            <tr class="tree-row" data-level="0" data-node-id="org_{{ org.id }}">
+              <td></td>
+              <td>
+                <button class="toggle-btn" data-state="expanded">[-]</button>
+                <span class="tree-icon">{{ tree_settings.icons.organization }}</span>
+                <strong>{{ org_data.name }}</strong>
+              </td>
+              <td></td><td></td><td></td><td></td>
+            </tr>
+            {# ─────────── Оборудование без подразделения ─────────── #}
+            {% for item in org_data.items %}
+              <tr class="tree-row {% if item.maintenance_state == 'overdue' %}overdue-row{% elif item.maintenance_state == 'warning' %}warning-row{% endif %}" data-level="1" data-parent-id="org_{{ org.id }}">
+                <td>
+                  <input type="checkbox" name="_selected_action" value="{{ item.object.pk }}">
+                </td>
+                <td>
+                  <span class="tree-icon">{{ tree_settings.icons.item }}</span>
+                  <a href="{% url 'admin:deadline_control_equipment_change' item.object.pk %}">
+                    {{ item.name }}
+                  </a>
+                </td>
+                <td class="date-cell {{ item.maintenance_state }}">{{ item.next_maintenance_date|default:"—" }}</td>
+                <td class="days-cell {{ item.maintenance_state }}">{{ item.days_to_maintenance|default:"—" }}</td>
+                <td>
+                  <input type="date" name="maintenance_date_{{ item.object.pk }}"
+                         value="{{ item.next_maintenance_date|date:'Y-m-d' }}" style="width: auto;">
+                  <button type="submit" name="perform_maintenance" value="{{ item.object.pk }}"
+                          class="button btn-sm btn-success">ТО</button>
+                </td>
+                <td>
+                  <a href="{% url 'admin:deadline_control_equipment_change' item.object.pk %}" class="edit-link">✏️</a>
+                  <a href="{% url 'admin:deadline_control_equipment_delete' item.object.pk %}" class="delete-link">🗑️</a>
+                </td>
+              </tr>
+            {% endfor %}
+            {# ─────────── Подразделения и их оборудование ─────────── #}
+            {% for sub, sub_data in org_data.subdivisions.items %}
+              <tr class="tree-row" data-level="1" data-parent-id="org_{{ org.id }}" data-node-id="sub_{{ sub.id }}">
+                <td></td>
+                <td>
+                  <button class="toggle-btn" data-state="expanded">[-]</button>
+                  <span class="tree-icon">{{ tree_settings.icons.subdivision }}</span>
+                  {{ sub_data.name }}
+                </td>
+                <td></td><td></td><td></td><td></td>
+              </tr>
+              {% for item in sub_data.items %}
+                <tr class="tree-row {% if item.maintenance_state == 'overdue' %}overdue-row{% elif item.maintenance_state == 'warning' %}warning-row{% endif %}" data-level="2" data-parent-id="sub_{{ sub.id }}">
+                  <td><input type="checkbox" name="_selected_action" value="{{ item.object.pk }}"></td>
+                  <td>
+                    <span class="tree-icon">{{ tree_settings.icons.item }}</span>
+                    <a href="{% url 'admin:deadline_control_equipment_change' item.object.pk %}">
+                      {{ item.name }}
+                    </a>
+                  </td>
+                  <td class="date-cell {{ item.maintenance_state }}">{{ item.next_maintenance_date|default:"—" }}</td>
+                  <td class="days-cell {{ item.maintenance_state }}">{{ item.days_to_maintenance|default:"—" }}</td>
+                  <td>
+                    <input type="date" name="maintenance_date_{{ item.object.pk }}"
+                           value="{{ item.next_maintenance_date|date:'Y-m-d' }}" style="width: auto;">
+                    <button type="submit" name="perform_maintenance" value="{{ item.object.pk }}"
+                            class="button btn-sm btn-success">ТО</button>
+                  </td>
+                  <td>
+                    <a href="{% url 'admin:deadline_control_equipment_change' item.object.pk %}" class="edit-link">✏️</a>
+                    <a href="{% url 'admin:deadline_control_equipment_delete' item.object.pk %}" class="delete-link">🗑️</a>
+                  </td>
+                </tr>
+              {% endfor %}
+              {# ─────────── Отделы внутри подразделения ─────────── #}
+              {% for dept, dept_data in sub_data.departments.items %}
+                <tr class="tree-row" data-level="2" data-parent-id="sub_{{ sub.id }}" data-node-id="dept_{{ dept.id }}">
+                  <td></td>
+                  <td>
+                    <button class="toggle-btn" data-state="expanded">[-]</button>
+                    <span class="tree-icon">{{ tree_settings.icons.department }}</span>
+                    {{ dept_data.name }}
+                  </td>
+                  <td></td><td></td><td></td><td></td>
+                </tr>
+                {% for item in dept_data.items %}
+                  <tr class="tree-row {% if item.maintenance_state == 'overdue' %}overdue-row{% elif item.maintenance_state == 'warning' %}warning-row{% endif %}" data-level="3" data-parent-id="dept_{{ dept.id }}">
+                    <td><input type="checkbox" name="_selected_action" value="{{ item.object.pk }}"></td>
+                    <td>
+                      <span class="tree-icon">{{ tree_settings.icons.item }}</span>
+                      <a href="{% url 'admin:deadline_control_equipment_change' item.object.pk %}">
+                        {{ item.name }}
+                      </a>
+                    </td>
+                    <td class="date-cell {{ item.maintenance_state }}">{{ item.next_maintenance_date|default:"—" }}</td>
+                    <td class="days-cell {{ item.maintenance_state }}">{{ item.days_to_maintenance|default:"—" }}</td>
+                    <td>
+                      <input type="date" name="maintenance_date_{{ item.object.pk }}"
+                             value="{{ item.next_maintenance_date|date:'Y-m-d' }}" style="width: auto;">
+                      <button type="submit" name="perform_maintenance" value="{{ item.object.pk }}"
+                              class="button btn-sm btn-success">ТО</button>
+                    </td>
+                    <td>
+                      <a href="{% url 'admin:deadline_control_equipment_change' item.object.pk %}" class="edit-link">✏️</a>
+                      <a href="{% url 'admin:deadline_control_equipment_delete' item.object.pk %}" class="delete-link">🗑️</a>
+                    </td>
+                  </tr>
+                {% endfor %}
+              {% endfor %}
+            {% endfor %}
+          {% endfor %}
+        </tbody>
+      </table>
+    </div>
+  </form>
+</div>
+{% endblock %}
+
+{% block extrahead %}
+  {{ block.super }}
+  <link rel="stylesheet" href="{% static 'admin/css/tree_view.css' %}">
+  <script src="{% static 'admin/js/tree_view.js' %}"></script>
+  <script src="{% static 'admin/js/tree_search.js' %}"></script>
+{% endblock %}

@@ -1,0 +1,40 @@
+{% extends "base.html" %}
+
+{% block title %}{{ equipment.equipment_name }}{% endblock %}
+
+{% block content %}
+<div class="container mt-4">
+    <h2>⚙️ {{ equipment.equipment_name }}</h2>
+
+    <dl class="row mt-4">
+        <dt class="col-sm-3">Инвентарный номер:</dt>
+        <dd class="col-sm-9">{{ equipment.inventory_number }}</dd>
+
+        <dt class="col-sm-3">Организация:</dt>
+        <dd class="col-sm-9">{{ equipment.organization.short_name_ru }}</dd>
+
+        <dt class="col-sm-3">Подразделение:</dt>
+        <dd class="col-sm-9">{{ equipment.subdivision.name|default:"-" }}</dd>
+
+        <dt class="col-sm-3">Отдел:</dt>
+        <dd class="col-sm-9">{{ equipment.department.name|default:"-" }}</dd>
+
+        <dt class="col-sm-3">Периодичность ТО:</dt>
+        <dd class="col-sm-9">{{ equipment.maintenance_period_months }} мес.</dd>
+
+        <dt class="col-sm-3">Последнее ТО:</dt>
+        <dd class="col-sm-9">{{ equipment.last_maintenance_date|date:"d.m.Y"|default:"-" }}</dd>
+
+        <dt class="col-sm-3">Следующее ТО:</dt>
+        <dd class="col-sm-9">{{ equipment.next_maintenance_date|date:"d.m.Y"|default:"-" }}</dd>
+
+        <dt class="col-sm-3">Статус:</dt>
+        <dd class="col-sm-9">{{ equipment.get_maintenance_status_display }}</dd>
+    </dl>
+
+    <div class="mt-3">
+        <a href="{% url 'deadline_control:equipment:update' equipment.pk %}" class="btn btn-primary">✏️ Редактировать</a>
+        <a href="{% url 'deadline_control:equipment:list' %}" class="btn btn-secondary">Назад к списку</a>
+    </div>
+</div>
+{% endblock %}

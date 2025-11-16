@@ -1,12 +1,13 @@
-# directory/models/equipment.py
+# deadline_control/models/equipment.py
 import calendar
 from datetime import timedelta
 from django.db import models
 from django.utils import timezone
 
+
 class Equipment(models.Model):
     """
-    ⚙️ Модель для хранения оборудования.
+    ⚙️ Модель для хранения оборудования и управления техническим обслуживанием.
     Оборудование привязано к организации, подразделению и отделу.
     Содержит информацию о техническом обслуживании.
     """
@@ -15,12 +16,13 @@ class Equipment(models.Model):
     organization = models.ForeignKey(
         'directory.Organization',
         on_delete=models.CASCADE,
-        related_name="equipment",
+        related_name="deadline_equipment",
         verbose_name="Организация"
     )
     subdivision = models.ForeignKey(
         'directory.StructuralSubdivision',
         on_delete=models.CASCADE,
+        related_name="deadline_equipment",
         verbose_name="Структурное подразделение",
         null=True,
         blank=True
@@ -28,6 +30,7 @@ class Equipment(models.Model):
     department = models.ForeignKey(
         'directory.Department',
         on_delete=models.SET_NULL,
+        related_name="deadline_equipment",
         null=True,
         blank=True,
         verbose_name="Отдел"
@@ -110,5 +113,7 @@ class Equipment(models.Model):
         return (self.next_maintenance_date - timezone.now().date()).days
 
     class Meta:
-        verbose_name = "Оборудование"
-        verbose_name_plural = "Оборудование"
+        verbose_name = "ТО оборудования"
+        verbose_name_plural = "ТО оборудования"
+        app_label = 'deadline_control'
+        ordering = ['equipment_name']
