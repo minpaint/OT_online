@@ -48,14 +48,28 @@
         border-left: 4px solid #2196F3;
         margin: 20px 0;
     }
+    .remove-row {
+        background-color: #ba2121;
+        color: white;
+        border: none;
+        border-radius: 50%;
+        width: 28px;
+        height: 28px;
+        cursor: pointer;
+        font-size: 14px;
+        line-height: 1;
+    }
+    .remove-row:hover {
+        background-color: #9a1b1b;
+    }
 </style>
 {% endblock %}
 
 {% block breadcrumbs %}
 <div class="breadcrumbs">
     <a href="{% url 'admin:index' %}">Главная</a>
-    &rsaquo; <a href="{% url 'admin:app_list' app_label='directory' %}">Directory</a>
-    &rsaquo; <a href="{% url 'admin:directory_medicalexaminationnorm_changelist' %}">Нормы медосмотров</a>
+    &rsaquo; <a href="{% url 'admin:app_list' app_label='deadline_control' %}">Контроль сроков</a>
+    &rsaquo; <a href="{% url 'admin:deadline_control_medicalexaminationnorm_changelist' %}">Нормы медосмотров</a>
     &rsaquo; {{ title }}
 </div>
 {% endblock %}
@@ -104,7 +118,10 @@
             <div id="formset-container">
                 {% for form in formset %}
                 <div class="formset-row" data-form-index="{{ forloop.counter0 }}">
-                    <h3 style="margin-top: 0;">Вредный фактор #{{ forloop.counter }}</h3>
+                    <div style="display: flex; justify-content: space-between; align-items: center;">
+                        <h3 style="margin-top: 0;">Вредный фактор #{{ forloop.counter }}</h3>
+                        <button type="button" class="remove-row" onclick="removeForm(this)" title="Удалить фактор">✖</button>
+                    </div>
 
                     {{ form.non_field_errors }}
 
@@ -134,15 +151,55 @@
                     </div>
 
                     {% if formset.can_delete %}
-                    <div class="form-row">
+                    <div class="form-row" style="display: none;">
                         {{ form.DELETE }}
-                        <label for="{{ form.DELETE.id_for_label }}" class="delete-row">
-                            🗑️ Удалить этот фактор
-                        </label>
                     </div>
                     {% endif %}
                 </div>
                 {% endfor %}
+            </div>
+
+            <!-- Скрытый шаблон пустой формы для клонирования -->
+            <div id="empty-form-template" style="display: none;">
+                <div class="formset-row" data-form-index="__prefix__">
+                    <div style="display: flex; justify-content: space-between; align-items: center;">
+                        <h3 style="margin-top: 0;">Вредный фактор #<span class="form-number"></span></h3>
+                        <button type="button" class="remove-row" onclick="removeForm(this)" title="Удалить фактор">✖</button>
+                    </div>
+
+                    {{ formset.empty_form.non_field_errors }}
+
+                    <div class="form-row">
+                        {{ formset.empty_form.harmful_factor.errors }}
+                        <label for="{{ formset.empty_form.harmful_factor.id_for_label }}" class="required">
+                            {{ formset.empty_form.harmful_factor.label }}:
+                        </label>
+                        {{ formset.empty_form.harmful_factor }}
+                    </div>
+
+                    <div class="form-row">
+                        {{ formset.empty_form.periodicity_override.errors }}
+                        <label for="{{ formset.empty_form.periodicity_override.id_for_label }}">
+                            {{ formset.empty_form.periodicity_override.label }}:
+                        </label>
+                        {{ formset.empty_form.periodicity_override }}
+                        <p class="help">{{ formset.empty_form.periodicity_override.widget.attrs.placeholder }}</p>
+                    </div>
+
+                    <div class="form-row">
+                        {{ formset.empty_form.notes.errors }}
+                        <label for="{{ formset.empty_form.notes.id_for_label }}">
+                            {{ formset.empty_form.notes.label }}:
+                        </label>
+                        {{ formset.empty_form.notes }}
+                    </div>
+
+                    {% if formset.can_delete %}
+                    <div class="form-row" style="display: none;">
+                        {{ formset.empty_form.DELETE }}
+                    </div>
+                    {% endif %}
+                </div>
             </div>
 
             <button type="button" class="add-row" onclick="addForm()">
@@ -152,7 +209,7 @@
 
         <div class="submit-row">
             <input type="submit" value="💾 Сохранить" class="default">
-            <a href="{% url 'admin:directory_medicalexaminationnorm_changelist' %}" class="button cancel-link">Отмена</a>
+            <a href="{% url 'admin:deadline_control_medicalexaminationnorm_changelist' %}" class="button cancel-link">Отмена</a>
         </div>
     </form>
 </div>
@@ -160,35 +217,124 @@
 <script>
     // Функция для добавления новой формы в formset
     function addForm() {
+        console.log('🔧 Функция addForm() вызвана');
+
         const container = document.getElementById('formset-container');
         const totalForms = document.getElementById('id_form-TOTAL_FORMS');
+        const template = document.getElementById('empty-form-template');
         const currentFormCount = parseInt(totalForms.value);
 
-        // Получаем последнюю форму как шаблон
-        const lastForm = container.querySelector('.formset-row:last-child');
-        const newForm = lastForm.cloneNode(true);
+        console.log('📊 Current form count:', currentFormCount);
+        console.log('📋 Template found:', template);
 
-        // Обновляем индексы в новой форме
-        const formRegex = new RegExp('form-' + (currentFormCount - 1), 'g');
-        newForm.innerHTML = newForm.innerHTML.replace(formRegex, 'form-' + currentFormCount);
+        if (!template) {
+            alert('Ошибка: не найден шаблон формы');
+            console.error('❌ Не найден шаблон формы');
+            return;
+        }
 
-        // Обновляем заголовок
-        newForm.querySelector('h3').textContent = 'Вредный фактор #' + (currentFormCount + 1);
+        // Клонируем весь template div
+        console.log('🔄 Начинаю клонирование формы из шаблона...');
+        const templateClone = template.cloneNode(true);
+        // Берем внутренний div.formset-row
+        const newForm = templateClone.querySelector('.formset-row');
+        console.log('✅ Форма клонирована из шаблона');
 
-        // Очищаем значения полей
-        newForm.querySelectorAll('input, select, textarea').forEach(field => {
-            if (field.type === 'checkbox') {
-                field.checked = false;
-            } else {
-                field.value = '';
-            }
-        });
+        // Заменяем __prefix__ на текущий индекс
+        console.log('🔍 Заменяю __prefix__ → form-' + currentFormCount);
+        newForm.innerHTML = newForm.innerHTML.replace(/__prefix__/g, 'form-' + currentFormCount);
+        console.log('✅ Индексы обновлены');
+
+        // Обновляем data-form-index
+        newForm.setAttribute('data-form-index', currentFormCount);
+
+        // Обновляем номер в заголовке
+        const formNumber = newForm.querySelector('.form-number');
+        if (formNumber) {
+            formNumber.textContent = currentFormCount + 1;
+            console.log('✅ Номер формы обновлен:', currentFormCount + 1);
+        }
 
         // Добавляем форму в контейнер
+        console.log('➕ Добавляю форму в контейнер...');
         container.appendChild(newForm);
+        console.log('✅ Форма добавлена в DOM');
 
         // Увеличиваем счётчик форм
         totalForms.value = currentFormCount + 1;
+        console.log('✅ Счётчик форм обновлен:', totalForms.value);
+
+        // Обновляем нумерацию
+        console.log('🔢 Обновляю нумерацию...');
+        updateFormNumbers();
+        console.log('✅ Нумерация обновлена');
+
+        console.log('🎉 Функция addForm() завершена успешно');
     }
+
+    // Функция для удаления формы
+    function removeForm(button) {
+        const container = document.getElementById('formset-container');
+        const formRow = button.closest('.formset-row');
+        const totalForms = document.getElementById('id_form-TOTAL_FORMS');
+
+        // Не удаляем, если осталась только одна форма
+        if (container.querySelectorAll('.formset-row').length <= 1) {
+            alert('Должен остаться хотя бы один вредный фактор');
+            return;
+        }
+
+        // Проверяем, есть ли DELETE чекбокс (для существующих форм)
+        const deleteCheckbox = formRow.querySelector('input[type="checkbox"][name$="-DELETE"]');
+        if (deleteCheckbox) {
+            // Это существующая форма - помечаем на удаление и скрываем
+            deleteCheckbox.checked = true;
+            formRow.style.display = 'none';
+        } else {
+            // Это новая форма - просто удаляем из DOM
+            formRow.remove();
+            // Уменьшаем счётчик только для новых форм
+            totalForms.value = parseInt(totalForms.value) - 1;
+        }
+
+        // Обновляем нумерацию видимых форм
+        updateFormNumbers();
+    }
+
+    // Функция для обновления нумерации форм
+    function updateFormNumbers() {
+        const container = document.getElementById('formset-container');
+        const visibleForms = container.querySelectorAll('.formset-row:not([style*="display: none"])');
+
+        visibleForms.forEach((form, index) => {
+            const header = form.querySelector('h3');
+            if (header) {
+                header.textContent = 'Вредный фактор #' + (index + 1);
+            }
+        });
+    }
+
+    // Проверка при загрузке страницы
+    document.addEventListener('DOMContentLoaded', function() {
+        console.log('📋 Страница добавления вредных факторов загружена');
+        const addButton = document.querySelector('.add-row');
+        const container = document.getElementById('formset-container');
+        const totalForms = document.getElementById('id_form-TOTAL_FORMS');
+
+        console.log('Кнопка добавления:', addButton);
+        console.log('Контейнер форм:', container);
+        console.log('Total forms:', totalForms ? totalForms.value : 'не найдено');
+        console.log('Форм в контейнере:', container ? container.querySelectorAll('.formset-row').length : 0);
+
+        if (!addButton) {
+            console.error('❌ Кнопка добавления не найдена!');
+        }
+        if (!container) {
+            console.error('❌ Контейнер форм не найден!');
+        }
+        if (!totalForms) {
+            console.error('❌ Поле TOTAL_FORMS не найдено!');
+        }
+    });
 </script>
 {% endblock %}

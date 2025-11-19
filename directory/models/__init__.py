@@ -8,7 +8,7 @@ from .employee import Employee
 from .profile import Profile
 from .siz_issued import SIZIssued
 from .siz import SIZ, SIZNorm
-from .document_template import DocumentTemplate, GeneratedDocument
+from .document_template import DocumentTemplate, GeneratedDocument, DocumentGenerationLog
 from .commission import Commission, CommissionMember
 from .hiring import EmployeeHiring
 # Добавляем импорт моделей экзаменов
@@ -27,6 +27,7 @@ __all__ = [
     'SIZNorm',
     'DocumentTemplate',
     'GeneratedDocument',
+    'DocumentGenerationLog',
     'Commission',
     'CommissionMember',
     'EmployeeHiring',

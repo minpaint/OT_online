@@ -49,7 +49,7 @@ THIRD_PARTY_APPS = [
 # 🏠 Локальные приложения
 LOCAL_APPS = [
     'directory.apps.DirectoryConfig',  # Наше приложение "directory" 📦
-    'deadline_control.apps.DeadlineControlConfig',  # Контроль сроков ⏰
+    'deadline_control',  # Контроль сроков ⏰
 ]
 
 # Добавляем debug_toolbar только если не в режиме тестирования и DEBUG=True

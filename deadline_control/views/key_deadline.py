@@ -3,12 +3,13 @@ from django.contrib.auth.mixins import LoginRequiredMixin
 from django.views.generic import ListView, CreateView, UpdateView, DeleteView, DetailView
 from django.urls import reverse_lazy
 from django.contrib import messages
+from collections import defaultdict
 
 from deadline_control.models import KeyDeadlineCategory, KeyDeadlineItem
 
 
 class KeyDeadlineListView(LoginRequiredMixin, ListView):
-    """Список категорий ключевых сроков"""
+    """Список категорий ключевых сроков, сгруппированных по организациям"""
     model = KeyDeadlineCategory
     template_name = 'deadline_control/key_deadline/list.html'
     context_object_name = 'categories'
@@ -18,7 +19,23 @@ class KeyDeadlineListView(LoginRequiredMixin, ListView):
         if not self.request.user.is_superuser and hasattr(self.request.user, 'profile'):
             allowed_orgs = self.request.user.profile.organizations.all()
             qs = qs.filter(organization__in=allowed_orgs)
-        return qs.prefetch_related('items').order_by('name')
+        return qs.select_related('organization').prefetch_related('items').order_by('organization__short_name_ru', 'name')
+
+    def get_context_data(self, **kwargs):
+        context = super().get_context_data(**kwargs)
+
+        # Группируем категории по организациям
+        categories_by_org = defaultdict(list)
+        for category in context['categories']:
+            categories_by_org[category.organization].append(category)
+
+        # Преобразуем в отсортированный список кортежей (организация, список категорий)
+        context['categories_by_organization'] = sorted(
+            categories_by_org.items(),
+            key=lambda x: x[0].short_name_ru or x[0].full_name_ru
+        )
+
+        return context
 
 
 class KeyDeadlineCategoryCreateView(LoginRequiredMixin, CreateView):

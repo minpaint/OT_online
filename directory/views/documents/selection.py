@@ -57,17 +57,21 @@ def get_auto_selected_document_types(employee):
         return document_types
 
     # Получаем флаг договора подряда
-    is_contractor = getattr(employee, 'is_contractor', False)
+    is_contractor = getattr(employee, 'contract_type', 'standard') == 'contractor'
 
     # Проверяем срок стажировки и договор подряда
     internship_period = getattr(employee.position, 'internship_period_days', 0)
+
+    # Проверяем ответственность за ОТ
+    is_responsible_for_safety = getattr(employee.position, 'is_responsible_for_safety', False)
 
     if internship_period > 0:
         # Если это не договор подряда, добавляем распоряжение о стажировке
         if not is_contractor:
             document_types.append('all_orders')
 
-        # В любом случае добавляем протокол проверки знаний
+    # Протокол проверки знаний - если есть стажировка ИЛИ ответственный за ОТ
+    if internship_period > 0 or is_responsible_for_safety:
         document_types.append('knowledge_protocol')
 
     # Проверяем связанные документы для должности

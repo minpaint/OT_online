@@ -1,17 +1,81 @@
 {% extends "base.html" %}
 {% load static %}
+{% load medical_filters %}
 
 {% block title %}🏥 Медицинские осмотры{% endblock %}
+
+{% block extra_css %}
+<style>
+    .fab-container {
+        position: fixed;
+        bottom: 2rem;
+        right: 2rem;
+        z-index: 1050;
+    }
+    .fab-container .btn {
+        box-shadow: 0 4px 8px rgba(0,0,0,0.2);
+        min-width: 250px;
+    }
+
+    /* Адаптивность для мобильных устройств */
+    @media (max-width: 768px) {
+        .fab-container {
+            bottom: 1rem;
+            right: 1rem;
+            left: 1rem;
+        }
+        .fab-container .btn {
+            width: 100%;
+            min-width: auto;
+        }
+
+        /* Скрываем некоторые колонки на малых экранах */
+        .table th:nth-child(3),
+        .table td:nth-child(3),
+        .table th:nth-child(4),
+        .table td:nth-child(4) {
+            display: none;
+        }
+
+        /* Уменьшаем размер кнопок */
+        .btn-sm {
+            padding: 0.25rem 0.5rem;
+            font-size: 0.75rem;
+        }
+    }
+
+    @media (max-width: 576px) {
+        /* На очень маленьких экранах оставляем только основное */
+        .table th:nth-child(5),
+        .table td:nth-child(5),
+        .table th:nth-child(6),
+        .table td:nth-child(6) {
+            display: none;
+        }
+    }
+
+    /* Улучшаем читаемость badge */
+    .badge {
+        margin: 2px;
+        display: inline-block;
+    }
+</style>
+{% endblock %}
+
 
 {% block content %}
 <div class="container-fluid mt-4">
     <div class="row mb-3">
         <div class="col-md-12">
             <h2>🏥 Контроль сроков медицинских осмотров</h2>
+            <p>Выберите одного или нескольких сотрудников, чтобы внести дату медосмотра.</p>
         </div>
     </div>
 
-    <!-- Просроченные -->
+    <form id="massUpdateForm">
+    {% csrf_token %}
+
+    <!-- 1. Просроченные (красный) -->
     {% if overdue %}
     <div class="row mt-4">
         <div class="col-md-12">
@@ -20,39 +84,109 @@
                     <h5 class="mb-0">🚨 Просроченные медосмотры ({{ overdue|length }})</h5>
                 </div>
                 <div class="card-body p-0">
-                    <table class="table table-hover mb-0">
-                        <thead>
-                            <tr>
-                                <th>Сотрудник</th>
-                                <th>Должность</th>
-                                <th>Организация</th>
-                                <th>Вредный фактор</th>
-                                <th>Предыдущий осмотр</th>
-                                <th>Следующий осмотр</th>
-                                <th>Просрочено дней</th>
-                            </tr>
-                        </thead>
-                        <tbody>
-                            {% for exam in overdue %}
-                            <tr>
-                                <td><strong>{{ exam.employee.full_name_nominative }}</strong></td>
-                                <td>{{ exam.employee.position.name|default:"-" }}</td>
-                                <td>{{ exam.employee.organization.short_name_ru }}</td>
-                                <td>{{ exam.harmful_factor.name }}</td>
-                                <td>{{ exam.previous_date|date:"d.m.Y"|default:"-" }}</td>
-                                <td>{{ exam.next_date|date:"d.m.Y" }}</td>
-                                <td><span class="badge badge-danger">{{ exam.days_until_next|add:"-1"|stringformat:"d"|slice:"1:" }}</span></td>
-                            </tr>
-                            {% endfor %}
-                        </tbody>
-                    </table>
+                    <div class="table-responsive">
+                        <table class="table table-hover mb-0">
+                            <thead>
+                                <tr>
+                                    <th style="width: 3%;"><input type="checkbox" class="select-all-checkbox"></th>
+                                    <th>Сотрудник</th>
+                                    <th>Должность</th>
+                                    <th>Организация</th>
+                                    <th>Вредные факторы</th>
+                                    <th>Действующий МО</th>
+                                    <th>Следующий осмотр</th>
+                                    <th>Просрочено дней</th>
+                                    <th>Действия</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                {% for employee in overdue %}
+                                <tr>
+                                    <td><input type="checkbox" class="employee-checkbox" name="employee_ids" value="{{ employee.id }}"></td>
+                                    <td><strong>{{ employee.full_name_nominative }}</strong></td>
+                                    <td>{{ employee.position.position_name|default:"-" }}</td>
+                                    <td>{{ employee.organization.short_name_ru }}</td>
+                                    <td>
+                                        {% for factor in employee.medical_status_info.factors %}
+                                            <span class="badge bg-warning text-dark">{{ factor.short_name }}</span>
+                                        {% endfor %}
+                                    </td>
+                                    <td>
+                                        {{ employee.medical_status_info.date_completed|date:"d.m.Y"|default:"-" }}
+                                        <button type="button" class="btn btn-sm btn-warning perform-exam-btn" data-employee-id="{{ employee.id }}" title="Изменить дату" style="margin-left: 5px;">
+                                            📅
+                                        </button>
+                                    </td>
+                                    <td>{{ employee.medical_status_info.next_date|date:"d.m.Y" }}</td>
+                                    <td><span class="badge bg-danger">{{ employee.medical_status_info.days_until|abs_value }}</span></td>
+                                    <td>
+                                        <a href="{% url 'deadline_control:medical:referral_existing_employee' employee.id %}" class="btn btn-sm btn-primary">
+                                            Выдать направление
+                                        </a>
+                                    </td>
+                                </tr>
+                                {% endfor %}
+                            </tbody>
+                        </table>
+                    </div>
                 </div>
             </div>
         </div>
     </div>
     {% endif %}
 
-    <!-- Предстоящие -->
+    <!-- 2. Без даты (серый) -->
+    {% if no_date %}
+    <div class="row mt-4">
+        <div class="col-md-12">
+            <div class="card border-secondary">
+                <div class="card-header bg-secondary text-white">
+                    <h5 class="mb-0">📋 Требуется внести дату медосмотра ({{ no_date|length }})</h5>
+                </div>
+                <div class="card-body p-0">
+                    <div class="table-responsive">
+                        <table class="table table-hover mb-0">
+                            <thead>
+                                <tr>
+                                    <th style="width: 3%;"><input type="checkbox" class="select-all-checkbox"></th>
+                                    <th>Сотрудник</th>
+                                    <th>Должность</th>
+                                    <th>Организация</th>
+                                    <th>Вредные факторы</th>
+                                    <th>Периодичность (мин.)</th>
+                                    <th>Действия</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                {% for employee in no_date %}
+                                <tr class="table-secondary">
+                                    <td><input type="checkbox" class="employee-checkbox" name="employee_ids" value="{{ employee.id }}"></td>
+                                    <td><strong>{{ employee.full_name_nominative }}</strong></td>
+                                    <td>{{ employee.position.position_name|default:"-" }}</td>
+                                    <td>{{ employee.organization.short_name_ru }}</td>
+                                    <td>
+                                        {% for factor in employee.medical_status_info.factors %}
+                                            <span class="badge bg-info text-dark">{{ factor.short_name }}</span>
+                                        {% endfor %}
+                                    </td>
+                                    <td>{{ employee.medical_status_info.min_periodicity }} мес.</td>
+                                    <td>
+                                        <a href="{% url 'deadline_control:medical:referral_existing_employee' employee.id %}" class="btn btn-sm btn-primary">
+                                            Выдать направление
+                                        </a>
+                                    </td>
+                                </tr>
+                                {% endfor %}
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+    {% endif %}
+
+    <!-- 3. Предстоящие (оранжевый) -->
     {% if upcoming %}
     <div class="row mt-4">
         <div class="col-md-12">
@@ -61,39 +195,58 @@
                     <h5 class="mb-0">⚠️ Предстоящие медосмотры ({{ upcoming|length }})</h5>
                 </div>
                 <div class="card-body p-0">
-                    <table class="table table-hover mb-0">
-                        <thead>
-                            <tr>
-                                <th>Сотрудник</th>
-                                <th>Должность</th>
-                                <th>Организация</th>
-                                <th>Вредный фактор</th>
-                                <th>Предыдущий осмотр</th>
-                                <th>Следующий осмотр</th>
-                                <th>Осталось дней</th>
-                            </tr>
-                        </thead>
-                        <tbody>
-                            {% for exam in upcoming %}
-                            <tr>
-                                <td><strong>{{ exam.employee.full_name_nominative }}</strong></td>
-                                <td>{{ exam.employee.position.name|default:"-" }}</td>
-                                <td>{{ exam.employee.organization.short_name_ru }}</td>
-                                <td>{{ exam.harmful_factor.name }}</td>
-                                <td>{{ exam.previous_date|date:"d.m.Y"|default:"-" }}</td>
-                                <td>{{ exam.next_date|date:"d.m.Y" }}</td>
-                                <td><span class="badge badge-warning">{{ exam.days_until_next }}</span></td>
-                            </tr>
-                            {% endfor %}
-                        </tbody>
-                    </table>
+                    <div class="table-responsive">
+                        <table class="table table-hover mb-0">
+                            <thead>
+                                <tr>
+                                    <th style="width: 3%;"><input type="checkbox" class="select-all-checkbox"></th>
+                                    <th>Сотрудник</th>
+                                    <th>Должность</th>
+                                    <th>Организация</th>
+                                    <th>Вредные факторы</th>
+                                    <th>Действующий МО</th>
+                                    <th>Следующий осмотр</th>
+                                    <th>Осталось дней</th>
+                                    <th>Действия</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                {% for employee in upcoming %}
+                                <tr>
+                                    <td><input type="checkbox" class="employee-checkbox" name="employee_ids" value="{{ employee.id }}"></td>
+                                    <td><strong>{{ employee.full_name_nominative }}</strong></td>
+                                    <td>{{ employee.position.position_name|default:"-" }}</td>
+                                    <td>{{ employee.organization.short_name_ru }}</td>
+                                    <td>
+                                        {% for factor in employee.medical_status_info.factors %}
+                                            <span class="badge bg-warning text-dark">{{ factor.short_name }}</span>
+                                        {% endfor %}
+                                    </td>
+                                    <td>
+                                        {{ employee.medical_status_info.date_completed|date:"d.m.Y"|default:"-" }}
+                                        <button type="button" class="btn btn-sm btn-info perform-exam-btn" data-employee-id="{{ employee.id }}" title="Изменить дату" style="margin-left: 5px;">
+                                            📅
+                                        </button>
+                                    </td>
+                                    <td>{{ employee.medical_status_info.next_date|date:"d.m.Y" }}</td>
+                                    <td><span class="badge bg-warning text-dark">{{ employee.medical_status_info.days_until }}</span></td>
+                                    <td>
+                                        <a href="{% url 'deadline_control:medical:referral_existing_employee' employee.id %}" class="btn btn-sm btn-primary">
+                                            Выдать направление
+                                        </a>
+                                    </td>
+                                </tr>
+                                {% endfor %}
+                            </tbody>
+                        </table>
+                    </div>
                 </div>
             </div>
         </div>
     </div>
     {% endif %}
 
-    <!-- Остальные -->
+    <!-- 4. Плановые (зеленый) -->
     {% if normal %}
     <div class="row mt-4">
         <div class="col-md-12">
@@ -102,48 +255,281 @@
                     <h5 class="mb-0">✅ Плановые медосмотры ({{ normal|length }})</h5>
                 </div>
                 <div class="card-body p-0">
-                    <table class="table table-striped table-hover mb-0">
-                        <thead>
-                            <tr>
-                                <th>Сотрудник</th>
-                                <th>Должность</th>
-                                <th>Организация</th>
-                                <th>Вредный фактор</th>
-                                <th>Предыдущий осмотр</th>
-                                <th>Следующий осмотр</th>
-                                <th>Дней до осмотра</th>
-                            </tr>
-                        </thead>
-                        <tbody>
-                            {% for exam in normal %}
-                            <tr>
-                                <td>{{ exam.employee.full_name_nominative }}</td>
-                                <td>{{ exam.employee.position.name|default:"-" }}</td>
-                                <td>{{ exam.employee.organization.short_name_ru }}</td>
-                                <td>{{ exam.harmful_factor.name }}</td>
-                                <td>{{ exam.previous_date|date:"d.m.Y"|default:"-" }}</td>
-                                <td>{{ exam.next_date|date:"d.m.Y"|default:"-" }}</td>
-                                <td>
-                                    {% if exam.days_until_next is not None %}
-                                        {{ exam.days_until_next }}
-                                    {% else %}
-                                        -
-                                    {% endif %}
-                                </td>
-                            </tr>
-                            {% endfor %}
-                        </tbody>
-                    </table>
+                    <div class="table-responsive">
+                        <table class="table table-striped table-hover mb-0">
+                            <thead>
+                                <tr>
+                                    <th style="width: 3%;"><input type="checkbox" class="select-all-checkbox"></th>
+                                    <th>Сотрудник</th>
+                                    <th>Должность</th>
+                                    <th>Организация</th>
+                                    <th>Вредные факторы</th>
+                                    <th>Действующий МО</th>
+                                    <th>Следующий осмотр</th>
+                                    <th>Дней до осмотра</th>
+                                    <th>Действия</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                {% for employee in normal %}
+                                <tr>
+                                    <td><input type="checkbox" class="employee-checkbox" name="employee_ids" value="{{ employee.id }}"></td>
+                                    <td>{{ employee.full_name_nominative }}</td>
+                                    <td>{{ employee.position.position_name|default:"-" }}</td>
+                                    <td>{{ employee.organization.short_name_ru }}</td>
+                                    <td>
+                                        {% for factor in employee.medical_status_info.factors %}
+                                            <span class="badge bg-success">{{ factor.short_name }}</span>
+                                        {% endfor %}
+                                    </td>
+                                    <td>
+                                        {{ employee.medical_status_info.date_completed|date:"d.m.Y"|default:"-" }}
+                                        <button type="button" class="btn btn-sm btn-secondary perform-exam-btn" data-employee-id="{{ employee.id }}" title="Изменить дату" style="margin-left: 5px;">
+                                            📅
+                                        </button>
+                                    </td>
+                                    <td>{{ employee.medical_status_info.next_date|date:"d.m.Y"|default:"-" }}</td>
+                                    <td>
+                                        {% if employee.medical_status_info.days_until is not None %}
+                                            {{ employee.medical_status_info.days_until }}
+                                        {% else %}
+                                            -
+                                        {% endif %}
+                                    </td>
+                                    <td>
+                                        <a href="{% url 'deadline_control:medical:referral_existing_employee' employee.id %}" class="btn btn-sm btn-primary">
+                                            Выдать направление
+                                        </a>
+                                    </td>
+                                </tr>
+                                {% endfor %}
+                            </tbody>
+                        </table>
+                    </div>
                 </div>
             </div>
         </div>
     </div>
     {% endif %}
 
-    {% if not examinations %}
+    </form>
+
+    {% if not no_date and not overdue and not upcoming and not normal %}
     <div class="alert alert-info">
         Нет записей о медицинских осмотрах.
     </div>
     {% endif %}
 </div>
+
+<!-- Плавающая кнопка -->
+<div class="fab-container" id="fab-mass-update" style="display: none;">
+    <button class="btn btn-lg btn-success" id="mass-update-btn">
+        Внести дату для выбранных (<span id="selected-count">0</span>)
+    </button>
+</div>
+
+
+<!-- Модальное окно для изменения даты медосмотра -->
+<div class="modal fade" id="performExamModal" tabindex="-1" aria-labelledby="performExamModalLabel" aria-hidden="true">
+    <div class="modal-dialog">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title" id="performExamModalLabel">Изменить дату медосмотра</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+            </div>
+            <form id="performExamForm" method="post">
+                {% csrf_token %}
+                <div class="modal-body">
+                    <div class="alert alert-info">
+                        <strong>📋 Информация:</strong> Указанная дата будет применена ко всем медосмотрам выбранных сотрудников. Следующая дата будет рассчитана автоматически.
+                    </div>
+                    <div class="mb-3">
+                        <label for="examination_date" class="form-label">Дата прохождения медосмотра</label>
+                        <input type="date" class="form-control" id="examination_date" name="examination_date" required>
+                    </div>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Отмена</button>
+                    <button type="submit" class="btn btn-primary">Сохранить</button>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
+
 {% endblock %}
+
+{% block extra_js %}
+<script>
+try {
+    console.log("Script start: DOMContentLoaded event fired.");
+
+    document.addEventListener('DOMContentLoaded', function() {
+        console.log("Inside DOMContentLoaded listener.");
+
+        // --- Логика для одиночного обновления (остается) ---
+        const performModalElement = document.getElementById('performExamModal');
+        if (!performModalElement) console.error("Modal element #performExamModal not found!");
+
+        const performModal = new bootstrap.Modal(performModalElement);
+        const performForm = document.getElementById('performExamForm');
+        const examinationDateInput = document.getElementById('examination_date');
+        console.log("Modal and form elements initialized.");
+
+        // Устанавливаем сегодняшнюю дату по умолчанию
+        const today = new Date().toISOString().split('T')[0];
+        examinationDateInput.value = today;
+
+        const singleUpdateButtons = document.querySelectorAll('.perform-exam-btn');
+        console.log(`Found ${singleUpdateButtons.length} single update buttons.`);
+        singleUpdateButtons.forEach(button => {
+            button.addEventListener('click', function() {
+                console.log("Single update button clicked.");
+                const employeeId = this.dataset.employeeId;
+                performForm.setAttribute('data-action-type', 'single');
+                performForm.setAttribute('data-employee-id', employeeId);
+                document.getElementById('performExamModalLabel').textContent = 'Изменить дату медосмотра';
+                performModal.show();
+            });
+        });
+
+
+        // --- Новая логика для массового обновления ---
+        const fab = document.getElementById('fab-mass-update');
+        if (!fab) console.error("Floating button #fab-mass-update not found!");
+
+        const massUpdateBtn = document.getElementById('mass-update-btn');
+        if (!massUpdateBtn) console.error("Mass update button #mass-update-btn not found!");
+
+        const selectedCountSpan = document.getElementById('selected-count');
+        if (!selectedCountSpan) console.error("Selected count span #selected-count not found!");
+
+        const allCheckboxes = document.querySelectorAll('.employee-checkbox');
+        console.log(`Found ${allCheckboxes.length} employee checkboxes.`);
+
+        const selectAllCheckboxes = document.querySelectorAll('.select-all-checkbox');
+        console.log(`Found ${selectAllCheckboxes.length} 'select all' checkboxes.`);
+
+
+        function updateFabVisibility() {
+            console.log("updateFabVisibility function called.");
+            const selectedCheckboxes = document.querySelectorAll('.employee-checkbox:checked');
+            const count = selectedCheckboxes.length;
+            console.log(`Selected checkboxes count: ${count}`);
+            selectedCountSpan.textContent = count;
+            if (count > 0) {
+                fab.style.display = 'block';
+                console.log("FAB display set to 'block'");
+            } else {
+                fab.style.display = 'none';
+                console.log("FAB display set to 'none'");
+            }
+        }
+
+        allCheckboxes.forEach((checkbox, index) => {
+            checkbox.addEventListener('change', updateFabVisibility);
+            // console.log(`Attached 'change' listener to checkbox #${index}`);
+        });
+
+        selectAllCheckboxes.forEach((headerCheckbox, index) => {
+            headerCheckbox.addEventListener('change', function() {
+                console.log(`'Select all' checkbox #${index} changed.`);
+                const table = this.closest('table');
+                const rowCheckboxes = table.querySelectorAll('tbody .employee-checkbox');
+                rowCheckboxes.forEach(checkbox => {
+                    checkbox.checked = this.checked;
+                });
+                updateFabVisibility();
+            });
+        });
+
+        if (massUpdateBtn) {
+            massUpdateBtn.addEventListener('click', function() {
+                console.log("Mass update FAB clicked.");
+                performForm.setAttribute('data-action-type', 'mass');
+                performForm.removeAttribute('data-employee-id');
+                const selectedCount = document.querySelectorAll('.employee-checkbox:checked').length;
+                document.getElementById('performExamModalLabel').textContent = `Внести дату для ${selectedCount} сотрудников`;
+                performModal.show();
+            });
+        }
+
+
+        // --- Общая логика отправки формы в модальном окне ---
+        if (performForm) {
+            performForm.addEventListener('submit', function(e) {
+                e.preventDefault();
+                console.log("Perform form submitted.");
+
+                const actionType = performForm.getAttribute('data-action-type');
+                const date = examinationDateInput.value;
+                const csrfToken = document.querySelector('[name=csrfmiddlewaretoken]').value;
+                console.log(`Action type: ${actionType}, Date: ${date}`);
+
+                let url;
+                let body;
+                const headers = {
+                    'X-Requested-With': 'XMLHttpRequest',
+                    'X-CSRFToken': csrfToken,
+                };
+
+                if (actionType === 'single') {
+                    const employeeId = performForm.getAttribute('data-employee-id');
+                    url = `/deadline-control/medical/employee/${employeeId}/update-examinations/`;
+                    const formData = new FormData();
+                    formData.append('examination_date', date);
+                    body = formData;
+                    // For FormData, browser sets Content-Type automatically. Do not set it manually.
+                } else { // mass
+                    url = `/deadline-control/medical/update-multiple/`;
+                    const selectedIds = Array.from(document.querySelectorAll('.employee-checkbox:checked')).map(cb => cb.value);
+                    body = JSON.stringify({
+                        employee_ids: selectedIds,
+                        examination_date: date
+                    });
+                    headers['Content-Type'] = 'application/json';
+                    console.log(`Mass update for IDs: ${selectedIds.join(', ')}`);
+                }
+
+                fetch(url, {
+                    method: 'POST',
+                    headers: headers,
+                    body: body
+                })
+                .then(response => response.json())
+                .then(data => {
+                    console.log("Received response from server:", data);
+                    if (data.success) {
+                        performModal.hide();
+                        const updatedCount = data.updated_count || 1;
+                        alert(`✅ Дата медосмотра успешно применена к ${updatedCount} сотрудникам.`);
+                        window.location.reload();
+                    } else {
+                        alert('❌ Ошибка: ' + (data.error || 'Не удалось обновить медосмотры.'));
+                    }
+                })
+                .catch(error => {
+                    console.error('Fetch Error:', error);
+                    alert('❌ Произошла ошибка при отправке запроса.');
+                });
+            });
+        }
+
+        // Закрытие модального окна по кнопке
+        document.querySelectorAll('.modal .btn-close, .modal [data-bs-dismiss="modal"]').forEach(el => {
+            el.addEventListener('click', (e) => {
+                e.preventDefault();
+                console.log("Modal close button clicked.");
+                performModal.hide();
+            });
+        });
+
+        console.log("Script finished initialization.");
+    });
+} catch (e) {
+    console.error("A critical error occurred in the script:", e);
+    alert("Произошла критическая ошибка на странице. Пожалуйста, проверьте консоль разработчика (F12).");
+}
+</script>
+{% endblock %}
+

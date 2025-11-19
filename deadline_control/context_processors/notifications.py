@@ -2,7 +2,7 @@
 from django.utils import timezone
 from datetime import timedelta
 from deadline_control.models import Equipment, KeyDeadlineItem
-from directory.models import EmployeeMedicalExamination
+from deadline_control.models.medical_norm import EmployeeMedicalExamination
 
 
 def deadline_notifications(request):

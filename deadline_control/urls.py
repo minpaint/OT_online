@@ -1,6 +1,6 @@
 # deadline_control/urls.py
 from django.urls import path, include
-from deadline_control.views import equipment, key_deadline, dashboard, medical
+from deadline_control.views import equipment, key_deadline, dashboard, medical, medical_referral
 
 app_name = 'deadline_control'
 
@@ -28,6 +28,21 @@ key_deadline_patterns = [
 # 🏥 Медицинские осмотры
 medical_patterns = [
     path('', medical.MedicalExaminationListView.as_view(), name='list'),
+    path('<int:pk>/update-date/', medical.update_medical_date, name='update_date'),
+    path('<int:pk>/perform-examination/', medical.perform_medical_examination, name='perform_examination'),
+    # Детальная страница медосмотров сотрудника
+    path('employee/<int:pk>/', medical.EmployeeMedicalDetailView.as_view(), name='employee_detail'),
+    # Обновление всех медосмотров сотрудника
+    path('employee/<int:employee_id>/update-examinations/', medical.update_employee_medical_examinations, name='update_employee_examinations'),
+    # Массовое обновление медосмотров
+    path('update-multiple/', medical.update_multiple_medical_examinations, name='update_multiple_examinations'),
+    # Направления на медосмотр
+    path('referral/employee/<int:employee_id>/', medical_referral.ExistingEmployeeReferralView.as_view(), name='referral_existing_employee'),
+    # API для направлений
+    path('referral/api/employee/<int:employee_id>/', medical_referral.EmployeeReferralDataView.as_view(), name='referral_employee_data'),
+    path('referral/generate/', medical_referral.GenerateReferralView.as_view(), name='referral_generate'),
+    # Форма для направления нового сотрудника
+    path('referral/new-employee/', medical_referral.NewEmployeeReferralView.as_view(), name='referral_new_employee'),
 ]
 
 urlpatterns = [

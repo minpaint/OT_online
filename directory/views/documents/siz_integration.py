@@ -16,6 +16,7 @@ def generate_siz_card_docx_view(request, employee_id):
     from django.http import HttpResponse
     from directory.models import Employee
     from directory.document_generators.siz_card_docx_generator import generate_siz_card_docx
+    from urllib.parse import quote
 
     employee = get_object_or_404(Employee, pk=employee_id)
 
@@ -26,15 +27,17 @@ def generate_siz_card_docx_view(request, employee_id):
     custom_context = {'selected_norm_ids': selected_norm_ids} if selected_norm_ids else None
 
     # Генерируем документ
-    document = generate_siz_card_docx(employee, request.user, custom_context)
+    result = generate_siz_card_docx(employee, request.user, custom_context)
 
-    if document:
+    if result and 'content' in result and 'filename' in result:
         # Возвращаем файл для скачивания
         response = HttpResponse(
-            document.document_file.read(),
+            result['content'],
             content_type='application/vnd.openxmlformats-officedocument.wordprocessingml.document'
         )
-        response['Content-Disposition'] = f'attachment; filename="SIZ_Card_{employee.id}.docx"'
+        # Кодируем имя файла для поддержки кириллицы
+        encoded_filename = quote(result['filename'])
+        response['Content-Disposition'] = f"attachment; filename*=UTF-8''{encoded_filename}"
         return response
     else:
         # Обработка ошибки

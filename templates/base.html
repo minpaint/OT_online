@@ -19,6 +19,9 @@
     <!-- Select2 CSS через CDN для автодополнения 🔍 -->
     <link href="https://cdn.jsdelivr.net/npm/select2@4.1.0-rc.0/dist/css/select2.min.css" rel="stylesheet">
 
+    <!-- jQuery в head для совместимости с DAL/Select2 -->
+    <script src="https://code.jquery.com/jquery-3.7.0.min.js"></script>
+
     <!-- Стили для бокового меню -->
     <style>
         body {
@@ -320,26 +323,34 @@
         <!-- Верхняя панель с пользовательским меню -->
         <div class="top-bar">
             <div>
-                {% if user.is_authenticated %}
-                <a href="{% url 'directory:hiring:simple_hiring' %}" class="btn btn-success">
-                    ➕ Принять на работу
-                </a>
-                {% endif %}
+                <!-- Левая часть пустая -->
             </div>
             <div class="user-menu">
                 {% if user.is_authenticated %}
-                    {% if user.is_staff %}
-                    <a href="{% url 'admin:index' %}" class="btn btn-sm btn-outline-primary">
-                        ⚙️ Администрирование
+                    <!-- Кнопка "Принять на работу" -->
+                    <a href="{% url 'directory:hiring:simple_hiring' %}" class="btn btn-sm btn-success">
+                        ➕ Принять на работу
                     </a>
-                    {% endif %}
 
+                    <!-- Кнопка "Выдать направление" -->
+                    <a href="{% url 'deadline_control:medical:referral_new_employee' %}" class="btn btn-sm btn-primary">
+                        🏥 Выдать направление
+                    </a>
+
+                    <!-- Dropdown меню профиля -->
                     <div class="dropdown">
                         <a class="dropdown-toggle" href="#" id="userDropdown" role="button"
                            data-bs-toggle="dropdown" aria-expanded="false">
                             👤 {{ user.get_full_name|default:user.username }}
                         </a>
                         <ul class="dropdown-menu dropdown-menu-end" aria-labelledby="userDropdown">
+                            {% if user.is_staff %}
+                            <li>
+                                <a class="dropdown-item" href="{% url 'admin:index' %}">
+                                    ⚙️ Администрирование
+                                </a>
+                            </li>
+                            {% endif %}
                             <li>
                                 <a class="dropdown-item" href="{% url 'directory:auth:logout' %}">
                                     🚪 Выйти

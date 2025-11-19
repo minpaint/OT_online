@@ -1,0 +1,47 @@
+{% extends "admin/base_site.html" %}
+{% load static %}
+
+{% block title %}{{ title }}{% endblock %}
+
+{% block breadcrumbs %}
+<div class="breadcrumbs">
+    <a href="{% url 'admin:index' %}">Главная</a>
+    &rsaquo; <a href="{% url 'admin:app_list' app_label='deadline_control' %}">Контроль сроков</a>
+    &rsaquo; <a href="{% url 'admin:deadline_control_harmfulfactor_changelist' %}">Вредные факторы</a>
+    &rsaquo; {{ title }}
+</div>
+{% endblock %}
+
+{% block content %}
+<div class="module">
+    <h1>Импорт вредных факторов</h1>
+
+    <div class="help" style="background-color: #e7f3ff; padding: 15px; border-left: 4px solid #2196F3; margin: 20px 0;">
+        <h3>Что должно быть в Excel-файле</h3>
+        <p>Файл должен содержать следующие колонки:</p>
+        <ul>
+            <li><code>short_name</code> - краткое обозначение фактора (например, "Шум", "Вибрация")</li>
+            <li><code>full_name</code> - полное наименование фактора</li>
+            <li><code>periodicity</code> - периодичность медосмотра в месяцах (число)</li>
+        </ul>
+    </div>
+
+    <form method="post" enctype="multipart/form-data">
+        {% csrf_token %}
+        <fieldset class="module aligned">
+            <div class="form-row">
+                <div>
+                    <label for="import_file" class="required">Файл Excel:</label>
+                    <input type="file" name="import_file" id="import_file" accept=".xlsx,.xls" required>
+                    <p class="help">Поддерживаемые форматы: XLSX, XLS</p>
+                </div>
+            </div>
+        </fieldset>
+
+        <div class="submit-row">
+            <input type="submit" value="Загрузить и просмотреть" class="default">
+            <a href="{% url 'admin:deadline_control_harmfulfactor_changelist' %}" class="button cancel-link">Отмена</a>
+        </div>
+    </form>
+</div>
+{% endblock %}

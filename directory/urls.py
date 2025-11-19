@@ -20,9 +20,9 @@ from directory.views import (
     PositionDeleteView,
     UserRegistrationView,
     hiring,  # 📑 Импортируем модуль с представлениями приемов на работу
-    medical_examination,  # 🏥 Импортируем модуль с представлениями медосмотров
     employees,
 )
+from deadline_control.views import medical_examination  # 🏥 Импортируем модуль с представлениями медосмотров
 
 from directory.views.employees import EmployeeTreeView
 

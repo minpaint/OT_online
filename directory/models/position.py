@@ -1,7 +1,6 @@
 from django.db import models
 from django.core.exceptions import ValidationError
 from django.db.models import Count
-from directory.models.medical_examination import HarmfulFactor
 
 
 class Position(models.Model):
@@ -118,8 +117,8 @@ class Position(models.Model):
         verbose_name="Оборудование"
     )
     medical_harmful_factors = models.ManyToManyField(
-        HarmfulFactor,
-        through='directory.PositionMedicalFactor',
+        'deadline_control.HarmfulFactor',
+        through='deadline_control.PositionMedicalFactor',
         related_name='positions',
         verbose_name="Вредные факторы медосмотров",
         blank=True

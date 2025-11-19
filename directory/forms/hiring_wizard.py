@@ -246,7 +246,7 @@ class CombinedEmployeeHiringForm(forms.Form):
 
             # Если не найдены переопределения, проверяем эталонные нормы медосмотра
             if not needs_medical:
-                from directory.models.medical_norm import MedicalExaminationNorm
+                from deadline_control.models.medical_norm import MedicalExaminationNorm
                 needs_medical = MedicalExaminationNorm.objects.filter(
                     position_name=position.position_name
                 ).exists()

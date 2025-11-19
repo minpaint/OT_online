@@ -1,9 +1,8 @@
+import calendar
 from django.db import models
 from django.core.validators import MinValueValidator, FileExtensionValidator
 from django.utils import timezone
 from .medical_examination import MedicalExaminationType, HarmfulFactor
-from directory.models.position import Position
-from directory.models.employee import Employee
 
 
 class MedicalExaminationNorm(models.Model):
@@ -43,8 +42,8 @@ class MedicalExaminationNorm(models.Model):
     )
 
     class Meta:
-        verbose_name = "Норма медосмотра"
-        verbose_name_plural = "Нормы медосмотров"
+        verbose_name = "Вредный фактор профессии"
+        verbose_name_plural = "Вредные факторы по профессиям"
         ordering = ['position_name', 'harmful_factor']
         unique_together = [['position_name', 'harmful_factor']]
 
@@ -69,7 +68,7 @@ class PositionMedicalFactor(models.Model):
     актуальных для конкретной должности, с возможностью переопределения периодичности.
     """
     position = models.ForeignKey(
-        Position,
+        'directory.Position',
         on_delete=models.CASCADE,
         related_name="medical_factors",
         verbose_name="Должность"
@@ -136,7 +135,7 @@ class EmployeeMedicalExamination(models.Model):
     ]
 
     employee = models.ForeignKey(
-        Employee,
+        'directory.Employee',
         on_delete=models.CASCADE,
         related_name="medical_examinations",
         verbose_name="Сотрудник",
@@ -153,12 +152,16 @@ class EmployeeMedicalExamination(models.Model):
 
     date_completed = models.DateField(
         verbose_name="Дата прохождения",
-        help_text="Дата фактического прохождения медосмотра"
+        help_text="Дата фактического прохождения медосмотра",
+        null=True,
+        blank=True
     )
 
     next_date = models.DateField(
         verbose_name="Дата следующего медосмотра",
-        help_text="Плановая дата следующего медосмотра"
+        help_text="Плановая дата следующего медосмотра",
+        null=True,
+        blank=True
     )
 
     medical_certificate = models.FileField(
@@ -183,6 +186,12 @@ class EmployeeMedicalExamination(models.Model):
         help_text="Дополнительная информация о медосмотре"
     )
 
+    is_disabled = models.BooleanField(
+        default=False,
+        verbose_name="Не требуется",
+        help_text="Если отмечено, медосмотр по этому фактору не требуется для данного сотрудника"
+    )
+
     created_at = models.DateTimeField(
         auto_now_add=True,
         verbose_name="Дата создания записи"
@@ -201,25 +210,85 @@ class EmployeeMedicalExamination(models.Model):
     def __str__(self):
         return f"{self.employee} - {self.harmful_factor} ({self.date_completed})"
 
+    def days_until_next(self):
+        """
+        Computes days until the next medical examination.
+        Returns None if no date is set.
+        """
+        if not self.next_date:
+            return None
+        return (self.next_date - timezone.now().date()).days
+
+    def days_overdue(self):
+        """Возвращает количество просроченных дней (положительное число)"""
+        days = self.days_until_next()
+        if days is None or days >= 0:
+            return 0
+        return abs(days)
+
     @property
     def is_expired(self):
         """Проверяет, истек ли срок действия медосмотра"""
+        if not self.next_date:
+            return False
         return self.next_date < timezone.now().date()
 
     @property
     def days_remaining(self):
         """Возвращает количество дней до следующего медосмотра"""
+        if not self.next_date:
+            return None
         today = timezone.now().date()
         if self.next_date < today:
             return 0
         return (self.next_date - today).days
+
+    @staticmethod
+    def _add_months(source_date, months):
+        """
+        Прибавляет к дате заданное число месяцев, корректно обрабатывая конец месяца.
+        Аналогично Equipment._add_months()
+        """
+        month = source_date.month - 1 + months
+        year = source_date.year + month // 12
+        month = month % 12 + 1
+        day = min(source_date.day, calendar.monthrange(year, month)[1])
+        return source_date.replace(year=year, month=month, day=day)
+
+    def perform_examination(self, examination_date=None):
+        """
+        Проводит медицинский осмотр:
+        - записывает дату прохождения (date_completed)
+        - автоматически вычисляет next_date на основе периодичности вредного фактора
+        - обновляет статус на 'completed'
+
+        Аналогично Equipment.update_maintenance()
+        """
+        exam_date = examination_date or timezone.now().date()
+
+        self.date_completed = exam_date
+
+        # Получаем периодичность из вредного фактора (или переопределения)
+        periodicity = self.harmful_factor.periodicity
+
+        # Рассчитываем следующую дату
+        self.next_date = self._add_months(exam_date, periodicity)
+        self.status = 'completed'
+        self.save()
 
     def save(self, *args, **kwargs):
         """Переопределяем save для автоматического обновления статуса"""
         today = timezone.now().date()
 
         # Обновляем статус в зависимости от даты
-        if self.next_date < today:
+        if not self.date_completed or not self.next_date:
+            # Если даты не указаны - нужно выдать направление
+            self.status = 'to_issue'
+        elif self.next_date < today:
+            # Если срок истек
             self.status = 'expired'
+        else:
+            # Если дата есть и срок не истек
+            self.status = 'completed'
 
         super().save(*args, **kwargs)

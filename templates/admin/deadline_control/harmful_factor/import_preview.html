@@ -1,0 +1,101 @@
+{% extends "admin/base_site.html" %}
+{% load static %}
+
+{% block title %}{{ title }}{% endblock %}
+
+{% block breadcrumbs %}
+<div class="breadcrumbs">
+    <a href="{% url 'admin:index' %}">Главная</a>
+    &rsaquo; <a href="{% url 'admin:app_list' app_label='deadline_control' %}">Контроль сроков</a>
+    &rsaquo; <a href="{% url 'admin:deadline_control_harmfulfactor_changelist' %}">Вредные факторы</a>
+    &rsaquo; {{ title }}
+</div>
+{% endblock %}
+
+{% block content %}
+<div class="module">
+    <h1>Предпросмотр импорта вредных факторов</h1>
+
+    {% if result.has_errors %}
+    <div class="messagelist">
+        <div class="error">
+            <h3>⚠ Обнаружены ошибки ({{ result.totals.error }})</h3>
+            <ul>
+                {% for row in result.invalid_rows %}
+                <li>
+                    <strong>Строка {{ row.number }}:</strong>
+                    {% if row.error %}{{ row.error }}{% endif %}
+                    {% if row.error_dict %}{{ row.error_dict }}{% endif %}
+                    {% if row.errors %}
+                        {% for error in row.errors %}
+                            {{ error.error }}
+                        {% endfor %}
+                    {% endif %}
+                </li>
+                {% endfor %}
+            </ul>
+        </div>
+    </div>
+    {% endif %}
+
+    <div class="help" style="background-color: #d1ecf1; padding: 15px; border-left: 4px solid #0c5460; margin: 20px 0;">
+        <h3>Сводка</h3>
+        <ul>
+            <li>➕ Новых записей: <strong>{{ result.totals.new }}</strong></li>
+            <li>♻ Будет обновлено: <strong>{{ result.totals.update }}</strong></li>
+            <li>⏭ Будет пропущено: <strong>{{ result.totals.skip }}</strong></li>
+            <li>⚠ Ошибок: <strong>{{ result.totals.error }}</strong></li>
+        </ul>
+    </div>
+
+    <fieldset class="module aligned">
+        <h2>Предпросмотр данных:</h2>
+        <div style="overflow-x: auto;">
+            <table style="width: 100%; border-collapse: collapse; margin-top: 10px;">
+                <thead>
+                    <tr style="background-color: #417690; color: white;">
+                        <th style="border: 1px solid #ddd; padding: 8px;">#</th>
+                        <th style="border: 1px solid #ddd; padding: 8px;">Краткое название</th>
+                        <th style="border: 1px solid #ddd; padding: 8px;">Полное название</th>
+                        <th style="border: 1px solid #ddd; padding: 8px;">Периодичность (мес)</th>
+                        <th style="border: 1px solid #ddd; padding: 8px;">Статус</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for row in dataset %}
+                    <tr {% if forloop.counter|divisibleby:2 %}style="background-color: #f9f9f9;"{% endif %}>
+                        <td style="border: 1px solid #ddd; padding: 8px;">{{ forloop.counter }}</td>
+                        <td style="border: 1px solid #ddd; padding: 8px;">{{ row.0|default:"-" }}</td>
+                        <td style="border: 1px solid #ddd; padding: 8px;">{{ row.1|default:"-" }}</td>
+                        <td style="border: 1px solid #ddd; padding: 8px;">{{ row.2|default:"-" }}</td>
+                        <td style="border: 1px solid #ddd; padding: 8px; text-align: center;">
+                            {% if row in result.invalid_rows %}
+                            <span style="background-color: #dc3545; color: white; padding: 3px 8px; border-radius: 3px;">Ошибка</span>
+                            {% else %}
+                            <span style="background-color: #28a745; color: white; padding: 3px 8px; border-radius: 3px;">OK</span>
+                            {% endif %}
+                        </td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+    </fieldset>
+
+    <form method="post" enctype="multipart/form-data" style="margin-top: 20px;">
+        {% csrf_token %}
+        <input type="hidden" name="confirm" value="1">
+
+        <div class="submit-row">
+            <input type="submit" value="✅ Подтвердить импорт" class="default" {% if result.has_errors %}disabled{% endif %}>
+            <a href="{% url 'admin:deadline_control_harmfulfactor_import' %}" class="button">Отмена</a>
+        </div>
+
+        {% if result.has_errors %}
+        <div class="help" style="background-color: #fff3cd; padding: 15px; border-left: 4px solid #ffc107; margin-top: 20px;">
+            Импорт недоступен из-за ошибок. Проверьте файл и загрузите снова.
+        </div>
+        {% endif %}
+    </form>
+</div>
+{% endblock %}

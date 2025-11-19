@@ -61,7 +61,10 @@
       "Bash(del directoryresourcesequipment.py)",
       "Bash(del directoryviewsequipment.py)",
       "Bash(rm:*)",
-      "WebFetch(domain:prnt.sc)"
+      "WebFetch(domain:prnt.sc)",
+      "Bash(git checkout:*)",
+      "Bash(\"deadline_control\\management\\__init__.py\")",
+      "Bash(\"deadline_control\\management\\commands\\__init__.py\")"
     ],
     "deny": [],
     "ask": []

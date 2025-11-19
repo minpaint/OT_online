@@ -14,8 +14,8 @@ from directory.models import Position
 from directory.forms.position import PositionForm
 from directory.admin.mixins.tree_view import TreeViewMixin
 from directory.models.siz import SIZNorm, SIZ
-from directory.models.medical_norm import PositionMedicalFactor, MedicalExaminationNorm
-from directory.models.medical_examination import HarmfulFactor
+from deadline_control.models.medical_norm import PositionMedicalFactor, MedicalExaminationNorm
+from deadline_control.models.medical_examination import HarmfulFactor
 from directory.models.commission import CommissionMember
 from directory.utils.profession_icons import get_profession_icon
 from directory.resources.organization_structure import OrganizationStructureResource

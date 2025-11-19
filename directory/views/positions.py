@@ -55,7 +55,7 @@ class PositionCreateView(LoginRequiredMixin, CreateView):
     model = Position
     form_class = PositionForm
     template_name = 'directory/positions/form.html'
-    success_url = reverse_lazy('directory:position-list')
+    success_url = reverse_lazy('directory:positions:position_list')
 
     def get_context_data(self, **kwargs):
         context = super().get_context_data(**kwargs)
@@ -66,7 +66,7 @@ class PositionUpdateView(LoginRequiredMixin, UpdateView):
     model = Position
     form_class = PositionForm
     template_name = 'directory/positions/form.html'
-    success_url = reverse_lazy('directory:position-list')
+    success_url = reverse_lazy('directory:positions:position_list')
 
     def get_context_data(self, **kwargs):
         context = super().get_context_data(**kwargs)
@@ -76,7 +76,7 @@ class PositionUpdateView(LoginRequiredMixin, UpdateView):
 class PositionDeleteView(LoginRequiredMixin, DeleteView):
     model = Position
     template_name = 'directory/positions/confirm_delete.html'
-    success_url = reverse_lazy('directory:position-list')
+    success_url = reverse_lazy('directory:positions:position_list')
 
     def get_context_data(self, **kwargs):
         context = super().get_context_data(**kwargs)

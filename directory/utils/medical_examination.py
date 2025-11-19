@@ -9,8 +9,8 @@ from django.http import HttpResponse
 from django.utils import timezone
 from django.db.models import Q
 
-from directory.models.medical_examination import MedicalExaminationType, HarmfulFactor, MedicalSettings
-from directory.models.medical_norm import (
+from deadline_control.models.medical_examination import MedicalExaminationType, HarmfulFactor, MedicalSettings
+from deadline_control.models.medical_norm import (
     MedicalExaminationNorm,
     PositionMedicalFactor,
     EmployeeMedicalExamination
@@ -27,33 +27,46 @@ def update_medical_examination_statuses():
     1. Для медосмотров, до окончания которых осталось меньше заданного периода - "Нужно выдать направление"
     2. Для просроченных медосмотров - "Просрочен"
 
+    Обрабатывает каждую организацию отдельно с учетом её настроек.
+
     Returns:
         dict: Информация о количестве обновленных записей
     """
+    from directory.models import Organization
     today = timezone.now().date()
-    settings = MedicalSettings.get_settings()
 
-    # Определяем даты для изменения статусов
-    issue_date = today + datetime.timedelta(days=settings.days_before_issue)
+    to_issue_count = 0
+    expired_count = 0
 
-    # Находим все медосмотры со статусом "Пройден", у которых срок подходит к концу
-    to_issue_exams = EmployeeMedicalExamination.objects.filter(
-        next_date__lte=issue_date,
-        next_date__gt=today,
-        status='completed'
-    )
+    # Обрабатываем каждую организацию отдельно
+    for organization in Organization.objects.all():
+        settings = MedicalSettings.get_settings(organization)
+        if not settings:
+            continue
 
-    # Меняем статус на "Нужно выдать направление"
-    to_issue_count = to_issue_exams.update(status='to_issue')
+        # Определяем даты для изменения статусов
+        issue_date = today + datetime.timedelta(days=settings.days_before_issue)
 
-    # Находим все просроченные медосмотры
-    expired_exams = EmployeeMedicalExamination.objects.filter(
-        next_date__lt=today,
-        status__in=['completed', 'to_issue']
-    )
+        # Находим все медосмотры со статусом "Пройден", у которых срок подходит к концу
+        to_issue_exams = EmployeeMedicalExamination.objects.filter(
+            employee__organization=organization,
+            next_date__lte=issue_date,
+            next_date__gt=today,
+            status='completed'
+        )
 
-    # Меняем статус на "Просрочен"
-    expired_count = expired_exams.update(status='expired')
+        # Меняем статус на "Нужно выдать направление"
+        to_issue_count += to_issue_exams.update(status='to_issue')
+
+        # Находим все просроченные медосмотры
+        expired_exams = EmployeeMedicalExamination.objects.filter(
+            employee__organization=organization,
+            next_date__lt=today,
+            status__in=['completed', 'to_issue']
+        )
+
+        # Меняем статус на "Просрочен"
+        expired_count += expired_exams.update(status='expired')
 
     return {
         'to_issue_updated': to_issue_count,
@@ -398,7 +411,7 @@ def get_employee_medical_examination_status(employee):
         dict: Информация о статусе медосмотров сотрудника
     """
     today = datetime.date.today()
-    settings = MedicalSettings.get_settings()
+    settings = MedicalSettings.get_settings(employee.organization)
 
     # Получаем все применимые виды медосмотров для должности сотрудника
     position = employee.position
@@ -507,30 +520,39 @@ def get_employee_medical_examination_status(employee):
 
 def send_medical_examination_notifications():
     """
-    Отправляет уведомления о приближающихся и просроченных медосмотрах
+    Отправляет уведомления о приближающихся и просроченных медосмотрах.
+    Обрабатывает каждую организацию отдельно с учетом её настроек.
 
     Returns:
         dict: Информация о количестве отправленных уведомлений
     """
+    from directory.models import Organization
     today = timezone.now().date()
-    settings = MedicalSettings.get_settings()
 
-    # Определяем дату для отправки уведомлений
-    notification_date = today + datetime.timedelta(days=settings.days_before_email)
+    total_sent = 0
 
-    # Находим все медосмотры, требующие уведомления
-    to_notify_exams = EmployeeMedicalExamination.objects.filter(
-        next_date__lte=notification_date,
-        next_date__gt=today,
-        status='completed'
-    ).select_related('employee', 'examination_type')
+    # Обрабатываем каждую организацию отдельно
+    for organization in Organization.objects.all():
+        settings = MedicalSettings.get_settings(organization)
+        if not settings:
+            continue
 
-    notifications_sent = 0
+        # Определяем дату для отправки уведомлений
+        notification_date = today + datetime.timedelta(days=settings.days_before_email)
 
-    # Здесь должна быть логика отправки уведомлений
-    # Например, по email или в другие системы
+        # Находим все медосмотры, требующие уведомления для этой организации
+        to_notify_exams = EmployeeMedicalExamination.objects.filter(
+            employee__organization=organization,
+            next_date__lte=notification_date,
+            next_date__gt=today,
+            status='completed'
+        ).select_related('employee', 'harmful_factor')
+
+        # Здесь должна быть логика отправки уведомлений
+        # Например, по email или в другие системы
+        total_sent += to_notify_exams.count()
 
     return {
-        'notifications_sent': notifications_sent,
+        'notifications_sent': total_sent,
         'timestamp': timezone.now()
     }

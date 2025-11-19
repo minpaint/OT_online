@@ -1,4 +1,4 @@
-# D:\YandexDisk\OT_online\directory\forms\medical_examination.py
+# deadline_control/forms/medical_examination.py
 """
 🩺 Формы модуля медицинских осмотров
 
@@ -12,12 +12,10 @@ from django import forms
 from django.core.validators import FileExtensionValidator
 from django.utils import timezone
 
-from directory.models.medical_examination import (
+from deadline_control.models import (
     MedicalExaminationType,
     HarmfulFactor,
     MedicalSettings,
-)
-from directory.models.medical_norm import (
     MedicalExaminationNorm,
     PositionMedicalFactor,
     EmployeeMedicalExamination,
@@ -310,7 +308,7 @@ from django.forms import formset_factory
 
 HarmfulFactorNormFormSet = formset_factory(
     HarmfulFactorNormForm,
-    extra=3,  # Показывать 3 пустые формы по умолчанию
+    extra=1,  # Показывать 1 пустую форму по умолчанию
     can_delete=True  # Позволить удалять формы
 )
 

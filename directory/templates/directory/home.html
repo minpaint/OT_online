@@ -5,7 +5,7 @@
 
 {% block extra_css %}
 <!-- Подключаем внешний CSS файл для стилей древовидной структуры -->
-<link rel="stylesheet" href="{% static 'directory/css/frontend_tree_view.css' %}">
+<link rel="stylesheet" href="{% static 'directory/css/frontend_tree_view.css' %}?v=3">
 <style>
  /* Стили для кнопки генерации документов */
  #generateDocumentsBtn {
@@ -43,6 +43,48 @@ width: 100%;
 }
 }
 
+/* Адаптивность дашборда для разных устройств */
+@media (max-width: 991.98px) {
+    .deadline-dashboard .col-lg-4 {
+        flex: 0 0 50%;
+        max-width: 50%;
+    }
+}
+
+@media (max-width: 767.98px) {
+    .deadline-dashboard .col-md-6 {
+        flex: 0 0 100%;
+        max-width: 100%;
+    }
+
+    .deadline-dashboard .card-header {
+        font-size: 0.9rem;
+    }
+
+    .deadline-dashboard .card-body {
+        font-size: 0.85rem;
+    }
+
+    .deadline-dashboard .badge {
+        font-size: 0.7rem;
+    }
+}
+
+@media (max-width: 575.98px) {
+    .deadline-dashboard h6 {
+        font-size: 1rem;
+    }
+
+    .deadline-dashboard .card {
+        margin-bottom: 0.5rem;
+    }
+
+    .deadline-dashboard .btn-sm {
+        font-size: 0.7rem;
+        padding: 0.2rem 0.4rem;
+    }
+}
+
 /* Стили для карточек быстрых действий */
 .quick-actions-card {
 margin-bottom: 1.5rem;
@@ -73,64 +115,153 @@ border-color: #6f42c1;
 background-color: #5a32a3;
 border-color: #5a32a3;
 }
+
+/* Стили для дашборда контроля сроков */
+.deadline-dashboard {
+margin-bottom: 1.5rem;
+}
+
+.deadline-dashboard .card-header {
+background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+color: white;
+font-weight: bold;
+}
+
+.deadline-org-card {
+border-left: 4px solid #667eea;
+transition: all 0.3s ease;
+}
+
+.deadline-org-card:hover {
+box-shadow: 0 4px 12px rgba(0,0,0,0.15);
+transform: translateY(-2px);
+}
+
+.deadline-stat {
+text-align: center;
+padding: 0.5rem;
+}
+
+.deadline-stat .stat-number {
+font-size: 1.8rem;
+font-weight: bold;
+line-height: 1;
+}
+
+.deadline-stat .stat-label {
+font-size: 0.75rem;
+color: #6c757d;
+margin-top: 0.25rem;
+}
+
+.stat-overdue {
+color: #dc3545;
+}
+
+.stat-warning {
+color: #ffc107;
+}
+
+.stat-ok {
+color: #28a745;
+}
+
+.org-name {
+font-weight: 600;
+color: #495057;
+border-bottom: 2px solid #667eea;
+padding-bottom: 0.5rem;
+margin-bottom: 1rem;
+}
 </style>
 {% endblock %}
 
 {% block content %}
 <div class="container-fluid px-0">
 
-<!-- 📋 Секция для кнопок быстрых действий -->
-<div class="card quick-actions-card">
-    <div class="card-header">
-        <h5><i class="fas fa-bolt"></i> Быстрые действия</h5>
-    </div>
-    <div class="card-body">
-        <div class="row">
-            <div class="col-md-4 mb-2">
-                <a href="{% url 'directory:employees:employee_hire' %}" class="btn btn-success btn-block quick-action-btn">
-                    <i class="fas fa-user-plus"></i> Принять на работу (стандартная форма)
-                </a>
+<!-- ⏰ Дашборд контроля сроков -->
+<div class="mb-3 deadline-dashboard">
+    <h6 class="mb-2">⏰ Контроль сроков</h6>
+    {% if deadline_dashboard.per_org %}
+        <div class="row g-2">
+            {% for item in deadline_dashboard.per_org %}
+            <div class="col-md-6 col-lg-4">
+                <div class="card h-100 {% if item.overdue_total > 0 %}border-danger{% elif item.upcoming_total > 0 %}border-warning{% else %}border-success{% endif %}">
+                    <div class="card-header py-2 d-flex justify-content-between align-items-center">
+                        <strong class="small">🏢 {{ item.org.short_name_ru }}</strong>
+                        <span class="small">
+                            {% if item.overdue_total > 0 %}
+                            <span class="badge bg-danger">🚨 {{ item.overdue_total }}</span>
+                            {% endif %}
+                            {% if item.upcoming_total > 0 %}
+                            <span class="badge bg-warning text-dark">⚠️ {{ item.upcoming_total }}</span>
+                            {% endif %}
+                            {% if item.overdue_total == 0 and item.upcoming_total == 0 %}
+                            <span class="badge bg-success">✅</span>
+                            {% endif %}
+                        </span>
+                    </div>
+                    <div class="card-body py-2">
+                        {% if item.overdue_total > 0 or item.upcoming_total > 0 %}
+                        <div class="small">
+                            {% if item.equipment.overdue > 0 %}
+                            <div class="text-danger">🔧 Оборудование: <strong>{{ item.equipment.overdue }}</strong> ед. просрочено</div>
+                            {% endif %}
+                            {% if item.equipment.upcoming > 0 %}
+                            <div class="text-warning">🔧 Оборудование: <strong>{{ item.equipment.upcoming }}</strong> ед. скоро</div>
+                            {% endif %}
+                            {% if item.deadlines.overdue > 0 %}
+                            <div class="text-danger">📅 Мероприятия: <strong>{{ item.deadlines.overdue }}</strong> просрочено</div>
+                            {% endif %}
+                            {% if item.deadlines.upcoming > 0 %}
+                            <div class="text-warning">📅 Мероприятия: <strong>{{ item.deadlines.upcoming }}</strong> скоро</div>
+                            {% endif %}
+                            {% if item.medical.overdue > 0 %}
+                            <div class="text-danger">🏥 Медосмотры: <strong>{{ item.medical.overdue }}</strong> сотр. просрочено</div>
+                            {% endif %}
+                            {% if item.medical.upcoming > 0 %}
+                            <div class="text-warning">🏥 Медосмотры: <strong>{{ item.medical.upcoming }}</strong> сотр. скоро</div>
+                            {% endif %}
+                        </div>
+                        {% else %}
+                        <div class="text-success small text-center">
+                            ✅ Все сроки под контролем
+                        </div>
+                        {% endif %}
+                    </div>
+                    <div class="card-footer py-2 text-center">
+                        <a href="{% url 'deadline_control:dashboard' %}?org={{ item.org.id }}" class="btn btn-sm btn-outline-primary">
+                            📊 Подробнее
+                        </a>
+                    </div>
+                </div>
             </div>
-            <a href="{% url 'directory:hiring:simple_hiring' %}" class="btn wizard-btn text-white btn-block quick-action-btn">
-    <i class="fas fa-magic"></i> Принять на работу
-</a>
-            </div>
-            <div class="col-md-4 mb-2">
-                <a href="{% url 'directory:hiring:hiring_list' %}" class="btn btn-info btn-block quick-action-btn">
-                    <i class="fas fa-list"></i> Список приемов на работу
-                </a>
+            {% endfor %}
+        </div>
+    {% else %}
+        <div class="card">
+            <div class="card-body text-muted small text-center py-3">
+                ✅ Нет данных для отображения
             </div>
         </div>
-    </div>
+    {% endif %}
 </div>
-
- <!-- 🔍 Форма поиска сотрудников -->
- <div class="card mb-3">
- <div class="card-body">
- <form method="get" class="search-form">
- <div class="input-group">
- <input type="text" id="localSearchInput" class="form-control tree-search" placeholder="Быстрый поиск на странице..." value="">
- <div class="input-group-append">
- <button type="button" class="btn btn-primary" id="localSearchBtn">
- <i class="fas fa-search"></i> Найти
-</button>
- <button type="button" class="btn btn-secondary" id="clearSearchBtn">
- <i class="fas fa-times"></i> Очистить
-</button>
- </div>
- </div>
- <small class="form-text text-muted">Поиск работает по текущим загруженным данным, без обращения к серверу</small>
- </form>
- </div>
- </div>
 
  <!-- 🎯 Панель с действиями -->
  <div class="actions-bar">
- <button id="btnExpandAll" class="btn btn-sm btn-outline-secondary me-2 expand-all">
- <i class="fas fa-expand-alt"></i> Развернуть все
+ <!-- Поиск сотрудников -->
+ <div class="input-group me-2" style="max-width: 300px; min-width: 200px;">
+ <input type="text" id="globalSearchInput" class="form-control form-control-sm" placeholder="🔍 Поиск сотрудников...">
+ <button type="button" class="btn btn-sm btn-outline-secondary" id="globalClearBtn" title="Очистить">
+ ✕
+ </button>
+ </div>
+
+ <button id="btnExpandAll" class="btn btn-sm btn-outline-secondary me-1 expand-all d-none d-md-inline-block">
+ <i class="fas fa-expand-alt"></i> <span class="d-none d-lg-inline">Развернуть</span>
 </button>
- <button id="btnCollapseAll" class="btn btn-sm btn-outline-secondary me-2 collapse-all">
- <i class="fas fa-compress-alt"></i> Свернуть все
+ <button id="btnCollapseAll" class="btn btn-sm btn-outline-secondary me-2 collapse-all d-none d-md-inline-block">
+ <i class="fas fa-compress-alt"></i> <span class="d-none d-lg-inline">Свернуть</span>
 </button>
  <div class="dropdown d-inline-block me-2">
  <button class="btn btn-primary btn-sm dropdown-toggle" type="button" id="actionsDropdown"
@@ -155,17 +286,18 @@ border-color: #5a32a3;
  </ul>
  </div>
 
- <a href="{% url 'directory:employees:employee_hire' %}" class="btn btn-success btn-sm ms-auto">
- <i class="fas fa-user-plus"></i> Принять на работу
-</a>
-
  <!-- Добавляем кнопку генерации документов -->
- <button id="generateDocumentsBtn" class="btn btn-danger btn-sm ms-2" style="display: none;">
- <i class="fas fa-file-alt"></i> Сгенерировать документы
+ <button id="generateDocumentsBtn" class="btn btn-danger btn-sm me-1" style="display: none;">
+ <i class="fas fa-file-alt"></i> <span class="d-none d-md-inline">Документы</span>
 </button>
 
- <div id="selectedCounter" class="select-count text-muted" style="display: none;">
- Выбрано: <span id="counterValue">0</span>
+ <!-- Кнопка выдачи направления на медосмотр -->
+ <button id="btnMedicalReferral" class="btn btn-info btn-sm" style="display: none;" data-bs-toggle="modal" data-bs-target="#medicalReferralModal">
+ <i class="fas fa-stethoscope"></i> <span class="d-none d-md-inline">Направление</span>
+</button>
+
+ <div id="selectedCounter" class="select-count text-muted ms-2" style="display: none;">
+ <span id="counterValue">0</span> выбр.
  </div>
  </div>
 
@@ -446,12 +578,104 @@ border-color: #5a32a3;
  </nav>
  {% endif %}
 </div>
+
+<!-- Модальное окно выдачи направления на медосмотр -->
+<div class="modal fade" id="medicalReferralModal" tabindex="-1" aria-labelledby="medicalReferralModalLabel" aria-hidden="true">
+    <div class="modal-dialog modal-lg">
+        <div class="modal-content">
+            <div class="modal-header bg-info text-white">
+                <h5 class="modal-title" id="medicalReferralModalLabel">
+                    <i class="fas fa-stethoscope"></i> Выдача направления на медосмотр
+                </h5>
+                <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal" aria-label="Close"></button>
+            </div>
+            <div class="modal-body">
+                <form id="referralForm">
+                    <!-- Информационная карточка (неизменяемые поля) -->
+                    <div class="card mb-3 bg-light">
+                        <div class="card-body">
+                            <div class="row g-3">
+                                <div class="col-12">
+                                    <div class="d-flex align-items-start">
+                                        <i class="fas fa-user text-primary me-2 mt-1"></i>
+                                        <div>
+                                            <small class="text-muted d-block">ФИО</small>
+                                            <span id="refEmployeeNameDisplay" class="fw-bold fs-5">-</span>
+                                        </div>
+                                    </div>
+                                </div>
+                                <div class="col-md-6">
+                                    <div class="d-flex align-items-start">
+                                        <i class="fas fa-building text-primary me-2 mt-1"></i>
+                                        <div>
+                                            <small class="text-muted d-block">Организация</small>
+                                            <span id="refOrganization" class="fw-bold">-</span>
+                                        </div>
+                                    </div>
+                                </div>
+                                <div class="col-md-6">
+                                    <div class="d-flex align-items-start">
+                                        <i class="fas fa-briefcase text-primary me-2 mt-1"></i>
+                                        <div>
+                                            <small class="text-muted d-block">Профессия (должность)</small>
+                                            <span id="refPosition" class="fw-bold">-</span>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Дата рождения (редактируемое) -->
+                    <div class="mb-3">
+                        <label class="form-label fw-bold">
+                            <i class="fas fa-calendar-alt"></i> Дата рождения <span class="text-danger">*</span>
+                        </label>
+                        <input type="date" class="form-control" id="refBirthDate" required>
+                        <div class="form-text">Можно изменить, если данные устарели. Изменения сохранятся в карточке.</div>
+                    </div>
+
+                    <!-- Место проживания (редактируемое) -->
+                    <div class="mb-3">
+                        <label class="form-label fw-bold">
+                            <i class="fas fa-home"></i> Место проживания <span class="text-danger">*</span>
+                        </label>
+                        <textarea class="form-control" id="refAddress" rows="2" required placeholder="Введите адрес проживания сотрудника"></textarea>
+                        <div class="form-text">Можно изменить, если адрес изменился. Изменения сохранятся в карточке.</div>
+                    </div>
+
+                    <!-- Вредные факторы (информационное поле) -->
+                    <div class="mb-3">
+                        <label class="form-label fw-bold">
+                            <i class="fas fa-exclamation-triangle text-warning"></i> Вредные факторы
+                        </label>
+                        <div id="refHarmfulFactors" class="border rounded p-2 bg-light">
+                            <span class="text-muted">Загрузка...</span>
+                        </div>
+                        <div class="form-text">Факторы определены для должности сотрудника</div>
+                    </div>
+
+                    <input type="hidden" id="refEmployeeId">
+                    <input type="hidden" id="refEmployeeName">
+                </form>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">
+                    <i class="fas fa-times"></i> Отмена
+                </button>
+                <button type="button" class="btn btn-info" id="btnGenerateReferral">
+                    <i class="fas fa-file-medical"></i> Выдать направление
+                </button>
+            </div>
+        </div>
+    </div>
+</div>
 {% endblock %}
 
 {% block extra_js %}
 <!-- Подключаем JavaScript файлы для работы с деревом -->
-<script src="{% static 'directory/js/frontend_tree_view.js' %}"></script>
-<script src="{% static 'directory/js/frontend_tree_search.js' %}"></script>
+<script src="{% static 'directory/js/frontend_tree_view.js' %}?v=2"></script>
+<script src="{% static 'directory/js/frontend_tree_search.js' %}?v=2"></script>
 <script>
 document.addEventListener('DOMContentLoaded', function() {
 // Получаем URL для генерации документов
@@ -470,6 +694,7 @@ const btnGenerateDocuments = document.getElementById('btnGenerateDocuments');
 const btnIssueCard = document.getElementById('btnIssueCard');
 const btnIssueSIZ = document.getElementById('btnIssueSIZ');
 const btnEditEmployee = document.getElementById('btnEditEmployee');
+const btnMedicalReferral = document.getElementById('btnMedicalReferral');
 
 // Функция для обновления состояния кнопок
  function updateButtonsState() {
@@ -484,6 +709,7 @@ document.getElementById('counterValue').textContent = selectedCount;
  document.getElementById('selectedCounter').style.display = selectedCount > 0 ? 'inline-block' : 'none';
 actionsDropdown.disabled = selectedCount === 0;
 generateDocumentsBtn.style.display = selectedCount === 1 ? 'inline-block' : 'none';
+btnMedicalReferral.style.display = selectedCount === 1 ? 'inline-block' : 'none';
 }
 
 // Обработчик для чекбоксов сотрудников
@@ -559,6 +785,154 @@ const employeeId = selectedEmployee.dataset.id;
 window.location.href = employeeUpdateUrl.replace('0', employeeId);
 }
 });
+}
+
+// === Логика для модального окна направления на медосмотр ===
+const medicalReferralModal = document.getElementById('medicalReferralModal');
+const btnGenerateReferral = document.getElementById('btnGenerateReferral');
+
+// При открытии модального окна загружаем данные сотрудника
+if (medicalReferralModal) {
+    medicalReferralModal.addEventListener('show.bs.modal', function() {
+        const selectedEmployee = document.querySelector('.employee-checkbox:checked');
+        if (selectedEmployee) {
+            const employeeId = selectedEmployee.dataset.id;
+            loadEmployeeDataForReferral(employeeId);
+        }
+    });
+}
+
+// Функция загрузки данных сотрудника для направления
+function loadEmployeeDataForReferral(employeeId) {
+    // Показываем индикатор загрузки
+    document.getElementById('refHarmfulFactors').innerHTML = '<span class="text-muted"><i class="fas fa-spinner fa-spin"></i> Загрузка данных...</span>';
+
+    fetch(`/deadline-control/medical/referral/api/employee/${employeeId}/`)
+        .then(response => {
+            if (!response.ok) {
+                throw new Error('Ошибка загрузки данных');
+            }
+            return response.json();
+        })
+        .then(data => {
+            // Заполняем форму данными
+            document.getElementById('refEmployeeId').value = data.id;
+            document.getElementById('refEmployeeName').value = data.full_name;
+            document.getElementById('refEmployeeNameDisplay').textContent = data.full_name; // Отображение в карточке
+            document.getElementById('refPosition').textContent = data.position;
+            document.getElementById('refOrganization').textContent = data.organization;
+            document.getElementById('refBirthDate').value = data.birth_date || '';
+            document.getElementById('refAddress').value = data.address || '';
+
+            // Отображаем вредные факторы
+            const factorsContainer = document.getElementById('refHarmfulFactors');
+            if (data.harmful_factors && data.harmful_factors.length > 0) {
+                let factorsHtml = '<div class="row g-2">';
+                data.harmful_factors.forEach(factor => {
+                    factorsHtml += `
+                        <div class="col-12">
+                            <div class="d-flex align-items-center">
+                                <span class="badge bg-warning text-dark me-2">${factor.short_name}</span>
+                                <small>${factor.full_name}</small>
+                            </div>
+                        </div>
+                    `;
+                });
+                factorsHtml += '</div>';
+                factorsContainer.innerHTML = factorsHtml;
+            } else {
+                factorsContainer.innerHTML = '<span class="text-warning"><i class="fas fa-exclamation-triangle"></i> Вредные факторы не определены для должности</span>';
+            }
+        })
+        .catch(error => {
+            console.error('Ошибка:', error);
+            document.getElementById('refHarmfulFactors').innerHTML = '<span class="text-danger"><i class="fas fa-exclamation-circle"></i> Ошибка загрузки данных</span>';
+        });
+}
+
+// Обработчик кнопки "Выдать направление"
+if (btnGenerateReferral) {
+    btnGenerateReferral.addEventListener('click', function() {
+        const employeeId = document.getElementById('refEmployeeId').value;
+        const fullName = document.getElementById('refEmployeeName').value;
+        const birthDate = document.getElementById('refBirthDate').value;
+        const address = document.getElementById('refAddress').value;
+
+        if (!fullName) {
+            alert('Укажите ФИО сотрудника');
+            return;
+        }
+
+        if (!birthDate) {
+            alert('Укажите дату рождения сотрудника');
+            return;
+        }
+
+        if (!address) {
+            alert('Укажите место проживания сотрудника');
+            return;
+        }
+
+        // Показываем индикатор загрузки на кнопке
+        const originalText = this.innerHTML;
+        this.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Генерация...';
+        this.disabled = true;
+
+        // Отправляем запрос на генерацию направления
+        fetch('/deadline-control/medical/referral/generate/', {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+                'X-CSRFToken': getCookie('csrftoken')
+            },
+            body: JSON.stringify({
+                employee_id: employeeId,
+                full_name: fullName,
+                birth_date: birthDate,
+                address: address
+            })
+        })
+        .then(response => response.json())
+        .then(data => {
+            if (data.success) {
+                // Скачиваем документ
+                if (data.document_url) {
+                    window.location.href = data.document_url;
+                }
+                // Закрываем модальное окно
+                bootstrap.Modal.getInstance(medicalReferralModal).hide();
+                // Показываем уведомление
+                alert('Направление успешно создано!');
+            } else {
+                alert('Ошибка: ' + (data.error || 'Неизвестная ошибка'));
+            }
+        })
+        .catch(error => {
+            console.error('Ошибка:', error);
+            alert('Произошла ошибка при генерации направления');
+        })
+        .finally(() => {
+            // Восстанавливаем кнопку
+            this.innerHTML = originalText;
+            this.disabled = false;
+        });
+    });
+}
+
+// Функция получения CSRF токена из куки
+function getCookie(name) {
+    let cookieValue = null;
+    if (document.cookie && document.cookie !== '') {
+        const cookies = document.cookie.split(';');
+        for (let i = 0; i < cookies.length; i++) {
+            const cookie = cookies[i].trim();
+            if (cookie.substring(0, name.length + 1) === (name + '=')) {
+                cookieValue = decodeURIComponent(cookie.substring(name.length + 1));
+                break;
+            }
+        }
+    }
+    return cookieValue;
 }
 
 // Инициализация состояния кнопок

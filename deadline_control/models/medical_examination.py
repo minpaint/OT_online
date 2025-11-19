@@ -1,4 +1,4 @@
-from django.db import models
+﻿from django.db import models
 from django.core.validators import MinValueValidator, FileExtensionValidator
 from django.utils import timezone
 
@@ -63,31 +63,59 @@ class HarmfulFactor(models.Model):
 
 class MedicalSettings(models.Model):
     """
-    ⚙️ Настройки для модуля медосмотров.
-
-    Хранит параметры, влияющие на работу системы управления медосмотрами.
+    Настройки уведомлений для контроля сроков медосмотров.
+    Каждая организация имеет свои настройки.
     """
+    organization = models.OneToOneField(
+        'directory.Organization',
+        on_delete=models.CASCADE,
+        verbose_name="Организация",
+        help_text="Организация, для которой применяются настройки",
+        null=True,  # Временно nullable для миграции
+        blank=True
+    )
+
     days_before_issue = models.PositiveIntegerField(
         default=30,
-        verbose_name="Дней до выдачи направления",
-        help_text="За сколько дней до окончания срока менять статус на 'Нужно выдать направление'"
+        verbose_name="Дней до отметки к выдаче",
+        help_text="Через сколько дней до наступления срока выводить статус 'к выдаче'"
     )
 
     days_before_email = models.PositiveIntegerField(
         default=45,
-        verbose_name="Дней до уведомления по email",
-        help_text="За сколько дней до окончания срока отправлять email-уведомление"
+        verbose_name="Дней до напоминания на email",
+        help_text="За сколько дней до наступления срока отправлять email-уведомление"
+    )
+
+    referral_template = models.FileField(
+        upload_to='document_templates/medical/',
+        verbose_name="Шаблон направления (необязательно)",
+        blank=True,
+        null=True,
+        help_text="Загрузите свой DOCX шаблон, если хотите использовать его вместо эталонного. "
+                  "Если не указан - будет использоваться эталонный шаблон системы."
     )
 
     class Meta:
         verbose_name = "Настройки медосмотров"
         verbose_name_plural = "Настройки медосмотров"
+        ordering = ['organization__short_name_ru']
 
     def __str__(self):
-        return "Настройки медосмотров"
+        return f"Настройки медосмотров - {self.organization.short_name_ru}"
 
     @classmethod
-    def get_settings(cls):
-        """Получает настройки или создает с дефолтными значениями"""
-        settings, created = cls.objects.get_or_create(pk=1)
+    def get_settings(cls, organization):
+        """
+        Возвращает настройки для указанной организации.
+        Создает новые настройки с дефолтными значениями, если их еще нет.
+        """
+        settings, created = cls.objects.get_or_create(
+            organization=organization,
+            defaults={
+                'days_before_issue': 30,
+                'days_before_email': 45,
+            }
+        )
         return settings
+

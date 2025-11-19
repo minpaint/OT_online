@@ -112,6 +112,13 @@ class Equipment(models.Model):
             return None
         return (self.next_maintenance_date - timezone.now().date()).days
 
+    def days_overdue(self):
+        """Возвращает количество просроченных дней (положительное число)"""
+        days = self.days_until_maintenance()
+        if days is None or days >= 0:
+            return 0
+        return abs(days)
+
     class Meta:
         verbose_name = "ТО оборудования"
         verbose_name_plural = "ТО оборудования"

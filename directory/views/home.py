@@ -4,6 +4,8 @@ from django.shortcuts import render, redirect
 from django.contrib import messages
 from django.db.models import Prefetch, Q
 from django.core.paginator import Paginator, EmptyPage, PageNotAnInteger
+from django.utils import timezone
+from datetime import timedelta
 
 from directory.models import (
     Organization,
@@ -12,6 +14,8 @@ from directory.models import (
     Employee,
     Position
 )
+from deadline_control.models import Equipment, KeyDeadlineCategory
+from deadline_control.models.medical_norm import EmployeeMedicalExamination
 
 
 class HomePageView(LoginRequiredMixin, TemplateView):
@@ -65,6 +69,47 @@ class HomePageView(LoginRequiredMixin, TemplateView):
         context['statuses'] = Employee.EMPLOYEE_STATUS_CHOICES
         context['selected_status'] = selected_status
         context['show_fired'] = show_fired
+
+        # Дашборд «Контроль сроков» по доступным организациям
+        today = timezone.now().date()
+        warning_date = today + timedelta(days=14)
+        dashboard_per_org = []
+
+        for org in allowed_orgs:
+            eq_qs = Equipment.objects.filter(organization=org)
+            overdue_eq = sum(1 for eq in eq_qs if eq.next_maintenance_date and eq.next_maintenance_date < today)
+            upcoming_eq = sum(1 for eq in eq_qs if eq.next_maintenance_date and today <= eq.next_maintenance_date <= warning_date)
+
+            cat_qs = KeyDeadlineCategory.objects.filter(organization=org, is_active=True).prefetch_related('items')
+            total_deadlines = sum(cat.items.count() for cat in cat_qs)
+            overdue_deadlines = 0
+            upcoming_deadlines = 0
+            for cat in cat_qs:
+                for item in cat.items.all():
+                    if item.next_date:
+                        if item.next_date < today:
+                            overdue_deadlines += 1
+                        elif item.next_date <= warning_date:
+                            upcoming_deadlines += 1
+
+            med_qs = EmployeeMedicalExamination.objects.filter(employee__organization=org)
+            overdue_med = sum(1 for exam in med_qs if exam.next_date and exam.next_date < today)
+            upcoming_med = sum(1 for exam in med_qs if exam.next_date and today <= exam.next_date <= warning_date)
+
+            dashboard_per_org.append({
+                'org': org,
+                'equipment': {'total': eq_qs.count(), 'overdue': overdue_eq, 'upcoming': upcoming_eq},
+                'deadlines': {'total': total_deadlines, 'overdue': overdue_deadlines, 'upcoming': upcoming_deadlines},
+                'medical': {'total': med_qs.count(), 'overdue': overdue_med, 'upcoming': upcoming_med},
+                'overdue_total': overdue_eq + overdue_deadlines + overdue_med,
+                'upcoming_total': upcoming_eq + upcoming_deadlines + upcoming_med,
+            })
+
+        context['deadline_dashboard'] = {
+            'per_org': dashboard_per_org,
+            'total_overdue': sum(item['overdue_total'] for item in dashboard_per_org),
+            'total_upcoming': sum(item['upcoming_total'] for item in dashboard_per_org),
+        }
 
         if search_query:
             # Для поиска сначала получаем все организации

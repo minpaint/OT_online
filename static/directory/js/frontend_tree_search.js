@@ -26,15 +26,22 @@ class TreeSearch {
             return;
         }
 
-        // Находим поле поиска и кнопки
-        const searchInput = document.getElementById('localSearchInput') || document.querySelector('.tree-search');
-        const searchBtn = document.getElementById('localSearchBtn');
-        const clearBtn = document.getElementById('clearSearchBtn');
+        // Находим поле поиска и кнопки (сначала глобальные, потом локальные)
+        const searchInput = document.getElementById('globalSearchInput') ||
+                           document.getElementById('localSearchInput') ||
+                           document.querySelector('.tree-search');
+        const searchBtn = document.getElementById('globalSearchBtn') ||
+                         document.getElementById('localSearchBtn');
+        const clearBtn = document.getElementById('globalClearBtn') ||
+                        document.getElementById('clearSearchBtn');
 
         if (!searchInput) {
             console.log('❌ Поле поиска не найдено');
             return;
         }
+
+        // Сохраняем ссылку на поле поиска
+        this.searchInput = searchInput;
 
         // Обработчик ввода в поле поиска
         searchInput.addEventListener('input', (e) => {
@@ -233,19 +240,10 @@ class TreeSearch {
             const msgRow = document.createElement('div');
             msgRow.id = 'no-search-results';
             msgRow.className = 'alert alert-warning mt-3';
-            msgRow.innerHTML = `По запросу "${searchText}" ничего не найдено`;
+            msgRow.innerHTML = `🔍 По запросу "<strong>${searchText}</strong>" ничего не найдено`;
 
-            // Находим подходящее место для вставки
-            const searchForm = document.querySelector('.search-form') || document.querySelector('form');
-            if (searchForm) {
-                // Вставляем после формы поиска
-                if (searchForm.nextSibling) {
-                    searchForm.parentNode.insertBefore(msgRow, searchForm.nextSibling);
-                } else {
-                    searchForm.parentNode.appendChild(msgRow);
-                }
-            } else if (this.tree.parentNode) {
-                // Вставляем перед деревом
+            // Вставляем перед таблицей (деревом)
+            if (this.tree.parentNode) {
                 this.tree.parentNode.insertBefore(msgRow, this.tree);
             }
         }

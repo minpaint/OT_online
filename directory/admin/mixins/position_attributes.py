@@ -1,7 +1,7 @@
 import logging
 
 from directory.models.siz import SIZNorm
-from directory.models.medical_norm import MedicalExaminationNorm
+from deadline_control.models.medical_norm import MedicalExaminationNorm
 
 logger = logging.getLogger(__name__)
 

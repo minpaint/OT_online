@@ -102,6 +102,13 @@ class KeyDeadlineItem(models.Model):
         days = self.days_until_next()
         return days is not None and days < 0
 
+    def days_overdue(self):
+        """Возвращает количество просроченных дней (положительное число)"""
+        days = self.days_until_next()
+        if days is None or days >= 0:
+            return 0
+        return abs(days)
+
     def is_upcoming(self, warning_days=14):
         """Проверяет, приближается ли срок (по умолчанию за 14 дней)"""
         days = self.days_until_next()

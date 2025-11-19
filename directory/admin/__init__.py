@@ -14,7 +14,7 @@ from .siz import SIZAdmin, SIZNormAdmin
 from .commission_admin import CommissionAdmin
 from django.utils.html import format_html
 from directory.models import EmployeeHiring
-from .medical_examination import *
+# medical_examination перемещён в deadline_control
 from .quiz_admin import *  # Импортируем админку экзаменов
 
 

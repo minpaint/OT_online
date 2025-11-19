@@ -11,19 +11,6 @@ from .employee_hiring import EmployeeHiringForm
 from .siz_issued import SIZIssueMassForm, SIZIssueReturnForm
 from .siz import SIZForm, SIZNormForm
 
-from .medical_examination import (
-    MedicalExaminationTypeForm,
-    HarmfulFactorForm,
-    MedicalExaminationNormForm,
-    PositionMedicalFactorForm,
-    EmployeeMedicalExaminationForm,
-    MedicalNormSearchForm,
-    EmployeeMedicalExaminationSearchForm,
-    MedicalNormImportForm,
-    MedicalNormExportForm,
-    UniquePositionMedicalNormForm,
-)
-
 __all__ = [
     "DepartmentForm",
     "DocumentForm",
@@ -37,15 +24,4 @@ __all__ = [
     "SIZNormForm",
     "SIZIssueMassForm",
     "SIZIssueReturnForm",
-    "MedicalExaminationTypeForm",
-    "HarmfulFactorForm",
-    "MedicalExaminationNormForm",
-    "PositionMedicalFactorForm",
-    "EmployeeMedicalExaminationForm",
-    "MedicalNormSearchForm",
-    "EmployeeMedicalExaminationSearchForm",
-    "MedicalNormImportForm",
-    "MedicalNormExportForm",
-    "UniquePositionMedicalNormForm",
-
 ]

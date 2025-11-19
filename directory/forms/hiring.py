@@ -18,7 +18,7 @@ from directory.models import (
     Department,
     GeneratedDocument
 )
-from directory.models.medical_norm import MedicalExaminationNorm
+from deadline_control.models.medical_norm import MedicalExaminationNorm
 
 
 class CombinedEmployeeHiringForm(forms.Form):
@@ -102,7 +102,7 @@ class CombinedEmployeeHiringForm(forms.Form):
 
     date_of_birth = forms.DateField(
         label=_("Дата рождения"),
-        required=False,
+        required=True,
         widget=forms.DateInput(
             attrs={
                 'type': 'date',
@@ -121,6 +121,20 @@ class CombinedEmployeeHiringForm(forms.Form):
                 'class': 'form-control',
                 'placeholder': 'Полный адрес места жительства'
             }
+        )
+    )
+
+    initial_medical_examination_date = forms.DateField(
+        label=_("Дата первичного медосмотра"),
+        required=False,
+        help_text=_("Дата прохождения первичного медицинского осмотра (необязательно). "
+                    "Если указана, будет применена ко всем медосмотрам сотрудника."),
+        widget=forms.DateInput(
+            attrs={
+                'type': 'date',
+                'class': 'form-control'
+            },
+            format='%Y-%m-%d'
         )
     )
 
@@ -167,7 +181,8 @@ class CombinedEmployeeHiringForm(forms.Form):
                 # Либо можно использовать HTML('<hX>Заголовок</hX>') перед полями
                 _('Персональные данные'),  # Crispy Forms превратит это в <legend>
                 Row(
-                    Column('full_name_nominative', css_class='form-group col-md-8'),
+                    Column('full_name_nominative', css_class='form-group col-md-5'),
+                    Column('date_of_birth', css_class='form-group col-md-3'),
                     Column('hiring_type', css_class='form-group col-md-4'),
                 ),
                 css_class='form-section'  # Этот класс используется в CSS для стилизации заголовка Fieldset
@@ -192,8 +207,8 @@ class CombinedEmployeeHiringForm(forms.Form):
                 Fieldset(
                     _('Информация для медосмотра'),
                     Row(
-                        Column('date_of_birth', css_class='form-group col-md-6'),
-                        Column('place_of_residence', css_class='form-group col-md-6'),
+                        Column('place_of_residence', css_class='form-group col-md-8'),
+                        Column('initial_medical_examination_date', css_class='form-group col-md-4'),
                     ),
                 ),
                 css_class='form-section d-none',

@@ -22,7 +22,7 @@
     {% csrf_token %}
 
     <div class="object-tools">
-      <a href="{% url 'admin:directory_medicalexaminationnorm_add_multiple' %}" class="addlink">
+      <a href="{% url 'admin:deadline_control_medicalexaminationnorm_add_multiple' %}" class="addlink">
         ➕ Добавить вредные факторы для профессии
       </a>
     </div>
@@ -49,7 +49,7 @@
           {# Строка с именем профессии #}
           <tr class="tree-row {% if prof.has_overrides %}has-overrides{% endif %}" data-level="0" data-node-id="prof_{{ forloop.counter }}">
             <td>
-              <a href="{% url 'admin:directory_medicalexaminationnorm_add' %}?position={{ prof.reference_position.id }}">
+              <a href="{% url 'admin:deadline_control_medicalexaminationnorm_add_multiple' %}?position={{ prof.reference_position.id }}">
                 <strong>{{ prof.name }}</strong>
               </a>
               {% if prof.has_overrides %}
@@ -80,8 +80,8 @@
                       <td>{{ norm.periodicity }}</td>
                       <td>{{ norm.notes|default:"—" }}</td>
                       <td>
-                        <a href="{% url 'admin:directory_medicalexaminationnorm_change' norm.id %}" class="edit-link">✏️</a>
-                        <a href="{% url 'admin:directory_medicalexaminationnorm_delete' norm.id %}" class="delete-link">🗑️</a>
+                        <a href="{% url 'admin:deadline_control_medicalexaminationnorm_change' norm.id %}" class="edit-link">✏️</a>
+                        <a href="{% url 'admin:deadline_control_medicalexaminationnorm_delete' norm.id %}" class="delete-link">🗑️</a>
                       </td>
                     </tr>
                   {% endfor %}

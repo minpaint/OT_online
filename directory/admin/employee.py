@@ -2,8 +2,9 @@
 from django.contrib import admin
 from django.contrib import messages
 from django.shortcuts import redirect, render
-from django.urls import path
+from django.urls import path, reverse
 from django.http import HttpResponse
+from django.utils.html import format_html
 from tablib import Dataset
 
 from directory.models import Employee
@@ -13,14 +14,99 @@ from directory.admin.mixins.tree_view import TreeViewMixin
 from directory.resources.employee import EmployeeResource
 
 
+class EmployeeMedicalExaminationInline(admin.TabularInline):
+    """
+    🏥 Inline для отображения медосмотров сотрудника в карточке.
+    """
+    from deadline_control.models import EmployeeMedicalExamination
+    model = EmployeeMedicalExamination
+    extra = 0
+    can_delete = False
+
+    fields = [
+        'harmful_factor',
+        'is_disabled',
+        'date_completed',
+        'next_date',
+        'days_remaining_display',
+        'status_display',
+        'medical_certificate',
+    ]
+
+    readonly_fields = [
+        'next_date',
+        'days_remaining_display',
+        'status_display',
+    ]
+
+    verbose_name = "Медицинский осмотр"
+    verbose_name_plural = "🏥 Медицинские осмотры"
+
+    def days_remaining_display(self, obj):
+        """Отображает количество дней до медосмотра с цветовой индикацией"""
+        if not obj.next_date:
+            return "-"
+
+        days = obj.days_remaining
+        if days is None:
+            return "-"
+
+        if obj.is_expired:
+            return format_html(
+                '<span style="color: red; font-weight: bold;">Просрочено {} дней</span>',
+                abs(obj.days_until_next())
+            )
+        elif days <= 30:
+            return format_html(
+                '<span style="color: orange; font-weight: bold;">Осталось {} дней</span>',
+                days
+            )
+        else:
+            return format_html(
+                '<span style="color: green;">Осталось {} дней</span>',
+                days
+            )
+
+    days_remaining_display.short_description = "Осталось дней"
+
+    def status_display(self, obj):
+        """Отображает статус с эмодзи"""
+        status_map = {
+            'completed': ('✅', 'Пройден'),
+            'expired': ('🚨', 'Просрочен'),
+            'scheduled': ('📅', 'Запланирован'),
+            'to_issue': ('📋', 'Нужно выдать направление'),
+        }
+        emoji, text = status_map.get(obj.status, ('❓', obj.get_status_display()))
+
+        if obj.status == 'expired':
+            return format_html('<span style="color: red;">{} {}</span>', emoji, text)
+        elif obj.status == 'to_issue':
+            return format_html('<span style="color: orange;">{} {}</span>', emoji, text)
+        else:
+            return format_html('{} {}', emoji, text)
+
+    status_display.short_description = "Статус"
+
+    def get_queryset(self, request):
+        """Показываем ВСЕ медосмотры (включая отключенные) для возможности управления"""
+        qs = super().get_queryset(request)
+        return qs.select_related('harmful_factor').order_by('is_disabled', 'harmful_factor__short_name')
+
+    def has_add_permission(self, request, obj=None):
+        """Запрещаем добавление через inline - медосмотры создаются автоматически"""
+        return False
+
+
 @admin.register(Employee)
 class EmployeeAdmin(TreeViewMixin, admin.ModelAdmin):
     """
     👤 Админ-класс для модели Employee с оптимизированным отображением.
-    Показывает только ключевые атрибуты: Ответственный по ОТ, Руководитель 
+    Показывает только ключевые атрибуты: Ответственный по ОТ, Руководитель
     стажировки, Роль в комиссии, Статус.
     """
     form = EmployeeForm
+    inlines = [EmployeeMedicalExaminationInline]
 
     change_list_template = "admin/directory/employee/change_list_tree.html"
 
@@ -83,7 +169,70 @@ class EmployeeAdmin(TreeViewMixin, admin.ModelAdmin):
         'clothing_size',
         'shoe_size',
         'is_contractor',
+        'medical_status_link',
     ]
+
+    readonly_fields = ['medical_status_link']
+
+    def medical_status_link(self, obj):
+        """Отображает статус медосмотров со ссылкой на страницу"""
+        if not obj.id:
+            return "-"
+
+        medical_status = obj.get_medical_status()
+
+        if not medical_status:
+            return format_html(
+                '<span style="color: gray;">Медосмотры не требуются для данной должности</span>'
+            )
+
+        # Формируем отображение статуса
+        status = medical_status['status']
+        factors_count = len(medical_status['factors'])
+
+        if status == 'no_date':
+            status_html = format_html(
+                '<span style="color: orange; font-weight: bold;">📋 Требуется внести дату</span><br>'
+                '<small>Вредных факторов: {}</small>',
+                factors_count
+            )
+        elif status == 'expired':
+            days_overdue = abs(medical_status['days_until'])
+            status_html = format_html(
+                '<span style="color: red; font-weight: bold;">🚨 Просрочено {} дней</span><br>'
+                '<small>Следующий медосмотр: {}</small>',
+                days_overdue,
+                medical_status['next_date'].strftime('%d.%m.%Y')
+            )
+        elif status == 'upcoming':
+            status_html = format_html(
+                '<span style="color: orange; font-weight: bold;">⚠️ Скоро истекает ({} дней)</span><br>'
+                '<small>Следующий медосмотр: {}</small>',
+                medical_status['days_until'],
+                medical_status['next_date'].strftime('%d.%m.%Y')
+            )
+        else:
+            status_html = format_html(
+                '<span style="color: green;">✅ Действителен ({} дней)</span><br>'
+                '<small>Следующий медосмотр: {}</small>',
+                medical_status['days_until'],
+                medical_status['next_date'].strftime('%d.%m.%Y')
+            )
+
+        # Добавляем ссылку на страницу медосмотров
+        employee_medical_url = reverse('deadline_control:medical:employee_detail', args=[obj.id])
+        referral_url = reverse('deadline_control:medical:referral_existing_employee', args=[obj.id])
+
+        return format_html(
+            '{}<br><br>'
+            '<a href="{}" class="button" target="_blank">📋 Медосмотры сотрудника</a> '
+            '<a href="{}" class="button" target="_blank">🏥 Выдать направление</a>',
+            status_html,
+            employee_medical_url,
+            referral_url
+        )
+
+    medical_status_link.short_description = "🏥 Статус медосмотров"
 
     def get_queryset(self, request):
         qs = super().get_queryset(request)

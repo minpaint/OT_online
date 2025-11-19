@@ -21,7 +21,7 @@ from directory.models import (
     Position,
     GeneratedDocument
 )
-from directory.models.medical_norm import MedicalExaminationNorm
+from deadline_control.models.medical_norm import MedicalExaminationNorm
 from directory.forms.hiring import CombinedEmployeeHiringForm, DocumentAttachmentForm
 from directory.utils.hiring_utils import create_hiring_from_employee, attach_document_to_hiring
 from directory.utils.declension import decline_full_name
@@ -68,6 +68,15 @@ class SimpleHiringView(LoginRequiredMixin, FormView):
             # Получаем данные формы
             data = form.cleaned_data
 
+            # Определяем contract_type на основе hiring_type
+            hiring_type = data['hiring_type']
+            if hiring_type == 'new':
+                contract_type = 'standard'
+            elif hiring_type in ('contractor', 'part_time', 'transfer', 'return'):
+                contract_type = hiring_type
+            else:
+                contract_type = 'standard'
+
             # Создаем сотрудника
             employee = Employee(
                 full_name_nominative=data['full_name_nominative'],
@@ -82,10 +91,29 @@ class SimpleHiringView(LoginRequiredMixin, FormView):
                 shoe_size=data.get('shoe_size'),
                 hire_date=timezone.now().date(),
                 start_date=timezone.now().date(),
-                contract_type=data.get('contract_type', 'standard'),
+                contract_type=contract_type,
                 status='active'
             )
             employee.save()
+
+            # Если указана дата первичного медосмотра, применяем ее ко всем медосмотрам сотрудника
+            initial_medical_date = data.get('initial_medical_examination_date')
+            if initial_medical_date:
+                # Импортируем модель медосмотров
+                from deadline_control.models import EmployeeMedicalExamination
+
+                # Получаем все медосмотры сотрудника (созданные через Signal)
+                medical_examinations = EmployeeMedicalExamination.objects.filter(employee=employee)
+
+                # Применяем дату ко всем медосмотрам
+                for exam in medical_examinations:
+                    exam.perform_examination(initial_medical_date)
+
+                messages.info(
+                    self.request,
+                    f'Дата первичного медосмотра ({initial_medical_date.strftime("%d.%m.%Y")}) '
+                    f'применена к {medical_examinations.count()} медосмотрам сотрудника'
+                )
 
             # Создаем запись о приеме
             hiring = EmployeeHiring(

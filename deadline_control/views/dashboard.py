@@ -6,7 +6,7 @@ from django.utils import timezone
 from datetime import timedelta
 
 from deadline_control.models import Equipment, KeyDeadlineCategory, KeyDeadlineItem
-from directory.models import EmployeeMedicalExamination
+from deadline_control.models.medical_norm import EmployeeMedicalExamination
 
 
 class DashboardView(LoginRequiredMixin, TemplateView):
@@ -25,12 +25,28 @@ class DashboardView(LoginRequiredMixin, TemplateView):
         else:
             allowed_orgs = None
 
+        # Фильтр по конкретной организации из GET-параметра
+        org_id = self.request.GET.get('org')
+        selected_org = None
+        if org_id:
+            from directory.models import Organization
+            try:
+                selected_org = Organization.objects.get(pk=org_id)
+                # Проверяем права доступа
+                if allowed_orgs and selected_org not in allowed_orgs:
+                    selected_org = None
+                context['selected_org'] = selected_org
+            except Organization.DoesNotExist:
+                pass
+
         today = timezone.now().date()
         warning_date = today + timedelta(days=14)
 
         # ========== ОБОРУДОВАНИЕ ==========
         equipment_qs = Equipment.objects.select_related('organization', 'subdivision', 'department')
-        if allowed_orgs:
+        if selected_org:
+            equipment_qs = equipment_qs.filter(organization=selected_org)
+        elif allowed_orgs:
             equipment_qs = equipment_qs.filter(organization__in=allowed_orgs)
 
         # Просроченное ТО
@@ -47,7 +63,9 @@ class DashboardView(LoginRequiredMixin, TemplateView):
 
         # ========== КЛЮЧЕВЫЕ СРОКИ ==========
         categories_qs = KeyDeadlineCategory.objects.filter(is_active=True).prefetch_related('items')
-        if allowed_orgs:
+        if selected_org:
+            categories_qs = categories_qs.filter(organization=selected_org)
+        elif allowed_orgs:
             categories_qs = categories_qs.filter(organization__in=allowed_orgs)
 
         overdue_deadlines = []
@@ -63,7 +81,9 @@ class DashboardView(LoginRequiredMixin, TemplateView):
 
         # ========== МЕДИЦИНСКИЕ ОСМОТРЫ ==========
         medical_qs = EmployeeMedicalExamination.objects.select_related('employee', 'harmful_factor')
-        if allowed_orgs:
+        if selected_org:
+            medical_qs = medical_qs.filter(employee__organization=selected_org)
+        elif allowed_orgs:
             medical_qs = medical_qs.filter(employee__organization__in=allowed_orgs)
 
         overdue_medical = []

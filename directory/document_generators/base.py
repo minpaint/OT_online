@@ -224,9 +224,51 @@ def prepare_employee_context(employee) -> Dict[str, Any]:
         'employee_name_initials': get_initials_from_name(employee.full_name_nominative),
     })
 
+    # Добавляем дату трудоустройства
+    if employee.hire_date:
+        hire_date_str = employee.hire_date.strftime("%d.%m.%Y")
+        context['hire_date'] = hire_date_str
+    else:
+        context['hire_date'] = ""
+
+    # Добавляем год рождения
+    if employee.date_of_birth:
+        context['year_of_birth'] = employee.date_of_birth.strftime('%Y')
+    else:
+        context['year_of_birth'] = ""
+
+    # Добавляем вид работ по договору подряда (для личной карточки)
+    if contract_type == 'contractor' and employee.position:
+        context['GPD'] = getattr(employee.position, 'contract_work_name', '') or ""
+    else:
+        context['GPD'] = ""
+
     # Добавляем форматированную продолжительность стажировки
     internship_days = context.get('internship_duration', 2)
     context['internship_duration_formatted'] = format_days(internship_days)
+
+    # Добавляем период стажировки "с ДД.ММ.ГГГГ по ДД.ММ.ГГГГ"
+    # Отнимаем 1 день, т.к. стажировка включает первый день
+    # Для договора подряда стажировка не нужна
+    if employee.hire_date and internship_days > 0 and contract_type != 'contractor':
+        internship_start = employee.hire_date
+        internship_end = internship_start + datetime.timedelta(days=internship_days - 1)
+        context['internship_period'] = f"с {internship_start.strftime('%d.%m.%Y')} по {internship_end.strftime('%d.%m.%Y')}"
+        context['has_internship'] = True
+    else:
+        context['internship_period'] = ""
+        context['has_internship'] = False
+
+    # Добавляем номера инструкций по охране труда
+    # Для договора подряда - специальные инструкции для вида работ
+    # Для остальных договоров - стандартные инструкции для должности
+    if employee.position:
+        if contract_type == 'contractor':
+            context['instruction_numbers'] = getattr(employee.position, 'contract_safety_instructions', '') or ""
+        else:
+            context['instruction_numbers'] = getattr(employee.position, 'safety_instructions_numbers', '') or ""
+    else:
+        context['instruction_numbers'] = ""
 
     # Умные переменные - готовые строки без лишних пробелов
     # Полная строка "должность отдела подразделения" в нужном падеже

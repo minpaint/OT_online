@@ -1,0 +1,159 @@
+{% extends "base.html" %}
+{% load static %}
+
+{% block title %}Направление на медосмотр - Новый сотрудник{% endblock %}
+
+{% block extra_css %}
+<style>
+    .referral-form {
+        max-width: 700px;
+        margin: 0 auto;
+        background: #fff;
+        padding: 30px;
+        border-radius: 8px;
+        box-shadow: 0 2px 10px rgba(0,0,0,0.1);
+    }
+    .referral-form h2 {
+        margin-bottom: 25px;
+        color: #333;
+    }
+    .form-group {
+        margin-bottom: 20px;
+    }
+    .form-group label {
+        display: block;
+        font-weight: 600;
+        margin-bottom: 5px;
+        color: #555;
+    }
+    .form-group label.required::after {
+        content: " *";
+        color: #dc3545;
+    }
+    .form-control {
+        width: 100%;
+        padding: 10px;
+        border: 1px solid #ddd;
+        border-radius: 4px;
+        font-size: 14px;
+    }
+    .form-control:focus {
+        border-color: #417690;
+        outline: none;
+        box-shadow: 0 0 5px rgba(65, 118, 144, 0.3);
+    }
+    .btn-generate {
+        background-color: #417690;
+        color: white;
+        padding: 12px 30px;
+        border: none;
+        border-radius: 4px;
+        font-size: 16px;
+        cursor: pointer;
+        width: 100%;
+    }
+    .btn-generate:hover {
+        background-color: #2d5468;
+    }
+    .alert {
+        padding: 15px;
+        margin-bottom: 20px;
+        border-radius: 4px;
+    }
+    .alert-danger {
+        background-color: #f8d7da;
+        border: 1px solid #f5c6cb;
+        color: #721c24;
+    }
+    .alert-info {
+        background-color: #d1ecf1;
+        border: 1px solid #bee5eb;
+        color: #0c5460;
+    }
+    .help-text {
+        font-size: 12px;
+        color: #666;
+        margin-top: 5px;
+    }
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="container mt-4">
+    <div class="referral-form">
+        <h2>🏥 Направление на медосмотр</h2>
+        <p class="text-muted">Выдача направления новому сотруднику (до приёма на работу)</p>
+
+        {% if errors %}
+        <div class="alert alert-danger">
+            <strong>Ошибки:</strong>
+            <ul class="mb-0">
+                {% for error in errors %}
+                <li>{{ error }}</li>
+                {% endfor %}
+            </ul>
+        </div>
+        {% endif %}
+
+        <div class="alert alert-info">
+            <strong>Информация:</strong> После заполнения формы будет автоматически сгенерирован документ направления на медосмотр с вредными факторами, соответствующими выбранной профессии.
+        </div>
+
+        <form method="post">
+            {% csrf_token %}
+
+            <div class="form-group">
+                <label for="organization_id" class="required">Организация</label>
+                <select name="organization_id" id="organization_id" class="form-control" required>
+                    <option value="">-- Выберите организацию --</option>
+                    {% for org in organizations %}
+                    <option value="{{ org.id }}"
+                        {% if form_data.organization_id == org.id|stringformat:"s" %}selected
+                        {% elif not form_data.organization_id and selected_organization_id == org.id %}selected
+                        {% endif %}>
+                        {{ org.short_name_ru }}
+                    </option>
+                    {% endfor %}
+                </select>
+            </div>
+
+            <div class="form-group">
+                <label for="full_name" class="required">ФИО сотрудника</label>
+                <input type="text" name="full_name" id="full_name" class="form-control"
+                       value="{{ form_data.full_name|default:'' }}"
+                       placeholder="Иванов Иван Иванович" required>
+                <div class="help-text">Фамилия Имя Отчество полностью</div>
+            </div>
+
+            <div class="form-group">
+                <label for="birth_date" class="required">Дата рождения</label>
+                <input type="date" name="birth_date" id="birth_date" class="form-control"
+                       value="{{ form_data.birth_date|default:'' }}" required>
+            </div>
+
+            <div class="form-group">
+                <label for="address" class="required">Адрес проживания</label>
+                <textarea name="address" id="address" class="form-control" rows="3"
+                          placeholder="г. Минск, ул. Примерная, д. 1, кв. 1" required>{{ form_data.address|default:'' }}</textarea>
+            </div>
+
+            <div class="form-group">
+                <label for="position_name" class="required">Профессия (должность)</label>
+                <select name="position_name" id="position_name" class="form-control" required>
+                    <option value="">-- Выберите профессию --</option>
+                    {% for name in position_names %}
+                    <option value="{{ name }}" {% if form_data.position_name == name %}selected{% endif %}>
+                        {{ name }}
+                    </option>
+                    {% endfor %}
+                </select>
+                <div class="help-text">Вредные факторы будут определены автоматически по выбранной профессии</div>
+            </div>
+
+            <button type="submit" class="btn-generate">
+                Сгенерировать направление
+            </button>
+        </form>
+    </div>
+</div>
+{% endblock %}

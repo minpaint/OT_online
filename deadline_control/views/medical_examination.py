@@ -8,15 +8,15 @@ from django.db.models import Q
 from django.core.paginator import Paginator
 import datetime
 
-from directory.models.medical_examination import MedicalExaminationType, HarmfulFactor, MedicalSettings
-from directory.models.medical_norm import (
+from deadline_control.models.medical_examination import MedicalExaminationType, HarmfulFactor, MedicalSettings
+from deadline_control.models.medical_norm import (
     MedicalExaminationNorm,
     PositionMedicalFactor,
     EmployeeMedicalExamination
 )
 from directory.models.position import Position
 from directory.models.employee import Employee
-from directory.forms.medical_examination import (
+from deadline_control.forms.medical_examination import (
     MedicalExaminationTypeForm,
     HarmfulFactorForm,
     MedicalExaminationNormForm,

@@ -19,7 +19,7 @@ from directory.models import (
 )
 from directory.forms.hiring import CombinedEmployeeHiringForm
 from directory.utils.declension import decline_full_name
-from directory.models.medical_norm import MedicalExaminationNorm
+from deadline_control.models.medical_norm import MedicalExaminationNorm
 
 
 class SimpleHiringView(LoginRequiredMixin, FormView):

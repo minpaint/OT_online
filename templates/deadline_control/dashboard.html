@@ -5,7 +5,17 @@
 
 {% block content %}
 <div class="container-fluid mt-4">
-    <h2>⏰ Контроль сроков - Dashboard</h2>
+    <div class="d-flex justify-content-between align-items-center mb-3">
+        <h2 class="mb-0">⏰ Контроль сроков - Dashboard</h2>
+        {% if selected_org %}
+        <div>
+            <span class="badge bg-primary fs-6">🏢 {{ selected_org.short_name_ru }}</span>
+            <a href="{% url 'deadline_control:dashboard' %}" class="btn btn-sm btn-outline-secondary ms-2">
+                ✕ Показать все
+            </a>
+        </div>
+        {% endif %}
+    </div>
 
     <!-- Общая статистика -->
     <div class="row mt-4">
@@ -81,7 +91,7 @@
                                 <td><strong>{{ eq.equipment_name }}</strong></td>
                                 <td>{{ eq.organization.short_name_ru }}</td>
                                 <td>{{ eq.next_maintenance_date|date:"d.m.Y" }}</td>
-                                <td><span class="badge badge-danger">{{ eq.days_until_maintenance|add:"-1"|stringformat:"d"|slice:"1:" }}</span></td>
+                                <td><span class="badge bg-danger text-white">{{ eq.days_overdue }}</span></td>
                                 <td>
                                     <a href="{% url 'deadline_control:equipment:detail' eq.pk %}" class="btn btn-sm btn-primary">Подробнее</a>
                                 </td>
@@ -120,7 +130,7 @@
                                 <td><strong>{{ eq.equipment_name }}</strong></td>
                                 <td>{{ eq.organization.short_name_ru }}</td>
                                 <td>{{ eq.next_maintenance_date|date:"d.m.Y" }}</td>
-                                <td><span class="badge badge-warning">{{ eq.days_until_maintenance }}</span></td>
+                                <td><span class="badge bg-warning text-dark">{{ eq.days_until_maintenance }}</span></td>
                                 <td>
                                     <a href="{% url 'deadline_control:equipment:detail' eq.pk %}" class="btn btn-sm btn-primary">Подробнее</a>
                                 </td>
@@ -159,7 +169,7 @@
                                 <td><strong>{{ item.name }}</strong></td>
                                 <td>{{ item.category.name }}</td>
                                 <td>{{ item.next_date|date:"d.m.Y" }}</td>
-                                <td><span class="badge badge-danger">{{ item.days_until_next|add:"-1"|stringformat:"d"|slice:"1:" }}</span></td>
+                                <td><span class="badge bg-danger text-white">{{ item.days_overdue }}</span></td>
                                 <td>{{ item.responsible_person|default:"-" }}</td>
                             </tr>
                             {% endfor %}
@@ -196,7 +206,7 @@
                                 <td><strong>{{ item.name }}</strong></td>
                                 <td>{{ item.category.name }}</td>
                                 <td>{{ item.next_date|date:"d.m.Y" }}</td>
-                                <td><span class="badge badge-warning">{{ item.days_until_next }}</span></td>
+                                <td><span class="badge bg-warning text-dark">{{ item.days_until_next }}</span></td>
                                 <td>{{ item.responsible_person|default:"-" }}</td>
                             </tr>
                             {% endfor %}
@@ -232,9 +242,9 @@
                             <tr>
                                 <td><strong>{{ exam.employee.full_name_nominative }}</strong></td>
                                 <td>{{ exam.employee.organization.short_name_ru }}</td>
-                                <td>{{ exam.harmful_factor.name }}</td>
+                                <td>{{ exam.harmful_factor.short_name }}</td>
                                 <td>{{ exam.next_date|date:"d.m.Y" }}</td>
-                                <td><span class="badge badge-danger">{{ exam.days_until_next|add:"-1"|stringformat:"d"|slice:"1:" }}</span></td>
+                                <td><span class="badge bg-danger text-white">{{ exam.days_overdue }}</span></td>
                             </tr>
                             {% endfor %}
                         </tbody>
@@ -269,9 +279,9 @@
                             <tr>
                                 <td><strong>{{ exam.employee.full_name_nominative }}</strong></td>
                                 <td>{{ exam.employee.organization.short_name_ru }}</td>
-                                <td>{{ exam.harmful_factor.name }}</td>
+                                <td>{{ exam.harmful_factor.short_name }}</td>
                                 <td>{{ exam.next_date|date:"d.m.Y" }}</td>
-                                <td><span class="badge badge-warning">{{ exam.days_until_next }}</span></td>
+                                <td><span class="badge bg-warning text-dark">{{ exam.days_until_next }}</span></td>
                             </tr>
                             {% endfor %}
                         </tbody>

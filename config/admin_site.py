@@ -11,7 +11,7 @@ class OTAdminSite(AdminSite):
 
     MENU_ORDER = OrderedDict([
         (_("🔑 Администрирование доступа"), [
-            "User", "Group",
+            "User", "Group", "MedicalSettings", "EmailSettings",
         ]),
         (_("🏢 Организация"), [
             "Organization", "Subdivision", "Department", "StructuralSubdivision",
@@ -26,7 +26,6 @@ class OTAdminSite(AdminSite):
             "EmployeeMedicalExamination",
             "MedicalExaminationNorm",
             "MedicalReferral",
-            "MedicalSettings",
         ]),
         (_("\u23f1️ Контроль сроков"), [
             "Equipment",

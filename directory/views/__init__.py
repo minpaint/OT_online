@@ -51,8 +51,7 @@ from .siz_issued import (
     employee_siz_issued_list,
 )
 
-# Импорт представлений для медосмотров
-from directory.views import medical_examination
+# Представления для медосмотров перемещены в deadline_control
 
 
 class HomePageView(LoginRequiredMixin, TemplateView):
@@ -66,18 +65,97 @@ class HomePageView(LoginRequiredMixin, TemplateView):
 
     def get_context_data(self, **kwargs):
         """📊 Получение данных для шаблона"""
+        from django.utils import timezone
+        from datetime import timedelta
+        from deadline_control.models import Equipment, KeyDeadlineCategory
+        from deadline_control.models.medical_norm import EmployeeMedicalExamination
+
         context = super().get_context_data(**kwargs)
         context['title'] = '🏠 Главная'
 
         # 🔍 Получаем организации из профиля пользователя
         user = self.request.user
-        if hasattr(user, 'profile'):
+        if user.is_superuser:
+            # Суперпользователь видит все организации
+            allowed_orgs = Organization.objects.all()
+        elif hasattr(user, 'profile'):
             allowed_orgs = user.profile.organizations.all()
         else:
             allowed_orgs = Organization.objects.none()
 
         # 📝 Подготавливаем данные для древовидной структуры
         organizations = []
+
+        # ⏰ Данные для дашборда контроля сроков (как в DashboardView)
+        today = timezone.now().date()
+        warning_date = today + timedelta(days=14)
+
+        # Оборудование
+        equipment_qs = Equipment.objects.select_related('organization', 'subdivision', 'department')
+        if not user.is_superuser and allowed_orgs.exists():
+            equipment_qs = equipment_qs.filter(organization__in=allowed_orgs)
+
+        overdue_equipment = []
+        upcoming_equipment = []
+        for eq in equipment_qs:
+            if eq.next_maintenance_date:
+                if eq.next_maintenance_date < today:
+                    overdue_equipment.append(eq)
+                elif eq.next_maintenance_date <= warning_date:
+                    upcoming_equipment.append(eq)
+
+        # Ключевые сроки
+        categories_qs = KeyDeadlineCategory.objects.filter(is_active=True).prefetch_related('items')
+        if not user.is_superuser and allowed_orgs.exists():
+            categories_qs = categories_qs.filter(organization__in=allowed_orgs)
+
+        overdue_deadlines = []
+        upcoming_deadlines = []
+        for category in categories_qs:
+            for item in category.items.all():
+                if item.next_date:
+                    if item.next_date < today:
+                        overdue_deadlines.append(item)
+                    elif item.next_date <= warning_date:
+                        upcoming_deadlines.append(item)
+
+        # Медосмотры
+        medical_qs = EmployeeMedicalExamination.objects.select_related('employee', 'harmful_factor')
+        if not user.is_superuser and allowed_orgs.exists():
+            medical_qs = medical_qs.filter(employee__organization__in=allowed_orgs)
+
+        overdue_medical = []
+        upcoming_medical = []
+        for exam in medical_qs:
+            if exam.next_date:
+                if exam.next_date < today:
+                    overdue_medical.append(exam)
+                elif exam.next_date <= warning_date:
+                    upcoming_medical.append(exam)
+
+        # Передаём в контекст
+        context.update({
+            'total_equipment': equipment_qs.count(),
+            'overdue_equipment': overdue_equipment,
+            'overdue_equipment_count': len(overdue_equipment),
+            'upcoming_equipment': upcoming_equipment,
+            'upcoming_equipment_count': len(upcoming_equipment),
+
+            'total_deadlines': sum(c.items.count() for c in categories_qs),
+            'overdue_deadlines': overdue_deadlines,
+            'overdue_deadlines_count': len(overdue_deadlines),
+            'upcoming_deadlines': upcoming_deadlines,
+            'upcoming_deadlines_count': len(upcoming_deadlines),
+
+            'total_medical': medical_qs.count(),
+            'overdue_medical': overdue_medical,
+            'overdue_medical_count': len(overdue_medical),
+            'upcoming_medical': upcoming_medical,
+            'upcoming_medical_count': len(upcoming_medical),
+
+            'total_overdue': len(overdue_equipment) + len(overdue_deadlines) + len(overdue_medical),
+            'total_upcoming': len(upcoming_equipment) + len(upcoming_deadlines) + len(upcoming_medical),
+        })
 
         # 📊 Для каждой организации получаем древовидную структуру
         for org in allowed_orgs:
@@ -170,5 +248,4 @@ __all__ = [
     'SIZPersonalCardView',
     'SIZIssueReturnView',
     'employee_siz_issued_list',
-    'medical_examination',  # Добавляем medical_examination в экспорт
 ]

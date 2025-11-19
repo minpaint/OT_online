@@ -2,7 +2,7 @@
 ☢️ Resource для импорта/экспорта вредных факторов
 """
 from import_export import resources
-from directory.models.medical_examination import HarmfulFactor
+from deadline_control.models.medical_examination import HarmfulFactor
 from django.core.exceptions import ValidationError
 
 
