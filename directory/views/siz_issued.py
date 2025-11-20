@@ -18,6 +18,8 @@ from django.contrib.auth.decorators import login_required
 
 from directory.models import Employee, SIZIssued
 from directory.forms.siz_issued import SIZIssueForm, SIZIssueMassForm, SIZIssueReturnForm
+from directory.mixins import AccessControlMixin, AccessControlObjectMixin
+from directory.utils.permissions import AccessControlHelper
 
 
 def determine_gender_from_patronymic(full_name):
@@ -228,7 +230,7 @@ def issue_selected_siz(request, employee_id):
     return redirect('directory:siz:siz_personal_card', employee_id=employee_id)
 
 
-class SIZPersonalCardView(LoginRequiredMixin, DetailView):
+class SIZPersonalCardView(LoginRequiredMixin, AccessControlObjectMixin, DetailView):
     """
     👤 Представление для отображения личной карточки учета СИЗ сотрудника
     """
@@ -236,11 +238,20 @@ class SIZPersonalCardView(LoginRequiredMixin, DetailView):
     template_name = 'directory/siz_issued/personal_card.html'
     context_object_name = 'employee'
 
-    def get_object(self):
+    def get_object(self, queryset=None):
         """
-        🔍 Получаем объект сотрудника по его ID
+        🔍 Получаем объект сотрудника по его ID с проверкой прав доступа
         """
-        return get_object_or_404(Employee, id=self.kwargs.get('employee_id'))
+        # Получаем объект через стандартный метод
+        obj = Employee.objects.get(id=self.kwargs.get('employee_id'))
+
+        # AccessControlObjectMixin автоматически проверит права доступа
+        # через переопределенный метод get_object в родительском классе
+        if not AccessControlHelper.can_access_object(self.request.user, obj):
+            from django.core.exceptions import PermissionDenied
+            raise PermissionDenied("У вас нет доступа к этому сотруднику")
+
+        return obj
 
     def get_context_data(self, **kwargs):
         """
@@ -290,7 +301,7 @@ class SIZPersonalCardView(LoginRequiredMixin, DetailView):
         return context
 
 
-class SIZIssueReturnView(LoginRequiredMixin, UpdateView):
+class SIZIssueReturnView(LoginRequiredMixin, AccessControlObjectMixin, UpdateView):
     """
     🔄 Представление для возврата выданного СИЗ
     """

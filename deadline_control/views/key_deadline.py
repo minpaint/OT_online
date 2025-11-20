@@ -6,19 +6,18 @@ from django.contrib import messages
 from collections import defaultdict
 
 from deadline_control.models import KeyDeadlineCategory, KeyDeadlineItem
+from directory.mixins import AccessControlMixin, AccessControlObjectMixin
 
 
-class KeyDeadlineListView(LoginRequiredMixin, ListView):
+class KeyDeadlineListView(LoginRequiredMixin, AccessControlMixin, ListView):
     """Список категорий ключевых сроков, сгруппированных по организациям"""
     model = KeyDeadlineCategory
     template_name = 'deadline_control/key_deadline/list.html'
     context_object_name = 'categories'
 
     def get_queryset(self):
+        # AccessControlMixin автоматически фильтрует по правам доступа
         qs = super().get_queryset()
-        if not self.request.user.is_superuser and hasattr(self.request.user, 'profile'):
-            allowed_orgs = self.request.user.profile.organizations.all()
-            qs = qs.filter(organization__in=allowed_orgs)
         return qs.select_related('organization').prefetch_related('items').order_by('organization__short_name_ru', 'name')
 
     def get_context_data(self, **kwargs):
@@ -50,7 +49,7 @@ class KeyDeadlineCategoryCreateView(LoginRequiredMixin, CreateView):
         return super().form_valid(form)
 
 
-class KeyDeadlineCategoryUpdateView(LoginRequiredMixin, UpdateView):
+class KeyDeadlineCategoryUpdateView(LoginRequiredMixin, AccessControlObjectMixin, UpdateView):
     """Редактирование категории"""
     model = KeyDeadlineCategory
     template_name = 'deadline_control/key_deadline/category_form.html'
@@ -62,7 +61,7 @@ class KeyDeadlineCategoryUpdateView(LoginRequiredMixin, UpdateView):
         return super().form_valid(form)
 
 
-class KeyDeadlineCategoryDeleteView(LoginRequiredMixin, DeleteView):
+class KeyDeadlineCategoryDeleteView(LoginRequiredMixin, AccessControlObjectMixin, DeleteView):
     """Удаление категории"""
     model = KeyDeadlineCategory
     template_name = 'deadline_control/key_deadline/category_confirm_delete.html'
@@ -86,7 +85,7 @@ class KeyDeadlineItemCreateView(LoginRequiredMixin, CreateView):
         return super().form_valid(form)
 
 
-class KeyDeadlineItemUpdateView(LoginRequiredMixin, UpdateView):
+class KeyDeadlineItemUpdateView(LoginRequiredMixin, AccessControlObjectMixin, UpdateView):
     """Редактирование мероприятия"""
     model = KeyDeadlineItem
     template_name = 'deadline_control/key_deadline/item_form.html'
@@ -98,7 +97,7 @@ class KeyDeadlineItemUpdateView(LoginRequiredMixin, UpdateView):
         return super().form_valid(form)
 
 
-class KeyDeadlineItemDeleteView(LoginRequiredMixin, DeleteView):
+class KeyDeadlineItemDeleteView(LoginRequiredMixin, AccessControlObjectMixin, DeleteView):
     """Удаление мероприятия"""
     model = KeyDeadlineItem
     template_name = 'deadline_control/key_deadline/item_confirm_delete.html'

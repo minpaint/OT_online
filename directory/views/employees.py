@@ -12,70 +12,24 @@ from directory.models import Employee, StructuralSubdivision, Position, Organiza
 from directory.forms import EmployeeForm
 from directory.forms.employee_hiring import EmployeeHiringForm
 from directory.utils.declension import decline_full_name
+from directory.mixins import AccessControlMixin, AccessControlObjectMixin
+from directory.utils.permissions import AccessControlHelper
 
 
-class EmployeeListView(LoginRequiredMixin, ListView):
+class EmployeeListView(LoginRequiredMixin, AccessControlMixin, ListView):
     model = Employee
     template_name = 'directory/employees/list.html'
     context_object_name = 'employees'
     paginate_by = 20
 
     def get_queryset(self):
+        # AccessControlMixin автоматически фильтрует по правам доступа
         queryset = super().get_queryset()
-
-        # Фильтрация по организациям профиля пользователя
-        if not self.request.user.is_superuser and hasattr(self.request.user, 'profile'):
-            allowed_orgs = self.request.user.profile.organizations.all()
-            queryset = queryset.filter(organization__in=allowed_orgs)
 
         # Фильтрация по подразделению
         subdivision = self.request.GET.get('subdivision')
         if subdivision:
             queryset = queryset.filter(subdivision_id=subdivision)
-
-        # Фильтрация по должности
-        position = self.request.GET.get('position')
-        if position:
-            queryset = queryset.filter(position_id=position)
-
-        # Поиск по имени
-        search = self.request.GET.get('search')
-        if search:
-            queryset = queryset.filter(full_name_nominative__icontains=search)
-
-        return queryset.select_related('position', 'subdivision', 'organization')
-
-    def get_context_data(self, **kwargs):
-        context = super().get_context_data(**kwargs)
-        context['title'] = 'Сотрудники'
-
-        # Фильтрация списков подразделений и должностей по организациям профиля
-        if not self.request.user.is_superuser and hasattr(self.request.user, 'profile'):
-            allowed_orgs = self.request.user.profile.organizations.all()
-            context['subdivisions'] = StructuralSubdivision.objects.filter(organization__in=allowed_orgs)
-            context['positions'] = Position.objects.filter(organization__in=allowed_orgs)
-        else:
-            context['subdivisions'] = StructuralSubdivision.objects.all()
-            context['positions'] = Position.objects.all()
-
-        return context
-
-
-class EmployeeTreeView(LoginRequiredMixin, ListView):
-    """
-    🌳 Древовидное представление сотрудников по организационной структуре
-    """
-    model = Employee
-    template_name = 'directory/employees/tree_view.html'
-    context_object_name = 'employees'
-
-    def get_queryset(self):
-        queryset = super().get_queryset()
-
-        # Фильтрация по организациям профиля пользователя
-        if not self.request.user.is_superuser and hasattr(self.request.user, 'profile'):
-            allowed_orgs = self.request.user.profile.organizations.all()
-            queryset = queryset.filter(organization__in=allowed_orgs)
 
         # Фильтрация по должности
         position = self.request.GET.get('position')
@@ -93,11 +47,51 @@ class EmployeeTreeView(LoginRequiredMixin, ListView):
         context = super().get_context_data(**kwargs)
         context['title'] = 'Сотрудники'
 
-        # Получаем доступные организации
-        if not self.request.user.is_superuser and hasattr(self.request.user, 'profile'):
-            allowed_orgs = self.request.user.profile.organizations.all()
-        else:
-            allowed_orgs = Organization.objects.all()
+        # Используем AccessControlHelper для получения доступных подразделений и должностей
+        context['subdivisions'] = AccessControlHelper.get_accessible_subdivisions(
+            self.request.user, self.request
+        )
+        # Для должностей используем фильтр по доступным организациям
+        accessible_orgs = AccessControlHelper.get_accessible_organizations(
+            self.request.user, self.request
+        )
+        context['positions'] = Position.objects.filter(organization__in=accessible_orgs)
+
+        return context
+
+
+class EmployeeTreeView(LoginRequiredMixin, AccessControlMixin, ListView):
+    """
+    🌳 Древовидное представление сотрудников по организационной структуре
+    """
+    model = Employee
+    template_name = 'directory/employees/tree_view.html'
+    context_object_name = 'employees'
+
+    def get_queryset(self):
+        # AccessControlMixin автоматически фильтрует по правам доступа
+        queryset = super().get_queryset()
+
+        # Фильтрация по должности
+        position = self.request.GET.get('position')
+        if position:
+            queryset = queryset.filter(position_id=position)
+
+        # Поиск по имени
+        search = self.request.GET.get('search')
+        if search:
+            queryset = queryset.filter(full_name_nominative__icontains=search)
+
+        return queryset.select_related('position', 'subdivision', 'organization', 'department')
+
+    def get_context_data(self, **kwargs):
+        context = super().get_context_data(**kwargs)
+        context['title'] = 'Сотрудники'
+
+        # Получаем доступные организации через AccessControlHelper
+        allowed_orgs = AccessControlHelper.get_accessible_organizations(
+            self.request.user, self.request
+        )
 
         # Создаем древовидную структуру данных
         tree_data = []
@@ -158,12 +152,8 @@ class EmployeeTreeView(LoginRequiredMixin, ListView):
 
         context['tree_data'] = tree_data
 
-        # Фильтры
-        if not self.request.user.is_superuser and hasattr(self.request.user, 'profile'):
-            allowed_orgs = self.request.user.profile.organizations.all()
-            context['positions'] = Position.objects.filter(organization__in=allowed_orgs)
-        else:
-            context['positions'] = Position.objects.all()
+        # Фильтры - используем доступные организации
+        context['positions'] = Position.objects.filter(organization__in=allowed_orgs)
 
         # Параметры фильтрации
         context['current_position'] = self.request.GET.get('position', '')
@@ -184,7 +174,7 @@ class EmployeeCreateView(LoginRequiredMixin, CreateView):
         return context
 
 
-class EmployeeUpdateView(LoginRequiredMixin, UpdateView):
+class EmployeeUpdateView(LoginRequiredMixin, AccessControlObjectMixin, UpdateView):
     model = Employee
     form_class = EmployeeForm
     template_name = 'directory/employees/form.html'
@@ -199,7 +189,7 @@ class EmployeeUpdateView(LoginRequiredMixin, UpdateView):
         return context
 
 
-class EmployeeDeleteView(LoginRequiredMixin, DeleteView):
+class EmployeeDeleteView(LoginRequiredMixin, AccessControlObjectMixin, DeleteView):
     model = Employee
     template_name = 'directory/employees/confirm_delete.html'
     success_url = reverse_lazy('directory:employees:employee_list')
@@ -210,7 +200,7 @@ class EmployeeDeleteView(LoginRequiredMixin, DeleteView):
         return context
 
 
-class EmployeeProfileView(LoginRequiredMixin, DetailView):
+class EmployeeProfileView(LoginRequiredMixin, AccessControlObjectMixin, DetailView):
     """
     👤 Представление для просмотра профиля сотрудника с возможностью
     выполнения дополнительных действий
@@ -266,19 +256,15 @@ class EmployeeHiringView(LoginRequiredMixin, FormView):
         context['title'] = '📝 Прием на работу'
         context['current_date'] = timezone.now().date()
 
-        # Получаем недавно принятых сотрудников, с учетом доступных организаций
-        user = self.request.user
+        # Получаем недавно принятых сотрудников через AccessControlHelper
+        accessible_orgs = AccessControlHelper.get_accessible_organizations(
+            self.request.user, self.request
+        )
 
-        # 🔄 Создаем базовый запрос без среза
-        recent_employees_query = Employee.objects.all()
-
-        # Ограничиваем по организациям из профиля пользователя
-        if not user.is_superuser and hasattr(user, 'profile'):
-            allowed_orgs = user.profile.organizations.all()
-            recent_employees_query = recent_employees_query.filter(organization__in=allowed_orgs)
-
-        # Затем сортируем и применяем срез
-        recent_employees_query = recent_employees_query.order_by('-id')[:5]
+        # Фильтруем сотрудников по доступным организациям
+        recent_employees_query = Employee.objects.filter(
+            organization__in=accessible_orgs
+        ).order_by('-id')[:5]
 
         context['recent_employees'] = recent_employees_query
         # Добавляем типы договоров для отображения в шаблоне

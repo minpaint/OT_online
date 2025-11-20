@@ -68,6 +68,7 @@ MIDDLEWARE = [
     'django.middleware.common.CommonMiddleware',         # Общие настройки 🔧
     'django.middleware.csrf.CsrfViewMiddleware',        # CSRF защита 🚫
     'django.contrib.auth.middleware.AuthenticationMiddleware', # Аутентификация 🔑
+    'directory.middleware.AccessCacheMiddleware',        # Request-level кеш прав доступа 🔐
     'django.contrib.messages.middleware.MessageMiddleware', # Сообщения 📨
     'django.middleware.clickjacking.XFrameOptionsMiddleware', # Защита от clickjacking 🖱️
     'directory.middleware.ExamSubdomainMiddleware',      # Изоляция exam.* поддомена 🔐

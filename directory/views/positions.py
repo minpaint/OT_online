@@ -4,20 +4,18 @@ from django.urls import reverse_lazy
 from django.http import JsonResponse
 from directory.models import Position, Organization, StructuralSubdivision, Department  # добавляем Department
 from directory.forms import PositionForm
+from directory.mixins import AccessControlMixin, AccessControlObjectMixin
+from directory.utils.permissions import AccessControlHelper
 
-class PositionListView(LoginRequiredMixin, ListView):
+class PositionListView(LoginRequiredMixin, AccessControlMixin, ListView):
     model = Position
     template_name = 'directory/positions/list.html'
     context_object_name = 'positions'
     paginate_by = 20
 
     def get_queryset(self):
+        # AccessControlMixin автоматически фильтрует по правам доступа
         queryset = super().get_queryset()
-
-        # Фильтрация по организациям профиля пользователя
-        if not self.request.user.is_superuser and hasattr(self.request.user, 'profile'):
-            allowed_orgs = self.request.user.profile.organizations.all()
-            queryset = queryset.filter(organization__in=allowed_orgs)
 
         # Фильтрация по организации (из GET-параметров)
         organization = self.request.GET.get('organization')
@@ -40,14 +38,13 @@ class PositionListView(LoginRequiredMixin, ListView):
         context = super().get_context_data(**kwargs)
         context['title'] = 'Должности'
 
-        # Фильтрация списков организаций и подразделений по профилю пользователя
-        if not self.request.user.is_superuser and hasattr(self.request.user, 'profile'):
-            allowed_orgs = self.request.user.profile.organizations.all()
-            context['organizations'] = allowed_orgs
-            context['subdivisions'] = StructuralSubdivision.objects.filter(organization__in=allowed_orgs)
-        else:
-            context['organizations'] = Organization.objects.all()
-            context['subdivisions'] = StructuralSubdivision.objects.all()
+        # Используем AccessControlHelper для получения доступных организаций и подразделений
+        context['organizations'] = AccessControlHelper.get_accessible_organizations(
+            self.request.user, self.request
+        )
+        context['subdivisions'] = AccessControlHelper.get_accessible_subdivisions(
+            self.request.user, self.request
+        )
 
         return context
 
@@ -62,7 +59,7 @@ class PositionCreateView(LoginRequiredMixin, CreateView):
         context['title'] = 'Добавление должности'
         return context
 
-class PositionUpdateView(LoginRequiredMixin, UpdateView):
+class PositionUpdateView(LoginRequiredMixin, AccessControlObjectMixin, UpdateView):
     model = Position
     form_class = PositionForm
     template_name = 'directory/positions/form.html'
@@ -73,7 +70,7 @@ class PositionUpdateView(LoginRequiredMixin, UpdateView):
         context['title'] = 'Редактирование должности'
         return context
 
-class PositionDeleteView(LoginRequiredMixin, DeleteView):
+class PositionDeleteView(LoginRequiredMixin, AccessControlObjectMixin, DeleteView):
     model = Position
     template_name = 'directory/positions/confirm_delete.html'
     success_url = reverse_lazy('directory:positions:position_list')

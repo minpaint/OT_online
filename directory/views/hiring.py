@@ -26,6 +26,8 @@ from directory.forms.hiring import CombinedEmployeeHiringForm, DocumentAttachmen
 from directory.utils.hiring_utils import create_hiring_from_employee, attach_document_to_hiring
 from directory.utils.declension import decline_full_name
 from directory.forms.mixins import OrganizationRestrictionFormMixin
+from directory.mixins import AccessControlMixin, AccessControlObjectMixin
+from directory.utils.permissions import AccessControlHelper
 
 import logging
 
@@ -51,11 +53,10 @@ class SimpleHiringView(LoginRequiredMixin, FormView):
         context = super().get_context_data(**kwargs)
         context['title'] = _('Прием на работу: Новый сотрудник')
 
-        # Добавляем список доступных организаций
-        if self.request.user and hasattr(self.request.user, 'profile'):
-            context['organizations'] = self.request.user.profile.organizations.all()
-        else:
-            context['organizations'] = Organization.objects.all()
+        # Используем AccessControlHelper для получения доступных организаций
+        context['organizations'] = AccessControlHelper.get_accessible_organizations(
+            self.request.user, self.request
+        )
 
         return context
 
@@ -211,7 +212,7 @@ def position_requirements_api(request, position_id):
 
 
 # Оставляем существующие классы представлений
-class HiringTreeView(LoginRequiredMixin, ListView):
+class HiringTreeView(LoginRequiredMixin, AccessControlMixin, ListView):
     """
     Древовидное представление записей о приеме на работу
     по организационной структуре
@@ -221,10 +222,11 @@ class HiringTreeView(LoginRequiredMixin, ListView):
     context_object_name = 'hiring_records'
 
     def get_queryset(self):
+        # AccessControlMixin автоматически фильтрует по правам доступа
+        queryset = super().get_queryset()
+
         # Фильтрация по активности
         is_active = self.request.GET.get('is_active')
-        queryset = EmployeeHiring.objects.all()
-
         if is_active == 'true':
             queryset = queryset.filter(is_active=True)
         elif is_active == 'false':
@@ -243,11 +245,6 @@ class HiringTreeView(LoginRequiredMixin, ListView):
                 Q(position__position_name__icontains=search)
             )
 
-        # Ограничение по организациям пользователя
-        if not self.request.user.is_superuser and hasattr(self.request.user, 'profile'):
-            allowed_orgs = self.request.user.profile.organizations.all()
-            queryset = queryset.filter(organization__in=allowed_orgs)
-
         return queryset.select_related(
             'employee', 'organization', 'subdivision', 'department', 'position'
         ).prefetch_related('documents')
@@ -256,11 +253,10 @@ class HiringTreeView(LoginRequiredMixin, ListView):
         context = super().get_context_data(**kwargs)
         context['title'] = _('Приемы на работу')
 
-        # Получаем доступные организации
-        if not self.request.user.is_superuser and hasattr(self.request.user, 'profile'):
-            allowed_orgs = self.request.user.profile.organizations.all()
-        else:
-            allowed_orgs = Organization.objects.all()
+        # Получаем доступные организации через AccessControlHelper
+        allowed_orgs = AccessControlHelper.get_accessible_organizations(
+            self.request.user, self.request
+        )
 
         # Создаем древовидную структуру данных
         tree_data = []
@@ -334,7 +330,7 @@ class HiringTreeView(LoginRequiredMixin, ListView):
         return context
 
 
-class HiringListView(LoginRequiredMixin, ListView):
+class HiringListView(LoginRequiredMixin, AccessControlMixin, ListView):
     """
     Представление для отображения списка записей о приеме на работу
     """
@@ -344,6 +340,7 @@ class HiringListView(LoginRequiredMixin, ListView):
     paginate_by = 20
 
     def get_queryset(self):
+        # AccessControlMixin автоматически фильтрует по правам доступа
         queryset = super().get_queryset()
 
         # Применяем те же фильтры, что и в TreeView
@@ -364,10 +361,6 @@ class HiringListView(LoginRequiredMixin, ListView):
                 Q(position__position_name__icontains=search)
             )
 
-        if not self.request.user.is_superuser and hasattr(self.request.user, 'profile'):
-            allowed_orgs = self.request.user.profile.organizations.all()
-            queryset = queryset.filter(organization__in=allowed_orgs)
-
         return queryset.select_related(
             'employee', 'organization', 'subdivision', 'department', 'position'
         ).prefetch_related('documents')
@@ -385,7 +378,7 @@ class HiringListView(LoginRequiredMixin, ListView):
         return context
 
 
-class HiringDetailView(LoginRequiredMixin, DetailView):
+class HiringDetailView(LoginRequiredMixin, AccessControlObjectMixin, DetailView):
     """
     Представление для просмотра детальной информации о приеме на работу
     """
@@ -449,9 +442,10 @@ class HiringCreateView(LoginRequiredMixin, CreateView):
         form.fields['hiring_date'].widget = forms.DateInput(attrs={'type': 'date', 'class': 'form-control'})
         form.fields['start_date'].widget = forms.DateInput(attrs={'type': 'date', 'class': 'form-control'})
 
-        # Ограничиваем организации по профилю пользователя
-        if not self.request.user.is_superuser and hasattr(self.request.user, 'profile'):
-            form.fields['organization'].queryset = self.request.user.profile.organizations.all()
+        # Ограничиваем организации через AccessControlHelper
+        form.fields['organization'].queryset = AccessControlHelper.get_accessible_organizations(
+            self.request.user, self.request
+        )
 
         return form
 
@@ -469,7 +463,7 @@ class HiringCreateView(LoginRequiredMixin, CreateView):
         return reverse_lazy('directory:hiring:hiring_detail', kwargs={'pk': self.object.pk})
 
 
-class HiringUpdateView(LoginRequiredMixin, UpdateView):
+class HiringUpdateView(LoginRequiredMixin, AccessControlObjectMixin, UpdateView):
     """
     Представление для редактирования записи о приеме на работу
     """
@@ -492,9 +486,10 @@ class HiringUpdateView(LoginRequiredMixin, UpdateView):
         form.fields['hiring_date'].widget = forms.DateInput(attrs={'type': 'date', 'class': 'form-control'})
         form.fields['start_date'].widget = forms.DateInput(attrs={'type': 'date', 'class': 'form-control'})
 
-        # Ограничиваем организации по профилю пользователя
-        if not self.request.user.is_superuser and hasattr(self.request.user, 'profile'):
-            form.fields['organization'].queryset = self.request.user.profile.organizations.all()
+        # Ограничиваем организации через AccessControlHelper
+        form.fields['organization'].queryset = AccessControlHelper.get_accessible_organizations(
+            self.request.user, self.request
+        )
 
         return form
 
@@ -511,7 +506,7 @@ class HiringUpdateView(LoginRequiredMixin, UpdateView):
         return reverse_lazy('directory:hiring:hiring_detail', kwargs={'pk': self.object.pk})
 
 
-class HiringDeleteView(LoginRequiredMixin, DeleteView):
+class HiringDeleteView(LoginRequiredMixin, AccessControlObjectMixin, DeleteView):
     """
     Представление для удаления записи о приеме на работу
     """

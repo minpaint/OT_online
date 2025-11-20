@@ -69,6 +69,11 @@ class KeyDeadlineItem(models.Model):
     def __str__(self):
         return f"{self.name} ({self.category.name})"
 
+    @property
+    def organization(self):
+        """Возвращает организацию через категорию для проверки прав доступа"""
+        return self.category.organization if self.category else None
+
     @staticmethod
     def _add_months(source_date, months):
         """

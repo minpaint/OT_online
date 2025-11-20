@@ -12,19 +12,18 @@ from collections import defaultdict
 
 from deadline_control.models import Equipment
 from deadline_control.forms import EquipmentForm
+from directory.mixins import AccessControlMixin, AccessControlObjectMixin
 
 
-class EquipmentListView(LoginRequiredMixin, ListView):
+class EquipmentListView(LoginRequiredMixin, AccessControlMixin, ListView):
     """Список оборудования, сгруппированного по организациям"""
     model = Equipment
     template_name = 'deadline_control/equipment/list.html'
     context_object_name = 'equipment_list'
 
     def get_queryset(self):
+        # AccessControlMixin автоматически фильтрует по правам доступа
         qs = super().get_queryset()
-        if not self.request.user.is_superuser and hasattr(self.request.user, 'profile'):
-            allowed_orgs = self.request.user.profile.organizations.all()
-            qs = qs.filter(organization__in=allowed_orgs)
         return qs.select_related('organization', 'subdivision', 'department').order_by('organization__short_name_ru', 'equipment_name')
 
     def get_context_data(self, **kwargs):
@@ -61,19 +60,12 @@ class EquipmentCreateView(LoginRequiredMixin, CreateView):
         return super().form_valid(form)
 
 
-class EquipmentUpdateView(LoginRequiredMixin, UpdateView):
+class EquipmentUpdateView(LoginRequiredMixin, AccessControlObjectMixin, UpdateView):
     """Редактирование оборудования"""
     model = Equipment
     form_class = EquipmentForm
     template_name = 'deadline_control/equipment/form.html'
     success_url = reverse_lazy('deadline_control:equipment:list')
-
-    def get_queryset(self):
-        qs = super().get_queryset()
-        if not self.request.user.is_superuser and hasattr(self.request.user, 'profile'):
-            allowed_orgs = self.request.user.profile.organizations.all()
-            qs = qs.filter(organization__in=allowed_orgs)
-        return qs
 
     def get_form_kwargs(self):
         kwargs = super().get_form_kwargs()
@@ -85,32 +77,18 @@ class EquipmentUpdateView(LoginRequiredMixin, UpdateView):
         return super().form_valid(form)
 
 
-class EquipmentDetailView(LoginRequiredMixin, DetailView):
+class EquipmentDetailView(LoginRequiredMixin, AccessControlObjectMixin, DetailView):
     """Детальная информация об оборудовании"""
     model = Equipment
     template_name = 'deadline_control/equipment/detail.html'
     context_object_name = 'equipment'
 
-    def get_queryset(self):
-        qs = super().get_queryset()
-        if not self.request.user.is_superuser and hasattr(self.request.user, 'profile'):
-            allowed_orgs = self.request.user.profile.organizations.all()
-            qs = qs.filter(organization__in=allowed_orgs)
-        return qs
 
-
-class EquipmentDeleteView(LoginRequiredMixin, DeleteView):
+class EquipmentDeleteView(LoginRequiredMixin, AccessControlObjectMixin, DeleteView):
     """Удаление оборудования"""
     model = Equipment
     template_name = 'deadline_control/equipment/confirm_delete.html'
     success_url = reverse_lazy('deadline_control:equipment:list')
-
-    def get_queryset(self):
-        qs = super().get_queryset()
-        if not self.request.user.is_superuser and hasattr(self.request.user, 'profile'):
-            allowed_orgs = self.request.user.profile.organizations.all()
-            qs = qs.filter(organization__in=allowed_orgs)
-        return qs
 
     def delete(self, request, *args, **kwargs):
         equipment = self.get_object()

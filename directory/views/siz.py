@@ -10,6 +10,8 @@ from directory.models.siz import SIZ, SIZNorm
 from directory.models.position import Position
 from directory.models import Employee
 from directory.forms.siz import SIZForm, SIZNormForm
+from directory.mixins import AccessControlMixin, AccessControlObjectMixin
+from directory.utils.permissions import AccessControlHelper
 
 
 class SIZListView(LoginRequiredMixin, ListView):
@@ -24,20 +26,19 @@ class SIZListView(LoginRequiredMixin, ListView):
         context = super().get_context_data(**kwargs)
         context['title'] = 'Средства индивидуальной защиты'
 
-        # Фильтрация списка сотрудников по организациям профиля
-        employees = Employee.objects.all()
-        if not self.request.user.is_superuser and hasattr(self.request.user, 'profile'):
-            allowed_orgs = self.request.user.profile.organizations.all()
-            employees = employees.filter(organization__in=allowed_orgs)
+        # Получаем доступные организации через AccessControlHelper
+        accessible_orgs = AccessControlHelper.get_accessible_organizations(
+            self.request.user, self.request
+        )
 
+        # Фильтрация списка сотрудников по доступным организациям
+        employees = Employee.objects.filter(organization__in=accessible_orgs)
         context['employees'] = employees.order_by('full_name_nominative')
 
-        # Фильтрация последних выданных СИЗ по организациям профиля
-        recent_issued = SIZIssued.objects.select_related('employee', 'siz')
-        if not self.request.user.is_superuser and hasattr(self.request.user, 'profile'):
-            allowed_orgs = self.request.user.profile.organizations.all()
-            recent_issued = recent_issued.filter(employee__organization__in=allowed_orgs)
-
+        # Фильтрация последних выданных СИЗ по доступным организациям
+        recent_issued = SIZIssued.objects.filter(
+            employee__organization__in=accessible_orgs
+        ).select_related('employee', 'siz')
         context['recent_issued'] = recent_issued.order_by('-issue_date')[:10]
 
         return context

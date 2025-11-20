@@ -10,6 +10,8 @@ from django.db.models import Prefetch
 from directory.models import Commission, CommissionMember, Employee, Organization, StructuralSubdivision, Department
 from directory.forms.commission import CommissionForm, CommissionMemberForm
 from directory.utils.commission_service import get_commission_members_formatted
+from directory.mixins import AccessControlMixin, AccessControlObjectMixin
+from directory.utils.permissions import AccessControlHelper
 
 
 class CommissionTreeView(LoginRequiredMixin, TemplateView):
@@ -25,12 +27,10 @@ class CommissionTreeView(LoginRequiredMixin, TemplateView):
         context = super().get_context_data(**kwargs)
         context['title'] = 'Древовидная структура комиссий'
 
-        # Получаем все организации, доступные пользователю
-        user = self.request.user
-        if hasattr(user, 'profile') and not user.is_superuser:
-            allowed_orgs = user.profile.organizations.all()
-        else:
-            allowed_orgs = Organization.objects.all()
+        # Получаем все организации, доступные пользователю через AccessControlHelper
+        allowed_orgs = AccessControlHelper.get_accessible_organizations(
+            self.request.user, self.request
+        )
 
         # Создаем структуру данных для дерева
         tree_data = []
@@ -226,7 +226,7 @@ class CommissionTreeView(LoginRequiredMixin, TemplateView):
         return context
 
 
-class CommissionListView(LoginRequiredMixin, ListView):
+class CommissionListView(LoginRequiredMixin, AccessControlMixin, ListView):
     """Список комиссий по проверке знаний"""
     model = Commission
     template_name = 'directory/commissions/list.html'
@@ -234,7 +234,8 @@ class CommissionListView(LoginRequiredMixin, ListView):
 
     def get_queryset(self):
         """Получение списка комиссий с возможностью фильтрации"""
-        queryset = Commission.objects.all()
+        # AccessControlMixin автоматически фильтрует по правам доступа
+        queryset = super().get_queryset()
 
         # Фильтрация по активности
         is_active = self.request.GET.get('is_active')
@@ -272,7 +273,7 @@ class CommissionListView(LoginRequiredMixin, ListView):
         return context
 
 
-class CommissionDetailView(LoginRequiredMixin, DetailView):
+class CommissionDetailView(LoginRequiredMixin, AccessControlObjectMixin, DetailView):
     """Детальная информация о комиссии"""
     model = Commission
     template_name = 'directory/commissions/detail.html'
@@ -330,7 +331,7 @@ class CommissionCreateView(LoginRequiredMixin, CreateView):
         return reverse_lazy('directory:commissions:commission_detail', kwargs={'pk': self.object.pk})
 
 
-class CommissionUpdateView(LoginRequiredMixin, UpdateView):
+class CommissionUpdateView(LoginRequiredMixin, AccessControlObjectMixin, UpdateView):
     """Редактирование существующей комиссии"""
     model = Commission
     form_class = CommissionForm
@@ -352,7 +353,7 @@ class CommissionUpdateView(LoginRequiredMixin, UpdateView):
         return reverse_lazy('directory:commissions:commission_detail', kwargs={'pk': self.object.pk})
 
 
-class CommissionDeleteView(LoginRequiredMixin, DeleteView):
+class CommissionDeleteView(LoginRequiredMixin, AccessControlObjectMixin, DeleteView):
     """Удаление комиссии"""
     model = Commission
     template_name = 'directory/commissions/confirm_delete.html'
