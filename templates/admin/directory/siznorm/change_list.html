@@ -73,15 +73,15 @@
                         </td>
                     </tr>
 
-                    {% if profession.base_norms %}
-                        <!-- Базовые нормы без условий -->
+                    {% if profession.base_norms or profession.group_norms %}
+                        <!-- Единая таблица для всех норм СИЗ профессии -->
                         <tr class="tree-row" data-level="1" data-parent-id="profession_{{ forloop.counter }}">
                             <td colspan="4" style="padding:0">
                                 <table class="table table-bordered table-striped" style="width:100%">
                                     <thead>
                                         <tr>
                                             <th>НАИМЕНОВАНИЕ СИЗ</th>
-                                            <th>КЛАССИФИКАЦИЯ</th>
+                                            <th>КЛАССИФИКАЦИЯ (МАРКИРОВКА)</th>
                                             <th>ЕД. ИЗМ.</th>
                                             <th>КОЛ-ВО</th>
                                             <th>СРОК НОСКИ</th>
@@ -89,69 +89,52 @@
                                         </tr>
                                     </thead>
                                     <tbody>
-                                        {% for norm in profession.base_norms %}
-                                        <tr>
-                                            <td>{{ norm.siz.name }}</td>
-                                            <td>{{ norm.siz.classification }}</td>
-                                            <td>{{ norm.siz.unit }}</td>
-                                            <td>{{ norm.quantity }}</td>
-                                            <td>{% if norm.siz.wear_period == 0 %}До износа{% else %}{{ norm.siz.wear_period }} мес.{% endif %}</td>
-                                            <td>
-                                                <a href="{% url 'admin:directory_siznorm_change' norm.id %}" class="edit-link">✏️</a>
-                                                <a href="{% url 'admin:directory_siznorm_delete' norm.id %}" class="delete-link">🗑️</a>
-                                            </td>
-                                        </tr>
+                                        {% if profession.base_norms %}
+                                            <!-- Базовые нормы без условий -->
+                                            {% for norm in profession.base_norms %}
+                                            <tr>
+                                                <td>{{ norm.siz.name }}</td>
+                                                <td>{{ norm.siz.classification }}</td>
+                                                <td>{{ norm.siz.unit }}</td>
+                                                <td>{{ norm.quantity }}</td>
+                                                <td>{% if norm.siz.wear_period == 0 %}До износа{% else %}{{ norm.siz.wear_period }} мес.{% endif %}</td>
+                                                <td>
+                                                    <a href="{% url 'admin:directory_siznorm_change' norm.id %}" class="edit-link">✏️</a>
+                                                    <a href="{% url 'admin:directory_siznorm_delete' norm.id %}" class="delete-link">🗑️</a>
+                                                </td>
+                                            </tr>
+                                            {% endfor %}
+                                        {% endif %}
+
+                                        <!-- Нормы СИЗ по условиям -->
+                                        {% for group in profession.group_norms %}
+                                            <!-- Разделитель с названием условия -->
+                                            <tr style="background-color: #f0f0f0;">
+                                                <td colspan="6" style="padding: 8px; font-weight: bold;">
+                                                    <span class="tree-icon">🔍</span>
+                                                    {{ group.name }} <span style="color: #666; font-weight: normal;">({{ group.norms|length }} позиций)</span>
+                                                </td>
+                                            </tr>
+                                            <!-- Нормы для данного условия -->
+                                            {% for norm in group.norms %}
+                                            <tr>
+                                                <td>{{ norm.siz.name }}</td>
+                                                <td>{{ norm.siz.classification }}</td>
+                                                <td>{{ norm.siz.unit }}</td>
+                                                <td>{{ norm.quantity }}</td>
+                                                <td>{% if norm.siz.wear_period == 0 %}До износа{% else %}{{ norm.siz.wear_period }} мес.{% endif %}</td>
+                                                <td>
+                                                    <a href="{% url 'admin:directory_siznorm_change' norm.id %}" class="edit-link">✏️</a>
+                                                    <a href="{% url 'admin:directory_siznorm_delete' norm.id %}" class="delete-link">🗑️</a>
+                                                </td>
+                                            </tr>
+                                            {% endfor %}
                                         {% endfor %}
                                     </tbody>
                                 </table>
                             </td>
                         </tr>
                     {% endif %}
-
-                    <!-- Нормы СИЗ по условиям -->
-                    {% for group in profession.group_norms %}
-                        <tr class="tree-row" data-level="1" data-parent-id="profession_{{ forloop.counter }}">
-                            <td class="field-checkbox"></td>
-                            <td class="field-name">
-                                <span class="tree-icon">🔍</span>
-                                <strong>{{ group.name }}</strong>
-                            </td>
-                            <td class="field-roles">{{ group.norms|length }} позиций</td>
-                            <td class="field-actions"></td>
-                        </tr>
-
-                        <tr class="tree-row" data-level="2" data-parent-id="profession_{{ forloop.counter }}">
-                            <td colspan="4" style="padding:0">
-                                <table class="table table-bordered table-striped" style="width:100%">
-                                    <thead>
-                                        <tr>
-                                            <th>НАИМЕНОВАНИЕ СИЗ</th>
-                                            <th>КЛАССИФИКАЦИЯ</th>
-                                            <th>ЕД. ИЗМ.</th>
-                                            <th>КОЛ-ВО</th>
-                                            <th>СРОК НОСКИ</th>
-                                            <th>ДЕЙСТВИЯ</th>
-                                        </tr>
-                                    </thead>
-                                    <tbody>
-                                        {% for norm in group.norms %}
-                                        <tr>
-                                            <td>{{ norm.siz.name }}</td>
-                                            <td>{{ norm.siz.classification }}</td>
-                                            <td>{{ norm.siz.unit }}</td>
-                                            <td>{{ norm.quantity }}</td>
-                                            <td>{% if norm.siz.wear_period == 0 %}До износа{% else %}{{ norm.siz.wear_period }} мес.{% endif %}</td>
-                                            <td>
-                                                <a href="{% url 'admin:directory_siznorm_change' norm.id %}" class="edit-link">✏️</a>
-                                                <a href="{% url 'admin:directory_siznorm_delete' norm.id %}" class="delete-link">🗑️</a>
-                                            </td>
-                                        </tr>
-                                        {% endfor %}
-                                    </tbody>
-                                </table>
-                            </td>
-                        </tr>
-                    {% endfor %}
                 {% endfor %}
                 </tbody>
             </table>

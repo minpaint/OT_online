@@ -188,7 +188,7 @@ if not CORS_ORIGIN_ALLOW_ALL:
 
 # 🔐 Настройки аутентификации
 LOGIN_URL = 'directory:auth:login' # Убедитесь, что URL 'directory:auth:login' существует
-LOGIN_REDIRECT_URL = 'directory:home' # Убедитесь, что URL 'directory:home' существует
+LOGIN_REDIRECT_URL = 'home' # Редирект на главную страницу (корень сайта)
 LOGOUT_REDIRECT_URL = 'directory:auth:login'
 AUTH_USER_MODEL = 'auth.User' # Стандартная модель пользователя Django
 

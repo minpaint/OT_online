@@ -14,6 +14,7 @@ from directory.models import (
     Employee,
     Position
 )
+from directory.utils.permissions import AccessControlHelper
 from deadline_control.models import Equipment, KeyDeadlineCategory
 from deadline_control.models.medical_norm import EmployeeMedicalExamination
 
@@ -32,30 +33,33 @@ class HomePageView(LoginRequiredMixin, TemplateView):
         context = super().get_context_data(**kwargs)
         context['title'] = '🏠 Главная'
 
-        # 🔍 Получаем организации из профиля пользователя или все для суперпользователя
+        # 🔍 Получаем доступные объекты через AccessControlHelper
         user = self.request.user
+        allowed_orgs = AccessControlHelper.get_accessible_organizations(user, self.request)
+        allowed_subdivisions = AccessControlHelper.get_accessible_subdivisions(user, self.request)
+        allowed_departments = AccessControlHelper.get_accessible_departments(user, self.request)
 
-        # 🆕 Логика для суперпользователя - показываем все организации
-        if user.is_superuser:
-            allowed_orgs = Organization.objects.all()
-        elif hasattr(user, 'profile'):
-            allowed_orgs = user.profile.organizations.all()
-        else:
-            allowed_orgs = Organization.objects.none()
+        # 🔑 Определяем режим доступа пользователя
+        # Если у пользователя доступ ТОЛЬКО к отделам (без organizations/subdivisions),
+        # то НЕ показываем сотрудников уровня organization или subdivision
+        user_profile = user.profile if hasattr(user, 'profile') else None
+        dept_only_mode = (
+            user_profile and
+            user_profile.departments.exists() and
+            not user_profile.organizations.exists() and
+            not user_profile.subdivisions.exists()
+        )
+        # Получаем список ID подразделений пользователя (для проверки в цикле)
+        user_subdiv_ids = set(user_profile.subdivisions.values_list('id', flat=True)) if user_profile else set()
 
         # 🔍 Добавляем поддержку поиска сотрудников
         search_query = self.request.GET.get('search', '')
         selected_status = self.request.GET.get('status', '')
         show_fired = self.request.GET.get('show_fired') == 'true'
 
-        # 👤 Получаем список кандидатов для отдельного блока
+        # 👤 Получаем список кандидатов для отдельного блока с учетом прав доступа
         candidate_employees = Employee.objects.filter(status='candidate').select_related('position')
-
-        # Применяем ограничения пользователя к кандидатам
-        if not user.is_superuser and hasattr(user, 'profile'):
-            candidate_employees = candidate_employees.filter(
-                organization__in=user.profile.organizations.all()
-            )
+        candidate_employees = AccessControlHelper.filter_queryset(candidate_employees, user, self.request)
 
         # Если есть поиск, применяем его и к кандидатам
         if search_query:
@@ -130,6 +134,8 @@ class HomePageView(LoginRequiredMixin, TemplateView):
             filtered_employees = Employee.objects.filter(status_filter & employee_filter).select_related(
                 'organization', 'subdivision', 'department', 'position'
             )
+            # Применяем фильтрацию по правам доступа
+            filtered_employees = AccessControlHelper.filter_queryset(filtered_employees, user, self.request)
 
             # Собираем ID организаций, подразделений и отделов с найденными сотрудниками
             org_ids = set(filtered_employees.values_list('organization_id', flat=True))
@@ -150,26 +156,31 @@ class HomePageView(LoginRequiredMixin, TemplateView):
 
         # 📊 Для каждой организации получаем древовидную структуру
         for org in allowed_orgs:
-            # 📋 Получаем подразделения организации
+            # 📋 Получаем только доступные подразделения организации
             subdivisions = StructuralSubdivision.objects.filter(
-                organization=org
+                organization=org,
+                id__in=allowed_subdivisions
             ).prefetch_related(
                 Prefetch(
                     'departments',
-                    queryset=Department.objects.all()
+                    queryset=Department.objects.filter(id__in=allowed_departments)
                 )
             )
 
             # 👥 Получаем сотрудников без подразделения (напрямую в организации),
             # исключая кандидатов и уволенных (если show_fired не включено)
-            org_employees_filter = Q(organization=org, subdivision__isnull=True) & ~Q(status='candidate')
-            if not show_fired:
-                org_employees_filter &= ~Q(status='fired')
+            # ⚠️ Если пользователь с доступом только к отделам - не показываем сотрудников уровня организации
+            if dept_only_mode:
+                org_employees = Employee.objects.none()
+            else:
+                org_employees_filter = Q(organization=org, subdivision__isnull=True) & ~Q(status='candidate')
+                if not show_fired:
+                    org_employees_filter &= ~Q(status='fired')
 
-            if selected_status:
-                org_employees_filter &= Q(status=selected_status)
+                if selected_status:
+                    org_employees_filter &= Q(status=selected_status)
 
-            org_employees = Employee.objects.filter(org_employees_filter).select_related('position')
+                org_employees = Employee.objects.filter(org_employees_filter).select_related('position')
 
             # Если есть поисковый запрос, фильтруем сотрудников
             if search_query:
@@ -191,14 +202,21 @@ class HomePageView(LoginRequiredMixin, TemplateView):
             for subdivision in subdivisions:
                 # 👥 Сотрудники подразделения без отдела
                 # исключая кандидатов и уволенных (если show_fired не включено)
-                sub_employees_filter = Q(subdivision=subdivision, department__isnull=True) & ~Q(status='candidate')
-                if not show_fired:
-                    sub_employees_filter &= ~Q(status='fired')
+                # ⚠️ Если пользователь с доступом только к отделам - не показываем сотрудников уровня подразделения
+                # (проверяем: есть ли у пользователя прямой доступ к ЭТОМУ подразделению)
+                user_has_subdiv_access = subdivision.id in user_subdiv_ids
 
-                if selected_status:
-                    sub_employees_filter &= Q(status=selected_status)
+                if dept_only_mode and not user_has_subdiv_access:
+                    sub_employees = Employee.objects.none()
+                else:
+                    sub_employees_filter = Q(subdivision=subdivision, department__isnull=True) & ~Q(status='candidate')
+                    if not show_fired:
+                        sub_employees_filter &= ~Q(status='fired')
 
-                sub_employees = Employee.objects.filter(sub_employees_filter).select_related('position')
+                    if selected_status:
+                        sub_employees_filter &= Q(status=selected_status)
+
+                    sub_employees = Employee.objects.filter(sub_employees_filter).select_related('position')
 
                 # Если есть поисковый запрос, фильтруем сотрудников
                 if search_query:
@@ -271,4 +289,19 @@ class HomePageView(LoginRequiredMixin, TemplateView):
         context['paginator'] = paginator
         context['is_paginated'] = paginator.num_pages > 1
 
+        return context
+
+
+class IntroductoryBriefingView(LoginRequiredMixin, TemplateView):
+    """
+    📺 Страница вводного инструктажа с обучающим видео.
+
+    Отображает YouTube видео по вводному инструктажу и кнопку
+    для перехода к приему сотрудника на работу.
+    """
+    template_name = 'directory/introductory_briefing.html'
+
+    def get_context_data(self, **kwargs):
+        context = super().get_context_data(**kwargs)
+        context['title'] = 'Вводный инструктаж'
         return context

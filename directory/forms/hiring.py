@@ -112,23 +112,11 @@ class CombinedEmployeeHiringForm(forms.Form):
         )
     )
 
-    place_of_residence = forms.CharField(
-        label=_("Место проживания"),
-        required=False,
-        widget=forms.Textarea(
-            attrs={
-                'rows': 3,
-                'class': 'form-control',
-                'placeholder': 'Полный адрес места жительства'
-            }
-        )
-    )
-
     initial_medical_examination_date = forms.DateField(
         label=_("Дата первичного медосмотра"),
         required=False,
-        help_text=_("Дата прохождения первичного медицинского осмотра (необязательно). "
-                    "Если указана, будет применена ко всем медосмотрам сотрудника."),
+        help_text=_("Работник должен быть до начала работы направлен на медицинский осмотр. "
+                    "Если по результатам медицинского осмотра он годен, то укажите дату медосмотра."),
         widget=forms.DateInput(
             attrs={
                 'type': 'date',
@@ -174,68 +162,71 @@ class CombinedEmployeeHiringForm(forms.Form):
         self.helper = FormHelper()
         self.helper.form_method = 'post'
         self.helper.form_id = 'hiring-form'
+        self.helper.attrs = {'novalidate': ''}  # Отключаем HTML5 валидацию для Select2
 
         self.helper.layout = Layout(
+            # Персональные данные - компактно в одну строку
             Fieldset(
-                # Используем пустую строку для заголовка Fieldset, чтобы он выглядел как заголовок секции из CSS
-                # Либо можно использовать HTML('<hX>Заголовок</hX>') перед полями
-                _('Персональные данные'),  # Crispy Forms превратит это в <legend>
+                '',  # Убираем заголовок - он будет в карточке
+                HTML('<h5 class="section-title mb-3"><i class="fas fa-user"></i> Персональные данные</h5>'),
                 Row(
-                    Column('full_name_nominative', css_class='form-group col-md-5'),
-                    Column('date_of_birth', css_class='form-group col-md-3'),
-                    Column('hiring_type', css_class='form-group col-md-4'),
-                ),
-                css_class='form-section'  # Этот класс используется в CSS для стилизации заголовка Fieldset
-            ),
-            Fieldset(
-                _('Организационная структура'),
-                Row(
-                    Column('organization', css_class='form-group col-md-10 col-lg-8 mx-auto mb-3')
-                ),
-                Row(
-                    Column('subdivision', css_class='form-group col-md-10 col-lg-8 mx-auto mb-3')
-                ),
-                Row(
-                    Column('department', css_class='form-group col-md-10 col-lg-8 mx-auto mb-3')
-                ),
-                Row(
-                    Column('position', css_class='form-group col-md-10 col-lg-8 mx-auto mb-3')
+                    Column('full_name_nominative', css_class='form-group col-md-5 mb-3'),
+                    Column('date_of_birth', css_class='form-group col-md-3 mb-3'),
+                    Column('hiring_type', css_class='form-group col-md-4 mb-3'),
                 ),
                 css_class='form-section'
             ),
+
+            # Организационная структура - компактнее, в 2 колонки
+            Fieldset(
+                '',
+                HTML('<h5 class="section-title mb-3 mt-4"><i class="fas fa-sitemap"></i> Организационная структура</h5>'),
+                Row(
+                    Column('organization', css_class='form-group col-md-6 mb-3'),
+                    Column('subdivision', css_class='form-group col-md-6 mb-3'),
+                ),
+                Row(
+                    Column('department', css_class='form-group col-md-6 mb-3'),
+                    Column('position', css_class='form-group col-md-6 mb-3'),
+                ),
+                css_class='form-section'
+            ),
+
+            # Медосмотр - скрытая секция
             Div(
-                Fieldset(
-                    _('Информация для медосмотра'),
-                    Row(
-                        Column('place_of_residence', css_class='form-group col-md-8'),
-                        Column('initial_medical_examination_date', css_class='form-group col-md-4'),
-                    ),
+                HTML('<h5 class="section-title mb-3 mt-4"><i class="fas fa-stethoscope"></i> Информация для медосмотра</h5>'),
+                HTML('<div class="alert alert-info mb-3"><i class="fas fa-info-circle"></i> Для данной должности требуется медицинский осмотр. Пожалуйста, заполните необходимые данные.</div>'),
+                Row(
+                    Column('initial_medical_examination_date', css_class='form-group col-md-6 mb-3'),
                 ),
                 css_class='form-section d-none',
                 id='medical-section'
             ),
+
+            # СИЗ - скрытая секция
             Div(
-                Fieldset(
-                    _('Информация для СИЗ'),
-                    Row(
-                        Column('height', css_class='form-group col-md-4'),
-                        Column('clothing_size', css_class='form-group col-md-4'),
-                        Column('shoe_size', css_class='form-group col-md-4'),
-                    ),
+                HTML('<h5 class="section-title mb-3 mt-4"><i class="fas fa-hard-hat"></i> Информация для СИЗ</h5>'),
+                HTML('<div class="alert alert-success mb-3"><i class="fas fa-info-circle"></i> Для данной должности предусмотрена выдача СИЗ. Укажите антропометрические данные.</div>'),
+                Row(
+                    Column('height', css_class='form-group col-md-4 mb-3'),
+                    Column('clothing_size', css_class='form-group col-md-4 mb-3'),
+                    Column('shoe_size', css_class='form-group col-md-4 mb-3'),
                 ),
                 css_class='form-section d-none',
                 id='siz-section'
             ),
+
             'contract_type',
+
+            # Кнопки управления
             Div(
-                Submit('submit', _('Сохранить'), css_class='btn btn-primary'),
-                HTML(
-                    '<a href="{}" class="btn btn-secondary ml-2">{}</a>'.format(
-                        '/directory/hiring/list/',
-                        _("Отмена")
-                    )
+                HTML('<hr class="my-4">'),
+                Div(
+                    HTML('<a href="/directory/hiring/list/" class="btn btn-outline-secondary btn-lg mr-3"><i class="fas fa-times"></i> Отмена</a>'),
+                    Submit('submit', '✓ Принять на работу', css_class='btn btn-success btn-lg'),
+                    css_class='d-flex justify-content-between align-items-center'
                 ),
-                css_class='form-group text-right mt-4'
+                css_class='form-actions mt-4'
             )
         )
 
@@ -367,13 +358,9 @@ class CombinedEmployeeHiringForm(forms.Form):
 
             if needs_medical:
                 date_of_birth = cleaned_data.get('date_of_birth')
-                place_of_residence = cleaned_data.get('place_of_residence')
 
                 if not date_of_birth:
                     self.add_error('date_of_birth', _('Необходимо указать дату рождения для медосмотра.'))
-
-                if not place_of_residence:
-                    self.add_error('place_of_residence', _('Необходимо указать место проживания для медосмотра.'))
 
             needs_siz = False
             if hasattr(position, 'siz_norms') and hasattr(position.siz_norms, 'exists'):

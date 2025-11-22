@@ -13,6 +13,7 @@ from collections import defaultdict
 from deadline_control.models import Equipment
 from deadline_control.forms import EquipmentForm
 from directory.mixins import AccessControlMixin, AccessControlObjectMixin
+from directory.utils.permissions import AccessControlHelper
 
 
 class EquipmentListView(LoginRequiredMixin, AccessControlMixin, ListView):
@@ -102,12 +103,10 @@ def perform_maintenance(request, pk):
     """Проведение ТО для оборудования"""
     equipment = get_object_or_404(Equipment, pk=pk)
 
-    # Проверка прав доступа
-    if not request.user.is_superuser and hasattr(request.user, 'profile'):
-        allowed_orgs = request.user.profile.organizations.all()
-        if equipment.organization not in allowed_orgs:
-            messages.error(request, 'У вас нет прав для выполнения этой операции')
-            return redirect('deadline_control:equipment:list')
+    # Проверка прав доступа через AccessControlHelper
+    if not AccessControlHelper.can_access_object(request.user, equipment):
+        messages.error(request, 'У вас нет прав для выполнения этой операции')
+        return redirect('deadline_control:equipment:list')
 
     date_str = request.POST.get('maintenance_date')
     comment = request.POST.get('comment', '')

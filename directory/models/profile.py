@@ -44,6 +44,15 @@ class Profile(models.Model):
         help_text="📂 Доступ только к конкретным отделам"
     )
 
+    # Управление доступом к меню
+    visible_menu_items = models.ManyToManyField(
+        'directory.MenuItem',
+        blank=True,
+        verbose_name="Доступные пункты меню",
+        related_name="user_profiles",
+        help_text="🍔 Пункты меню, доступные пользователю. Если не указаны - доступны все."
+    )
+
     is_active = models.BooleanField(
         default=True,
         verbose_name="Активен"

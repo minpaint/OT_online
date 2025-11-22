@@ -16,6 +16,8 @@ from django.utils.html import format_html
 from directory.models import EmployeeHiring
 # medical_examination перемещён в deadline_control
 from .quiz_admin import *  # Импортируем админку экзаменов
+# ProfileAdmin убран - профиль редактируется через inline в User админке
+from .menu_item import MenuItemAdmin  # Управление пунктами меню
 
 
 __all__ = [
@@ -26,7 +28,7 @@ __all__ = [
     'PositionAdmin',
     'StructuralSubdivisionAdmin',
     'CustomUserAdmin',
-    'EmployeeHiringAdmin',  # Добавляем в список экспорта
+    'EmployeeHiringAdmin',
 ]
 
 

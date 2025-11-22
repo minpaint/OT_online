@@ -3,6 +3,7 @@ from django.utils import timezone
 from datetime import timedelta
 from deadline_control.models import Equipment, KeyDeadlineItem
 from deadline_control.models.medical_norm import EmployeeMedicalExamination
+from directory.utils.permissions import AccessControlHelper
 
 
 def deadline_notifications(request):
@@ -15,16 +16,11 @@ def deadline_notifications(request):
     today = timezone.now().date()
     warning_date = today + timedelta(days=7)  # Уведомления за 7 дней
 
-    # Фильтрация по организациям пользователя
-    if not request.user.is_superuser and hasattr(request.user, 'profile'):
-        allowed_orgs = request.user.profile.organizations.all()
-    else:
-        allowed_orgs = None
+    # Фильтрация по организациям пользователя через AccessControlHelper
+    allowed_orgs = AccessControlHelper.get_accessible_organizations(request.user, request)
 
     # Подсчёт просроченного оборудования
-    equipment_qs = Equipment.objects.all()
-    if allowed_orgs:
-        equipment_qs = equipment_qs.filter(organization__in=allowed_orgs)
+    equipment_qs = Equipment.objects.filter(organization__in=allowed_orgs)
 
     overdue_equipment_count = 0
     upcoming_equipment_count = 0
@@ -37,9 +33,10 @@ def deadline_notifications(request):
                 upcoming_equipment_count += 1
 
     # Подсчёт просроченных мероприятий
-    deadlines_qs = KeyDeadlineItem.objects.select_related('category')
-    if allowed_orgs:
-        deadlines_qs = deadlines_qs.filter(category__organization__in=allowed_orgs, category__is_active=True)
+    deadlines_qs = KeyDeadlineItem.objects.select_related('category').filter(
+        category__organization__in=allowed_orgs,
+        category__is_active=True
+    )
 
     overdue_deadlines_count = 0
     upcoming_deadlines_count = 0
@@ -52,9 +49,9 @@ def deadline_notifications(request):
                 upcoming_deadlines_count += 1
 
     # Подсчёт просроченных медосмотров
-    medical_qs = EmployeeMedicalExamination.objects.select_related('employee')
-    if allowed_orgs:
-        medical_qs = medical_qs.filter(employee__organization__in=allowed_orgs)
+    medical_qs = EmployeeMedicalExamination.objects.select_related('employee').filter(
+        employee__organization__in=allowed_orgs
+    )
 
     overdue_medical_count = 0
     upcoming_medical_count = 0

@@ -53,6 +53,9 @@ from .siz_issued import (
 
 # Представления для медосмотров перемещены в deadline_control
 
+# Импортируем представление вводного инструктажа
+from .home import IntroductoryBriefingView
+
 
 class HomePageView(LoginRequiredMixin, TemplateView):
     """
@@ -227,6 +230,7 @@ class HomePageView(LoginRequiredMixin, TemplateView):
 # Экспортируем все представления
 __all__ = [
     'HomePageView',
+    'IntroductoryBriefingView',
     'EmployeeListView',
     'EmployeeCreateView',
     'EmployeeUpdateView',

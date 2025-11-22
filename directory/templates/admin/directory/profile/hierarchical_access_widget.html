@@ -1,0 +1,407 @@
+{% load static %}
+
+<div class="hierarchical-access-widget">
+    <style>
+        .hierarchical-access-widget {
+            padding: 0;
+            font-family: "Roboto","Lucida Grande","DejaVu Sans","Bitstream Vera Sans",Verdana,Arial,sans-serif;
+            font-size: 13px;
+        }
+
+        /* Карточка организации */
+        .org-card {
+            background: #fff;
+            border: 1px solid #ccc;
+            border-radius: 4px;
+            margin-bottom: 8px;
+            overflow: hidden;
+        }
+
+        .org-card:hover {
+            border-color: #999;
+        }
+
+        /* Заголовок карточки (организация) */
+        .org-card-header {
+            background: #f8f8f8;
+            border-bottom: 1px solid #e1e1e1;
+            color: #333;
+            padding: 10px 12px;
+            cursor: pointer;
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            user-select: none;
+            transition: background 0.15s ease;
+        }
+
+        .org-card-header:hover {
+            background: #efefef;
+        }
+
+        .org-card-header-left {
+            display: flex;
+            align-items: center;
+            flex: 1;
+        }
+
+        .org-card-header input[type="checkbox"] {
+            width: 16px;
+            height: 16px;
+            margin-right: 8px;
+            cursor: pointer;
+            vertical-align: middle;
+        }
+
+        .org-card-header label {
+            font-size: 13px;
+            font-weight: 600;
+            cursor: pointer;
+            margin: 0;
+            display: flex;
+            align-items: center;
+            flex: 1;
+            color: #333;
+        }
+
+        .org-icon {
+            font-size: 16px;
+            margin-right: 6px;
+        }
+
+        .org-card-toggle {
+            background: #e8e8e8;
+            border: 1px solid #ccc;
+            color: #666;
+            padding: 4px 8px;
+            border-radius: 3px;
+            font-size: 11px;
+            font-weight: 500;
+            cursor: pointer;
+            transition: all 0.15s ease;
+            display: flex;
+            align-items: center;
+            gap: 4px;
+        }
+
+        .org-card-toggle:hover {
+            background: #ddd;
+            border-color: #999;
+        }
+
+        .toggle-icon {
+            font-size: 9px;
+            transition: transform 0.2s ease;
+        }
+
+        .toggle-icon.collapsed {
+            transform: rotate(-90deg);
+        }
+
+        /* Тело карточки (подразделения) */
+        .org-card-body {
+            padding: 0;
+            background: #fafafa;
+            max-height: 0;
+            overflow: hidden;
+            transition: max-height 0.25s ease;
+        }
+
+        .org-card-body.expanded {
+            max-height: 1000px;
+            padding: 8px 12px;
+        }
+
+        /* Подразделение */
+        .subdivision-item {
+            background: white;
+            border: 1px solid #ddd;
+            border-radius: 3px;
+            padding: 8px 10px;
+            margin-bottom: 6px;
+            transition: all 0.15s ease;
+        }
+
+        .subdivision-item:hover {
+            border-color: #999;
+            background: #f9f9f9;
+        }
+
+        .subdivision-header {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+        }
+
+        .subdivision-left {
+            display: flex;
+            align-items: center;
+            flex: 1;
+        }
+
+        .subdivision-item input[type="checkbox"] {
+            width: 15px;
+            height: 15px;
+            margin-right: 7px;
+            cursor: pointer;
+            vertical-align: middle;
+        }
+
+        .subdivision-item label {
+            font-size: 13px;
+            font-weight: 500;
+            color: #333;
+            cursor: pointer;
+            margin: 0;
+            display: flex;
+            align-items: center;
+            flex: 1;
+        }
+
+        .subdiv-icon {
+            font-size: 14px;
+            margin-right: 5px;
+        }
+
+        .subdiv-toggle {
+            background: #f0f0f0;
+            border: 1px solid #ccc;
+            color: #666;
+            padding: 3px 7px;
+            border-radius: 3px;
+            font-size: 10px;
+            font-weight: 500;
+            cursor: pointer;
+            transition: all 0.15s ease;
+            display: flex;
+            align-items: center;
+            gap: 3px;
+        }
+
+        .subdiv-toggle:hover {
+            background: #e5e5e5;
+            border-color: #999;
+        }
+
+        /* Отделы */
+        .department-list {
+            list-style: none;
+            padding: 0;
+            margin: 6px 0 0 0;
+            max-height: 0;
+            overflow: hidden;
+            transition: max-height 0.25s ease;
+        }
+
+        .department-list.expanded {
+            max-height: 500px;
+        }
+
+        .department-item {
+            background: #f9f9f9;
+            border-left: 2px solid #ccc;
+            padding: 6px 8px;
+            margin: 3px 0 3px 20px;
+            border-radius: 0 2px 2px 0;
+            display: flex;
+            align-items: center;
+            transition: all 0.15s ease;
+        }
+
+        .department-item:hover {
+            background: #f5f5f5;
+            border-left-color: #999;
+        }
+
+        .department-item input[type="checkbox"] {
+            width: 14px;
+            height: 14px;
+            margin-right: 6px;
+            cursor: pointer;
+            vertical-align: middle;
+        }
+
+        .department-item label {
+            font-size: 12px;
+            color: #555;
+            cursor: pointer;
+            margin: 0;
+            display: flex;
+            align-items: center;
+        }
+
+        .dept-icon {
+            font-size: 12px;
+            margin-right: 4px;
+        }
+
+        /* Пустое состояние */
+        .empty-state {
+            text-align: center;
+            padding: 30px 15px;
+            color: #999;
+            font-size: 13px;
+        }
+
+        /* Счетчик */
+        .count-badge {
+            background: #e8e8e8;
+            color: #666;
+            padding: 1px 5px;
+            border-radius: 10px;
+            font-size: 10px;
+            margin-left: 4px;
+            font-weight: 600;
+        }
+    </style>
+
+    {% if organizations_tree %}
+        {% for org in organizations_tree %}
+        <div class="org-card">
+            <!-- Заголовок карточки организации -->
+            <div class="org-card-header" onclick="toggleOrgCard('{{ org.id }}', event)">
+                <div class="org-card-header-left">
+                    <input type="checkbox"
+                           name="{{ widget.name }}_organizations"
+                           value="{{ org.id }}"
+                           id="org_{{ org.id }}"
+                           {% if org.checked %}checked{% endif %}
+                           onclick="event.stopPropagation()">
+                    <label for="org_{{ org.id }}" onclick="event.stopPropagation()">
+                        <span class="org-icon">🏢</span>
+                        <strong>{{ org.name }}</strong>
+                    </label>
+                </div>
+                {% if org.subdivisions %}
+                <button type="button" class="org-card-toggle" onclick="event.stopPropagation(); toggleOrgCard('{{ org.id }}', event)">
+                    <span id="toggle-text-{{ org.id }}">Подразделения</span>
+                    <span class="count-badge">{{ org.subdivisions|length }}</span>
+                    <span class="toggle-icon" id="toggle-icon-{{ org.id }}">▼</span>
+                </button>
+                {% endif %}
+            </div>
+
+            <!-- Тело карточки с подразделениями -->
+            {% if org.subdivisions %}
+            <div class="org-card-body" id="org-body-{{ org.id }}">
+                {% for subdiv in org.subdivisions %}
+                <div class="subdivision-item">
+                    <div class="subdivision-header">
+                        <div class="subdivision-left">
+                            <input type="checkbox"
+                                   name="{{ widget.name }}_subdivisions"
+                                   value="{{ subdiv.id }}"
+                                   id="subdiv_{{ subdiv.id }}"
+                                   {% if subdiv.checked %}checked{% endif %}>
+                            <label for="subdiv_{{ subdiv.id }}">
+                                <span class="subdiv-icon">🏭</span>
+                                {{ subdiv.name }}
+                            </label>
+                        </div>
+                        {% if subdiv.departments %}
+                        <button type="button" class="subdiv-toggle" onclick="toggleDepartments('{{ subdiv.id }}')">
+                            <span id="toggle-dept-text-{{ subdiv.id }}">Отделы</span>
+                            <span class="count-badge">{{ subdiv.departments|length }}</span>
+                            <span class="toggle-icon" id="toggle-dept-icon-{{ subdiv.id }}">▼</span>
+                        </button>
+                        {% endif %}
+                    </div>
+
+                    <!-- Список отделов -->
+                    {% if subdiv.departments %}
+                    <ul class="department-list" id="departments-{{ subdiv.id }}">
+                        {% for dept in subdiv.departments %}
+                        <li class="department-item">
+                            <input type="checkbox"
+                                   name="{{ widget.name }}_departments"
+                                   value="{{ dept.id }}"
+                                   id="dept_{{ dept.id }}"
+                                   {% if dept.checked %}checked{% endif %}>
+                            <label for="dept_{{ dept.id }}">
+                                <span class="dept-icon">📂</span>
+                                {{ dept.name }}
+                            </label>
+                        </li>
+                        {% endfor %}
+                    </ul>
+                    {% endif %}
+                </div>
+                {% endfor %}
+            </div>
+            {% endif %}
+        </div>
+        {% endfor %}
+    {% else %}
+        <div class="empty-state">
+            <div style="font-size: 32px; margin-bottom: 8px; opacity: 0.5;">🏢</div>
+            <div>Нет доступных организаций</div>
+        </div>
+    {% endif %}
+</div>
+
+<script>
+    // Переключение карточки организации
+    function toggleOrgCard(orgId, event) {
+        if (event) event.stopPropagation();
+
+        const body = document.getElementById('org-body-' + orgId);
+        const icon = document.getElementById('toggle-icon-' + orgId);
+
+        if (body.classList.contains('expanded')) {
+            body.classList.remove('expanded');
+            icon.classList.add('collapsed');
+        } else {
+            body.classList.add('expanded');
+            icon.classList.remove('collapsed');
+        }
+    }
+
+    // Переключение списка отделов
+    function toggleDepartments(subdivId) {
+        const list = document.getElementById('departments-' + subdivId);
+        const icon = document.getElementById('toggle-dept-icon-' + subdivId);
+
+        if (list.classList.contains('expanded')) {
+            list.classList.remove('expanded');
+            icon.classList.add('collapsed');
+        } else {
+            list.classList.add('expanded');
+            icon.classList.remove('collapsed');
+        }
+    }
+
+    // Автоматически разворачиваем карточки с выбранными элементами при загрузке
+    document.addEventListener('DOMContentLoaded', function() {
+        // Разворачиваем организации с выбранными подразделениями или отделами
+        document.querySelectorAll('.org-card').forEach(function(card) {
+            const hasChecked = card.querySelector('input[type="checkbox"]:checked:not([id^="org_"])');
+            if (hasChecked) {
+                const orgId = card.querySelector('[id^="org-body-"]')?.id.replace('org-body-', '');
+                if (orgId) {
+                    const body = document.getElementById('org-body-' + orgId);
+                    const icon = document.getElementById('toggle-icon-' + orgId);
+                    if (body && icon) {
+                        body.classList.add('expanded');
+                        icon.classList.remove('collapsed');
+                    }
+                }
+            }
+        });
+
+        // Разворачиваем подразделения с выбранными отделами
+        document.querySelectorAll('.subdivision-item').forEach(function(subdiv) {
+            const hasCheckedDept = subdiv.querySelector('.department-item input[type="checkbox"]:checked');
+            if (hasCheckedDept) {
+                const subdivId = subdiv.querySelector('[id^="departments-"]')?.id.replace('departments-', '');
+                if (subdivId) {
+                    const list = document.getElementById('departments-' + subdivId);
+                    const icon = document.getElementById('toggle-dept-icon-' + subdivId);
+                    if (list && icon) {
+                        list.classList.add('expanded');
+                        icon.classList.remove('collapsed');
+                    }
+                }
+            }
+        });
+    });
+</script>

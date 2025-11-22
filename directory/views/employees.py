@@ -88,8 +88,14 @@ class EmployeeTreeView(LoginRequiredMixin, AccessControlMixin, ListView):
         context = super().get_context_data(**kwargs)
         context['title'] = 'Сотрудники'
 
-        # Получаем доступные организации через AccessControlHelper
+        # Используем AccessControlHelper для получения доступных организаций, подразделений и отделов
         allowed_orgs = AccessControlHelper.get_accessible_organizations(
+            self.request.user, self.request
+        )
+        allowed_subdivisions = AccessControlHelper.get_accessible_subdivisions(
+            self.request.user, self.request
+        )
+        allowed_departments = AccessControlHelper.get_accessible_departments(
             self.request.user, self.request
         )
 
@@ -111,8 +117,8 @@ class EmployeeTreeView(LoginRequiredMixin, AccessControlMixin, ListView):
                 'subdivisions': []
             }
 
-            # Получаем подразделения
-            for subdivision in org.subdivisions.all():
+            # Получаем только доступные подразделения этой организации
+            for subdivision in org.subdivisions.filter(id__in=allowed_subdivisions):
                 sub_employees = self.get_queryset().filter(
                     organization=org,
                     subdivision=subdivision,
@@ -126,8 +132,8 @@ class EmployeeTreeView(LoginRequiredMixin, AccessControlMixin, ListView):
                     'departments': []
                 }
 
-                # Получаем отделы
-                for department in subdivision.departments.all():
+                # Получаем только доступные отделы этого подразделения
+                for department in subdivision.departments.filter(id__in=allowed_departments):
                     dept_employees = self.get_queryset().filter(
                         organization=org,
                         subdivision=subdivision,

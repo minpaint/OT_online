@@ -17,6 +17,7 @@ from django.utils import timezone
 from django.contrib import messages
 
 from directory.models import Employee
+from directory.utils.permissions import AccessControlHelper
 from deadline_control.models import (
     MedicalReferral,
     PositionMedicalFactor,
@@ -165,11 +166,9 @@ class EmployeeReferralDataView(LoginRequiredMixin, View):
         # Получаем сотрудника
         employee = get_object_or_404(Employee, pk=employee_id)
 
-        # Проверяем права доступа: пользователь должен иметь доступ к организации сотрудника
-        if not request.user.is_superuser:
-            user_orgs = request.user.profile.organizations.all()
-            if employee.organization not in user_orgs:
-                raise PermissionDenied("У вас нет доступа к данному сотруднику")
+        # Проверяем права доступа через AccessControlHelper (поддерживает иерархию)
+        if not AccessControlHelper.can_access_object(request.user, employee):
+            raise PermissionDenied("У вас нет доступа к данному сотруднику")
 
         # Получаем вредные факторы с учётом приоритета переопределений
         harmful_factors = get_harmful_factors_for_employee(employee)
@@ -220,11 +219,9 @@ class GenerateReferralView(LoginRequiredMixin, View):
             # Получаем сотрудника
             employee = get_object_or_404(Employee, pk=employee_id)
 
-            # Проверяем права доступа
-            if not request.user.is_superuser:
-                user_orgs = request.user.profile.organizations.all()
-                if employee.organization not in user_orgs:
-                    raise PermissionDenied("У вас нет доступа к данному сотруднику")
+            # Проверяем права доступа через AccessControlHelper (поддерживает иерархию)
+            if not AccessControlHelper.can_access_object(request.user, employee):
+                raise PermissionDenied("У вас нет доступа к данному сотруднику")
 
             # Парсим дату рождения
             birth_date = datetime.strptime(birth_date_str, '%Y-%m-%d').date()
@@ -295,16 +292,10 @@ class ExistingEmployeeReferralView(LoginRequiredMixin, View):
         # Получаем сотрудника
         employee = get_object_or_404(Employee, pk=employee_id)
 
-        # Проверяем права доступа
-        if not request.user.is_superuser:
-            if hasattr(request.user, 'profile'):
-                user_orgs = request.user.profile.organizations.all()
-                if employee.organization not in user_orgs:
-                    messages.error(request, 'У вас нет доступа к этому сотруднику')
-                    return redirect('deadline_control:medical:list')
-            else:
-                messages.error(request, 'У вас нет доступа')
-                return redirect('deadline_control:medical:list')
+        # Проверяем права доступа через AccessControlHelper (поддерживает иерархию)
+        if not AccessControlHelper.can_access_object(request.user, employee):
+            messages.error(request, 'У вас нет доступа к этому сотруднику')
+            return redirect('deadline_control:medical:list')
 
         # Получаем вредные факторы для сотрудника
         harmful_factors = get_harmful_factors_for_employee(employee)
@@ -415,10 +406,9 @@ class NewEmployeeReferralView(LoginRequiredMixin, View):
             # Получаем организацию
             organization = Organization.objects.get(pk=organization_id)
 
-            # Проверяем права доступа
-            if not request.user.is_superuser:
-                if organization not in organizations:
-                    raise PermissionDenied("У вас нет доступа к этой организации")
+            # Проверяем права доступа через AccessControlHelper
+            if not AccessControlHelper.can_access_object(request.user, organization):
+                raise PermissionDenied("У вас нет доступа к этой организации")
 
             # Получаем вредные факторы по названию профессии
             harmful_factors = []

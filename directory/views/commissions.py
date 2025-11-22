@@ -25,7 +25,7 @@ class CommissionTreeView(LoginRequiredMixin, TemplateView):
 
     def get_context_data(self, **kwargs):
         context = super().get_context_data(**kwargs)
-        context['title'] = 'Древовидная структура комиссий'
+        context['title'] = 'Комиссии'
 
         # Получаем все организации, доступные пользователю через AccessControlHelper
         allowed_orgs = AccessControlHelper.get_accessible_organizations(

@@ -1,0 +1,58 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Отладка прав доступа</title>
+    <style>
+        body { font-family: Arial; padding: 20px; }
+        .section { margin: 20px 0; padding: 15px; border: 1px solid #ddd; }
+        .success { background-color: #d4edda; }
+        .error { background-color: #f8d7da; }
+        ul { list-style-type: none; }
+    </style>
+</head>
+<body>
+    <h1>Отладка прав доступа: {{ user.username }}</h1>
+
+    <div class="section">
+        <h2>Профиль</h2>
+        <ul>
+            <li><strong>Организации:</strong> {{ organizations|length }}</li>
+            {% for org in organizations %}
+            <li>&nbsp;&nbsp;- {{ org }}</li>
+            {% endfor %}
+
+            <li><strong>Подразделения:</strong> {{ subdivisions|length }}</li>
+            {% for subdiv in subdivisions %}
+            <li>&nbsp;&nbsp;- {{ subdiv }}</li>
+            {% endfor %}
+
+            <li><strong>Отделы:</strong> {{ departments|length }}</li>
+            {% for dept in departments %}
+            <li>&nbsp;&nbsp;- {{ dept }}</li>
+            {% endfor %}
+        </ul>
+    </div>
+
+    <div class="section">
+        <h2>Сотрудники (всего: {{ all_employees|length }})</h2>
+        <ul>
+            {% for emp in all_employees %}
+            <li>{{ emp.full_name_nominative }} - {{ emp.organization }} / {{ emp.subdivision }} / {{ emp.department }}</li>
+            {% endfor %}
+        </ul>
+    </div>
+
+    <div class="section {% if filtered_employees %}success{% else %}error{% endif %}">
+        <h2>Отфильтрованные сотрудники ({{ filtered_employees|length }})</h2>
+        <ul>
+            {% for emp in filtered_employees %}
+            <li>{{ emp.full_name_nominative }} - {{ emp.organization }} / {{ emp.subdivision }} / {{ emp.department }}</li>
+            {% empty %}
+            <li style="color: red;">НЕТ СОТРУДНИКОВ!</li>
+            {% endfor %}
+        </ul>
+    </div>
+
+    <a href="/directory/employees/">Вернуться к списку сотрудников</a>
+</body>
+</html>

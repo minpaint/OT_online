@@ -8,6 +8,7 @@ from directory.views import commissions
 from directory.views.documents.siz_integration import generate_siz_card_docx_view
 from directory.views import (
     HomePageView,
+    IntroductoryBriefingView,  # 📺 Вводный инструктаж
     EmployeeListView,
     EmployeeCreateView,
     EmployeeUpdateView,
@@ -28,6 +29,7 @@ from directory.views.employees import EmployeeTreeView
 
 from directory.views import quiz_views  # 📝 Импортируем модуль с представлениями экзаменов
 from directory.views import quiz_import_views  # 📥 Импорт вопросов
+from directory.views.debug_permissions import debug_permissions_view  # Отладка прав
 
 from directory.views.documents import (
     DocumentSelectionView,
@@ -105,8 +107,7 @@ document_patterns = [
 
 # 🛡 Комиссии
 commission_patterns = [
-    path('', commissions.CommissionListView.as_view(), name='commission_list'),
-    path('tree/', commissions.CommissionTreeView.as_view(), name='commission_tree'),
+    path('', commissions.CommissionTreeView.as_view(), name='commission_list'),
     path('create/', commissions.CommissionCreateView.as_view(), name='commission_create'),
     path('<int:pk>/', commissions.CommissionDetailView.as_view(), name='commission_detail'),
     path('<int:pk>/update/', commissions.CommissionUpdateView.as_view(), name='commission_update'),
@@ -241,6 +242,8 @@ auth_patterns = [
 # 🌐 Основные маршруты
 urlpatterns = [
     path('', HomePageView.as_view(), name='home'),
+    path('introductory-briefing/', IntroductoryBriefingView.as_view(), name='introductory_briefing'),
+    path('debug-permissions/', debug_permissions_view, name='debug_permissions'),  # Отладка
     path('auth/', include((auth_patterns, 'auth'))),
     path('autocomplete/', include(autocomplete_patterns)),
     path('employees/', include((employee_patterns, 'employees'))),

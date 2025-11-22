@@ -82,7 +82,6 @@ class SimpleHiringView(LoginRequiredMixin, FormView):
             employee = Employee(
                 full_name_nominative=data['full_name_nominative'],
                 date_of_birth=data.get('date_of_birth'),
-                place_of_residence=data.get('place_of_residence'),
                 organization=data['organization'],
                 subdivision=data.get('subdivision'),
                 department=data.get('department'),

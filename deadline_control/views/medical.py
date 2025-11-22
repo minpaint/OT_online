@@ -13,6 +13,7 @@ from datetime import timedelta
 
 from deadline_control.models.medical_norm import EmployeeMedicalExamination
 from directory.models import Employee
+from directory.utils.permissions import AccessControlHelper
 
 
 class MedicalExaminationListView(LoginRequiredMixin, ListView):
@@ -53,10 +54,9 @@ class MedicalExaminationListView(LoginRequiredMixin, ListView):
             Q(position__position_name__in=position_names_with_norms)  # Есть в эталонах
         ).distinct()
 
-        # Фильтрация по организациям
-        if not self.request.user.is_superuser and hasattr(self.request.user, 'profile'):
-            allowed_orgs = self.request.user.profile.organizations.all()
-            qs = qs.filter(organization__in=allowed_orgs)
+        # КРИТИЧНО: Фильтрация по правам доступа через AccessControlHelper
+        # Учитывает organizations, subdivisions и departments из профиля пользователя
+        qs = AccessControlHelper.filter_queryset(qs, self.request.user, self.request)
 
         # Prefetch для оптимизации запросов
         qs = qs.select_related(

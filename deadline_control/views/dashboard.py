@@ -7,6 +7,7 @@ from datetime import timedelta
 
 from deadline_control.models import Equipment, KeyDeadlineCategory, KeyDeadlineItem
 from deadline_control.models.medical_norm import EmployeeMedicalExamination
+from directory.utils.permissions import AccessControlHelper
 
 
 class DashboardView(LoginRequiredMixin, TemplateView):
@@ -18,12 +19,12 @@ class DashboardView(LoginRequiredMixin, TemplateView):
     def get_context_data(self, **kwargs):
         context = super().get_context_data(**kwargs)
 
-        # Фильтрация по организациям пользователя
         user = self.request.user
-        if not user.is_superuser and hasattr(user, 'profile'):
-            allowed_orgs = user.profile.organizations.all()
-        else:
-            allowed_orgs = None
+        today = timezone.now().date()
+        warning_date = today + timedelta(days=14)
+
+        # Получаем доступные организации через AccessControlHelper
+        accessible_orgs = AccessControlHelper.get_accessible_organizations(user, self.request)
 
         # Фильтр по конкретной организации из GET-параметра
         org_id = self.request.GET.get('org')
@@ -32,22 +33,24 @@ class DashboardView(LoginRequiredMixin, TemplateView):
             from directory.models import Organization
             try:
                 selected_org = Organization.objects.get(pk=org_id)
-                # Проверяем права доступа
-                if allowed_orgs and selected_org not in allowed_orgs:
+                # ВАЖНО: Проверяем права доступа через AccessControlHelper
+                if not user.is_superuser and selected_org not in accessible_orgs:
+                    # Пользователь пытается получить доступ к организации, к которой у него нет прав
                     selected_org = None
-                context['selected_org'] = selected_org
+                else:
+                    context['selected_org'] = selected_org
             except Organization.DoesNotExist:
                 pass
 
-        today = timezone.now().date()
-        warning_date = today + timedelta(days=14)
-
         # ========== ОБОРУДОВАНИЕ ==========
         equipment_qs = Equipment.objects.select_related('organization', 'subdivision', 'department')
+
+        # КРИТИЧНО: Применяем фильтрацию по правам ВСЕГДА через AccessControlHelper
+        equipment_qs = AccessControlHelper.filter_queryset(equipment_qs, user, self.request)
+
+        # Дополнительная фильтрация по выбранной организации (если указана)
         if selected_org:
             equipment_qs = equipment_qs.filter(organization=selected_org)
-        elif allowed_orgs:
-            equipment_qs = equipment_qs.filter(organization__in=allowed_orgs)
 
         # Просроченное ТО
         overdue_equipment = []
@@ -63,10 +66,13 @@ class DashboardView(LoginRequiredMixin, TemplateView):
 
         # ========== КЛЮЧЕВЫЕ СРОКИ ==========
         categories_qs = KeyDeadlineCategory.objects.filter(is_active=True).prefetch_related('items')
+
+        # КРИТИЧНО: Применяем фильтрацию по правам ВСЕГДА через AccessControlHelper
+        categories_qs = AccessControlHelper.filter_queryset(categories_qs, user, self.request)
+
+        # Дополнительная фильтрация по выбранной организации (если указана)
         if selected_org:
             categories_qs = categories_qs.filter(organization=selected_org)
-        elif allowed_orgs:
-            categories_qs = categories_qs.filter(organization__in=allowed_orgs)
 
         overdue_deadlines = []
         upcoming_deadlines = []
@@ -81,10 +87,21 @@ class DashboardView(LoginRequiredMixin, TemplateView):
 
         # ========== МЕДИЦИНСКИЕ ОСМОТРЫ ==========
         medical_qs = EmployeeMedicalExamination.objects.select_related('employee', 'harmful_factor')
+
+        # КРИТИЧНО: Фильтрация по employee.organization через AccessControlHelper
+        # Поскольку модель EmployeeMedicalExamination не имеет прямого поля organization,
+        # фильтруем через связанный Employee
+        if not user.is_superuser:
+            # Получаем доступных сотрудников
+            from directory.models import Employee
+            accessible_employees_qs = AccessControlHelper.filter_queryset(
+                Employee.objects.all(), user, self.request
+            )
+            medical_qs = medical_qs.filter(employee__in=accessible_employees_qs)
+
+        # Дополнительная фильтрация по выбранной организации (если указана)
         if selected_org:
             medical_qs = medical_qs.filter(employee__organization=selected_org)
-        elif allowed_orgs:
-            medical_qs = medical_qs.filter(employee__organization__in=allowed_orgs)
 
         overdue_medical = []
         upcoming_medical = []

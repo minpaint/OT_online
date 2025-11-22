@@ -58,7 +58,11 @@
                 <tbody>
                 {% for profession in professions %}
                     <tr class="tree-row" data-level="0" data-node-id="profession_{{ forloop.counter }}">
-                        <td class="field-checkbox"></td>
+                        <td class="field-checkbox">
+                            <input type="checkbox" class="profession-checkbox"
+                                   data-profession-id="profession_{{ forloop.counter }}"
+                                   title="Выделить все нормы профессии">
+                        </td>
                         <td class="field-name">
                             <button type="button" class="toggle-btn" data-state="expanded">[-]</button>
                             <span class="tree-icon">👤</span>
@@ -76,13 +80,14 @@
                         </td>
                     </tr>
 
-                    {% if profession.base_norms %}
-                    {# Базовые нормы (без условий) #}
+                    {% if profession.base_norms or profession.group_norms %}
+                    {# Единая таблица для всех норм СИЗ профессии #}
                     <tr class="tree-row" data-level="1" data-parent-id="profession_{{ forloop.counter }}">
                         <td colspan="4" style="padding:0">
                             <table class="table table-bordered table-striped" style="width:100%">
                                 <thead>
                                     <tr>
+                                        <th style="width: 30px;"></th>
                                         <th>Наименование средств индивидуальной защиты</th>
                                         <th>Классификация (маркировка)</th>
                                         <th>Ед. изм.</th>
@@ -92,65 +97,62 @@
                                     </tr>
                                 </thead>
                                 <tbody>
-                                    {% for norm in profession.base_norms %}
-                                    <tr>
-                                        <td>{{ norm.siz.name }}</td>
-                                        <td>{{ norm.siz.classification }}</td>
-                                        <td>{{ norm.siz.unit }}</td>
-                                        <td>{{ norm.quantity }}</td>
-                                        <td>{% if norm.siz.wear_period == 0 %}До износа{% else %}{{ norm.siz.wear_period }} мес.{% endif %}</td>
-                                        <td>
-                                            <a href="{% url 'admin:directory_siznorm_change' norm.id %}" class="edit-link">Изменить</a>
-                                            <a href="{% url 'admin:directory_siznorm_delete' norm.id %}" class="delete-link">Удалить</a>
-                                        </td>
-                                    </tr>
+                                    {% if profession.base_norms %}
+                                        {# Базовые нормы (без условий) #}
+                                        {% for norm in profession.base_norms %}
+                                        <tr class="norm-row" data-profession-id="profession_{{ forloop.parentloop.counter }}">
+                                            <td>
+                                                <input type="checkbox" name="_selected_action" value="{{ norm.id }}"
+                                                       class="action-select norm-checkbox"
+                                                       data-profession-id="profession_{{ forloop.parentloop.counter }}">
+                                            </td>
+                                            <td>{{ norm.siz.name }}</td>
+                                            <td>{{ norm.siz.classification }}</td>
+                                            <td>{{ norm.siz.unit }}</td>
+                                            <td>{{ norm.quantity }}</td>
+                                            <td>{% if norm.siz.wear_period == 0 %}До износа{% else %}{{ norm.siz.wear_period }} мес.{% endif %}</td>
+                                            <td>
+                                                <a href="{% url 'admin:directory_siznorm_change' norm.id %}" class="edit-link">Изменить</a>
+                                                <a href="{% url 'admin:directory_siznorm_delete' norm.id %}" class="delete-link">Удалить</a>
+                                            </td>
+                                        </tr>
+                                        {% endfor %}
+                                    {% endif %}
+
+                                    {# Нормы по условиям #}
+                                    {% for group in profession.group_norms %}
+                                        {# Разделитель с названием условия #}
+                                        <tr class="condition-header">
+                                            <td colspan="7" class="condition-name">
+                                                <span class="tree-icon">⚙</span>
+                                                <strong>{{ group.name }}</strong>
+                                            </td>
+                                        </tr>
+                                        {# Нормы для данного условия #}
+                                        {% for norm in group.norms %}
+                                        <tr class="norm-row" data-profession-id="profession_{{ forloop.parentloop.parentloop.counter }}">
+                                            <td>
+                                                <input type="checkbox" name="_selected_action" value="{{ norm.id }}"
+                                                       class="action-select norm-checkbox"
+                                                       data-profession-id="profession_{{ forloop.parentloop.parentloop.counter }}">
+                                            </td>
+                                            <td>{{ norm.siz.name }}</td>
+                                            <td>{{ norm.siz.classification }}</td>
+                                            <td>{{ norm.siz.unit }}</td>
+                                            <td>{{ norm.quantity }}</td>
+                                            <td>{% if norm.siz.wear_period == 0 %}До износа{% else %}{{ norm.siz.wear_period }} мес.{% endif %}</td>
+                                            <td>
+                                                <a href="{% url 'admin:directory_siznorm_change' norm.id %}" class="edit-link">Изменить</a>
+                                                <a href="{% url 'admin:directory_siznorm_delete' norm.id %}" class="delete-link">Удалить</a>
+                                            </td>
+                                        </tr>
+                                        {% endfor %}
                                     {% endfor %}
                                 </tbody>
                             </table>
                         </td>
                     </tr>
                     {% endif %}
-
-                    {# Нормы по условиям #}
-                    {% for group in profession.group_norms %}
-                    <tr class="tree-row" data-level="1" data-parent-id="profession_{{ forloop.counter }}">
-                        <td colspan="4" style="padding:0">
-                            <table class="table table-bordered table-striped" style="width:100%">
-                                <thead>
-                                    <tr class="condition-header">
-                                        <td colspan="6" class="condition-name">
-                                            <span class="tree-icon">⚙</span>
-                                            <strong>{{ group.name }}</strong>
-                                        </td>
-                                    </tr>
-                                    <tr>
-                                        <th>Наименование средств индивидуальной защиты</th>
-                                        <th>Классификация (маркировка)</th>
-                                        <th>Ед. изм.</th>
-                                        <th>Количество</th>
-                                        <th>Срок носки</th>
-                                        <th>Действия</th>
-                                    </tr>
-                                </thead>
-                                <tbody>
-                                    {% for norm in group.norms %}
-                                    <tr>
-                                        <td>{{ norm.siz.name }}</td>
-                                        <td>{{ norm.siz.classification }}</td>
-                                        <td>{{ norm.siz.unit }}</td>
-                                        <td>{{ norm.quantity }}</td>
-                                        <td>{% if norm.siz.wear_period == 0 %}До износа{% else %}{{ norm.siz.wear_period }} мес.{% endif %}</td>
-                                        <td>
-                                            <a href="{% url 'admin:directory_siznorm_change' norm.id %}" class="edit-link">Изменить</a>
-                                            <a href="{% url 'admin:directory_siznorm_delete' norm.id %}" class="delete-link">Удалить</a>
-                                        </td>
-                                    </tr>
-                                    {% endfor %}
-                                </tbody>
-                            </table>
-                        </td>
-                    </tr>
-                    {% endfor %}
                 {% endfor %}
                 </tbody>
             </table>
@@ -179,4 +181,94 @@
     <link rel="stylesheet" href="{% static 'admin/css/tree_view.css' %}">
     <script src="{% static 'admin/js/tree_view.js' %}"></script>
     <script src="{% static 'admin/js/tree_search.js' %}"></script>
+    <script>
+    document.addEventListener('DOMContentLoaded', function() {
+        // Обработчик чекбоксов профессий
+        const professionCheckboxes = document.querySelectorAll('.profession-checkbox');
+
+        professionCheckboxes.forEach(function(professionCheckbox) {
+            professionCheckbox.addEventListener('change', function() {
+                const professionId = this.getAttribute('data-profession-id');
+                const isChecked = this.checked;
+
+                // Находим все чекбоксы норм этой профессии
+                const normCheckboxes = document.querySelectorAll(
+                    '.norm-checkbox[data-profession-id="' + professionId + '"]'
+                );
+
+                // Устанавливаем состояние всех чекбоксов норм
+                normCheckboxes.forEach(function(checkbox) {
+                    checkbox.checked = isChecked;
+                });
+
+                // Обновляем счетчик
+                updateActionCounter();
+            });
+        });
+
+        // Обработчик для отдельных чекбоксов норм
+        const normCheckboxes = document.querySelectorAll('.norm-checkbox');
+        normCheckboxes.forEach(function(checkbox) {
+            checkbox.addEventListener('change', function() {
+                updateActionCounter();
+
+                // Проверяем, нужно ли обновить состояние чекбокса профессии
+                const professionId = this.getAttribute('data-profession-id');
+                const allNormCheckboxes = document.querySelectorAll(
+                    '.norm-checkbox[data-profession-id="' + professionId + '"]'
+                );
+                const professionCheckbox = document.querySelector(
+                    '.profession-checkbox[data-profession-id="' + professionId + '"]'
+                );
+
+                if (professionCheckbox) {
+                    // Если все нормы выбраны - ставим галочку у профессии
+                    const allChecked = Array.from(allNormCheckboxes).every(cb => cb.checked);
+                    const noneChecked = Array.from(allNormCheckboxes).every(cb => !cb.checked);
+
+                    if (allChecked) {
+                        professionCheckbox.checked = true;
+                        professionCheckbox.indeterminate = false;
+                    } else if (noneChecked) {
+                        professionCheckbox.checked = false;
+                        professionCheckbox.indeterminate = false;
+                    } else {
+                        professionCheckbox.checked = false;
+                        professionCheckbox.indeterminate = true;
+                    }
+                }
+            });
+        });
+
+        // Функция обновления счетчика выбранных элементов
+        function updateActionCounter() {
+            const counter = document.querySelector('.action-counter');
+            if (counter) {
+                const checkedCount = document.querySelectorAll('.norm-checkbox:checked').length;
+                const totalCount = document.querySelectorAll('.norm-checkbox').length;
+
+                if (checkedCount > 0) {
+                    counter.textContent = checkedCount + ' из ' + totalCount + ' выбрано';
+                    counter.style.display = '';
+                } else {
+                    counter.style.display = 'none';
+                }
+            }
+        }
+
+        // Обработчик для "Выбрать все"
+        const selectAllCheckbox = document.getElementById('select-all');
+        if (selectAllCheckbox) {
+            selectAllCheckbox.addEventListener('change', function() {
+                const isChecked = this.checked;
+
+                // Выбираем все чекбоксы профессий
+                professionCheckboxes.forEach(function(cb) {
+                    cb.checked = isChecked;
+                    cb.dispatchEvent(new Event('change'));
+                });
+            });
+        }
+    });
+    </script>
 {% endblock %}

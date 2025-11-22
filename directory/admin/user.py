@@ -5,6 +5,8 @@ from django.contrib import messages
 from django.utils.html import format_html
 from directory.models.profile import Profile
 from directory.utils.permissions import AccessControlHelper
+# Импортируем нашу кастомную форму
+from directory.admin.profile import ProfileAdminForm
 
 
 class ProfileInline(admin.StackedInline):
@@ -17,26 +19,44 @@ class ProfileInline(admin.StackedInline):
     - 📂 Departments - доступ только к конкретным отделам
     """
     model = Profile
+    form = ProfileAdminForm  # Используем кастомную форму с карточным виджетом
     can_delete = False
     verbose_name_plural = 'Профиль и права доступа'
-    filter_horizontal = ('organizations', 'subdivisions', 'departments')
 
     fieldsets = (
         ('Основные настройки', {
             'fields': ('is_active',)
         }),
-        ('Права доступа (иерархические)', {
-            'fields': ('organizations', 'subdivisions', 'departments'),
+        ('Права доступа', {
+            'fields': ('hierarchical_access',),
             'description': format_html(
-                '<div style="background: #f8f9fa; padding: 15px; border-left: 4px solid #007bff; margin-bottom: 10px;">'
-                '<strong>Иерархический принцип доступа:</strong><br><br>'
-                '🏢 <strong>Организация</strong> → доступ ко ВСЕЙ организации (все подразделения и отделы)<br>'
-                '🏭 <strong>Подразделение</strong> → доступ к подразделению и всем его отделам<br>'
-                '📂 <strong>Отдел</strong> → доступ только к этому отделу<br><br>'
-                '<em style="color: #856404;">⚠️ <strong>Избегайте избыточности:</strong> '
-                'если дан доступ к организации, не нужно добавлять её подразделения/отделы.</em>'
+                '<div style="background: #f8f8f8; border: 1px solid #ccc; '
+                'padding: 12px; border-radius: 4px; margin-bottom: 10px; color: #333; font-size: 13px;">'
+                '<strong>Иерархический принцип доступа:</strong><br>'
+                '<ul style="margin: 8px 0; padding-left: 20px; line-height: 1.6;">'
+                '<li><strong>🏢 Организация</strong> — полный доступ ко всей организации (все подразделения и отделы)</li>'
+                '<li><strong>🏭 Подразделение</strong> — доступ к подразделению и всем его отделам</li>'
+                '<li><strong>📂 Отдел</strong> — доступ только к конкретному отделу</li>'
+                '</ul>'
+                '<em style="color: #666;">Выберите галочками нужные уровни. Карточки разворачиваются кликом на заголовок.</em>'
                 '</div>'
             )
+        }),
+        ('🍔 Управление меню', {
+            'fields': ('visible_menu_items',),
+            'description': format_html(
+                '<div style="background: #f0f8ff; border: 1px solid #b0d4f1; '
+                'padding: 12px; border-radius: 4px; margin-bottom: 10px; color: #333; font-size: 13px;">'
+                '<strong>Настройка видимых пунктов меню:</strong><br>'
+                '<p style="margin: 8px 0; line-height: 1.6;">'
+                'Выберите пункты меню, которые будут доступны пользователю в боковой и верхней навигации. '
+                '<strong>Если ничего не выбрано</strong> — пользователь видит все активные пункты меню.'
+                '</p>'
+                '<em style="color: #666;">Используйте двойные списки для перемещения пунктов. '
+                'Применяется только к неадминским пользователям.</em>'
+                '</div>'
+            ),
+            'classes': ('collapse',)
         }),
     )
 

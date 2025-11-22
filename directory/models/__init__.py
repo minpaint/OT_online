@@ -6,6 +6,7 @@ from .document import Document
 from .position import Position
 from .employee import Employee
 from .profile import Profile
+from .menu_item import MenuItem
 from .siz_issued import SIZIssued
 from .siz import SIZ, SIZNorm
 from .document_template import DocumentTemplate, GeneratedDocument, DocumentGenerationLog
@@ -17,6 +18,7 @@ from .quiz import QuizCategory, QuizCategoryOrder, Quiz, Question, Answer, QuizA
 __all__ = [
     'Organization',
     'Profile',
+    'MenuItem',
     'StructuralSubdivision',
     'Department',
     'Document',

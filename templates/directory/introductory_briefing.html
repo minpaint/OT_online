@@ -1,0 +1,45 @@
+{% extends 'base.html' %}
+
+{% block title %}Вводный инструктаж - OT Online{% endblock %}
+
+{% block content %}
+<div class="container mt-4">
+    <div class="row">
+        <div class="col-12">
+            <h1 class="mb-4">📺 Вводный инструктаж по охране труда</h1>
+        </div>
+    </div>
+
+    <div class="row justify-content-center">
+        <div class="col-lg-10">
+            <div class="card shadow-sm">
+                <div class="card-body p-0">
+                    <!-- YouTube видео -->
+                    <div class="ratio ratio-16x9">
+                        <iframe
+                            src="https://www.youtube.com/embed/Lyl0uNtPzZs?start=2&rel=0&modestbranding=1"
+                            title="Вводный инструктаж по охране труда"
+                            frameborder="0"
+                            allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; web-share"
+                            referrerpolicy="strict-origin-when-cross-origin"
+                            allowfullscreen>
+                        </iframe>
+                    </div>
+                </div>
+            </div>
+
+            <div class="card mt-4 shadow-sm">
+                <div class="card-body text-center">
+                    <h5 class="card-title mb-3">Завершили просмотр инструктажа?</h5>
+                    <p class="card-text text-muted mb-4">
+                        После просмотра вводного инструктажа вы можете перейти к оформлению приема на работу.
+                    </p>
+                    <a href="{% url 'directory:hiring:simple_hiring' %}" class="btn btn-primary btn-lg">
+                        ➕ Принять на работу
+                    </a>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}

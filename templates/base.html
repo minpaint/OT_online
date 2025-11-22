@@ -16,6 +16,7 @@
           integrity="sha384-9ndCyUaIbzAi2FUVXJi0CjmCapSmO7SnpJef0486qhLnuZ2cdeRhO02iuK6FUUVM"
           crossorigin="anonymous">
     {% load static %}
+    {% load menu_tags %}
     <!-- Select2 CSS через CDN для автодополнения 🔍 -->
     <link href="https://cdn.jsdelivr.net/npm/select2@4.1.0-rc.0/dist/css/select2.min.css" rel="stylesheet">
 
@@ -233,23 +234,32 @@
         <ul class="sidebar-nav">
             <div class="sidebar-section">Основное</div>
 
+            {% check_url_visibility user 'directory:introductory_briefing' as show_briefing %}
+            {% if show_briefing %}
             <li class="nav-item">
-                <a class="nav-link" href="{% url 'directory:employees:employee_list' %}">
+                <a class="nav-link" href="{% url 'directory:introductory_briefing' %}">
+                    📺 Вводный инструктаж
+                </a>
+            </li>
+            {% endif %}
+
+            {% check_url_visibility user 'directory:home' as show_employees %}
+            {% if show_employees %}
+            <li class="nav-item">
+                <a class="nav-link" href="/">
                     👥 Сотрудники
                 </a>
             </li>
+            {% endif %}
 
+            {% check_url_visibility user 'directory:hiring:hiring_list' as show_hiring %}
+            {% if show_hiring %}
             <li class="nav-item">
-                <a class="nav-link" href="{% url 'directory:positions:position_list' %}">
-                    👔 Должности
+                <a class="nav-link" href="{% url 'directory:hiring:hiring_list' %}">
+                    ➕ Приемы на работу
                 </a>
             </li>
-
-            <li class="nav-item">
-                <a class="nav-link" href="{% url 'directory:siz:siz_list' %}">
-                    🛡️ СИЗ
-                </a>
-            </li>
+            {% endif %}
 
             <div class="sidebar-section">
                 ⏰ Контроль сроков
@@ -260,6 +270,8 @@
                 {% endif %}
             </div>
 
+            {% check_url_visibility user 'deadline_control:dashboard' as show_dashboard %}
+            {% if show_dashboard %}
             <li class="nav-item">
                 <a class="nav-link" href="{% url 'deadline_control:dashboard' %}">
                     📊 Dashboard
@@ -270,50 +282,54 @@
                     {% endif %}
                 </a>
             </li>
+            {% endif %}
 
+            {% check_url_visibility user 'deadline_control:equipment:list' as show_equipment %}
+            {% if show_equipment %}
             <li class="nav-item">
                 <a class="nav-link" href="{% url 'deadline_control:equipment:list' %}">
                     ⚙️ ТО оборудования
                 </a>
             </li>
+            {% endif %}
 
+            {% check_url_visibility user 'deadline_control:key_deadline:list' as show_deadlines %}
+            {% if show_deadlines %}
             <li class="nav-item">
                 <a class="nav-link" href="{% url 'deadline_control:key_deadline:list' %}">
                     📅 Ключевые сроки
                 </a>
             </li>
+            {% endif %}
 
+            {% check_url_visibility user 'deadline_control:medical:list' as show_medical %}
+            {% if show_medical %}
             <li class="nav-item">
                 <a class="nav-link" href="{% url 'deadline_control:medical:list' %}">
                     🏥 Медосмотры
                 </a>
             </li>
+            {% endif %}
 
             <div class="sidebar-section">Дополнительно</div>
 
+            {% check_url_visibility user 'directory:quiz:quiz_list' as show_quiz %}
+            {% if show_quiz %}
             <li class="nav-item">
                 <a class="nav-link" href="{% url 'directory:quiz:quiz_list' %}">
                     📝 Экзамены
                 </a>
             </li>
+            {% endif %}
 
-            <li class="nav-item">
-                <a class="nav-link" href="{% url 'directory:hiring:hiring_list' %}">
-                    ➕ Приемы на работу
-                </a>
-            </li>
-
+            {% check_url_visibility user 'directory:commissions:commission_list' as show_commissions %}
+            {% if show_commissions %}
             <li class="nav-item">
                 <a class="nav-link" href="{% url 'directory:commissions:commission_list' %}">
-                    👥 Список комиссий
+                    👥 Комиссии
                 </a>
             </li>
-
-            <li class="nav-item">
-                <a class="nav-link" href="{% url 'directory:commissions:commission_tree' %}">
-                    🌳 Структура комиссий
-                </a>
-            </li>
+            {% endif %}
         </ul>
         {% endif %}
     </div>
@@ -328,14 +344,20 @@
             <div class="user-menu">
                 {% if user.is_authenticated %}
                     <!-- Кнопка "Принять на работу" -->
+                    {% check_url_visibility user 'directory:hiring:simple_hiring' as show_hiring_btn %}
+                    {% if show_hiring_btn %}
                     <a href="{% url 'directory:hiring:simple_hiring' %}" class="btn btn-sm btn-success">
                         ➕ Принять на работу
                     </a>
+                    {% endif %}
 
-                    <!-- Кнопка "Выдать направление" -->
+                    <!-- Кнопка "Выдать направление кандидату" -->
+                    {% check_url_visibility user 'deadline_control:medical:referral_new_employee' as show_referral_btn %}
+                    {% if show_referral_btn %}
                     <a href="{% url 'deadline_control:medical:referral_new_employee' %}" class="btn btn-sm btn-primary">
-                        🏥 Выдать направление
+                        🏥 Выдать направление кандидату
                     </a>
+                    {% endif %}
 
                     <!-- Dropdown меню профиля -->
                     <div class="dropdown">
@@ -344,7 +366,8 @@
                             👤 {{ user.get_full_name|default:user.username }}
                         </a>
                         <ul class="dropdown-menu dropdown-menu-end" aria-labelledby="userDropdown">
-                            {% if user.is_staff %}
+                            {% check_url_visibility user 'admin:index' as show_admin %}
+                            {% if user.is_staff and show_admin %}
                             <li>
                                 <a class="dropdown-item" href="{% url 'admin:index' %}">
                                     ⚙️ Администрирование
