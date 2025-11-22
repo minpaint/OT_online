@@ -1,0 +1,102 @@
+{% extends 'base.html' %}
+{% load static %}
+
+{% block title %}{{ title }}{% endblock %}
+
+{% block content %}
+<div class="container-fluid">
+    <h4 class="mb-3">{{ title }}</h4>
+    <p class="text-muted small">
+        В таблице собраны сотрудники со стажировкой или флагом «Ответственный за ОТ», отфильтрованные по вашим правам доступа.
+        Галочки уже стоят — можно снять лишних перед скачиванием протокола.
+    </p>
+
+    <form method="post" id="periodicProtocolForm">
+        {% csrf_token %}
+        <div class="d-flex flex-wrap gap-2 mb-3">
+            <button type="submit" name="action" value="download_single" class="btn btn-primary btn-sm">
+                <i class="fas fa-download"></i> Скачать общий протокол
+            </button>
+            <button type="submit" name="action" value="download_by_subdivision" class="btn btn-outline-primary btn-sm">
+                <i class="fas fa-folder"></i> Скачать по подразделениям (zip)
+            </button>
+            <div class="form-check form-check-inline">
+                <input class="form-check-input" type="checkbox" id="selectAll" checked>
+                <label class="form-check-label" for="selectAll">Выбрать всех</label>
+            </div>
+            <span class="text-muted small">Выбрано: <span id="selectedCount">{{ employees|length }}</span></span>
+        </div>
+
+        <div class="table-responsive">
+            <table class="table table-sm align-middle">
+                <thead class="table-light">
+                    <tr>
+                        <th style="width:40px;"></th>
+                        <th>ФИО</th>
+                        <th>Должность</th>
+                        <th>Организация</th>
+                        <th>Подразделение</th>
+                        <th>Отдел</th>
+                        <th>Признак</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for employee in employees %}
+                    <tr>
+                        <td>
+                            <input type="checkbox" class="form-check-input employee-checkbox" name="employee_ids" value="{{ employee.id }}" checked>
+                        </td>
+                        <td>{{ employee.full_name_nominative }}</td>
+                        <td>{{ employee.position.position_name }}</td>
+                        <td>{{ employee.organization.short_name_ru }}</td>
+                        <td>{{ employee.subdivision.name|default:"—" }}</td>
+                        <td>{{ employee.department.name|default:"—" }}</td>
+                        <td>
+                            {% if employee.position.internship_period_days and employee.position.internship_period_days|add:0 > 0 %}
+                                <span class="badge bg-info text-dark">Стажировка</span>
+                            {% endif %}
+                            {% if employee.position.is_responsible_for_safety %}
+                                <span class="badge bg-warning text-dark">Ответственный за ОТ</span>
+                            {% endif %}
+                        </td>
+                    </tr>
+                    {% empty %}
+                    <tr>
+                        <td colspan="7" class="text-muted text-center">Нет сотрудников, подходящих под критерии.</td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+    </form>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+    const selectAll = document.getElementById('selectAll');
+    const checkboxes = Array.from(document.querySelectorAll('.employee-checkbox'));
+    const counter = document.getElementById('selectedCount');
+
+    function updateCounter() {
+        const selected = checkboxes.filter(cb => cb.checked).length;
+        counter.textContent = selected;
+    }
+
+    if (selectAll) {
+        selectAll.addEventListener('change', function() {
+            const checked = this.checked;
+            checkboxes.forEach(cb => { cb.checked = checked; });
+            updateCounter();
+        });
+    }
+
+    checkboxes.forEach(cb => {
+        cb.addEventListener('change', updateCounter);
+    });
+
+    updateCounter();
+});
+</script>
+{% endblock %}

@@ -44,6 +44,13 @@ class Command(BaseCommand):
         )
 
         self._create_template(
+            'periodic_protocol',
+            'Протокол периодической проверки знаний',
+            'Шаблон протокола периодической проверки знаний',
+            'periodic_protocol_template.docx'
+        )
+
+        self._create_template(
             'doc_familiarization',
             'Лист ознакомления с документами',
             'Шаблон листа ознакомления с документами',

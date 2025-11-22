@@ -35,6 +35,7 @@ from directory.views.documents import (
     DocumentSelectionView,
     GeneratedDocumentListView,
     document_download,
+    PeriodicProtocolView,
 )
 
 
@@ -102,6 +103,7 @@ position_patterns = [
 document_patterns = [
     path('', GeneratedDocumentListView.as_view(), name='document_list'),
     path('selection/<int:employee_id>/', DocumentSelectionView.as_view(), name='document_selection'),
+    path('periodic-protocol/', PeriodicProtocolView.as_view(), name='periodic_protocol'),
     path('<int:pk>/download/', document_download, name='document_download'),
 ]
 

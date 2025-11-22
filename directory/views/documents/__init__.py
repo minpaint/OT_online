@@ -13,10 +13,12 @@ from .management import (
     GeneratedDocumentListView,
     document_download
 )
+from .protocol import PeriodicProtocolView
 
 __all__ = [
     'DocumentSelectionView',
     'get_auto_selected_document_types',
     'GeneratedDocumentListView',
     'document_download',
+    'PeriodicProtocolView',
 ]

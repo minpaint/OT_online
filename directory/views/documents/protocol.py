@@ -1,16 +1,22 @@
 # directory/views/documents/protocol.py
 
 from django import forms
-from django.views.generic import FormView
+from django.views.generic import FormView, TemplateView
 from django.contrib.auth.mixins import LoginRequiredMixin
 from django.shortcuts import get_object_or_404, redirect
 from django.contrib import messages
 from django.urls import reverse
+from django.http import HttpResponse
+from django.db.models import Q
+from django.utils.text import slugify
 import logging
+from io import BytesIO
+from zipfile import ZipFile
 
 from directory.models import Employee
-from directory.document_generators.protocol_generator import generate_knowledge_protocol
+from directory.document_generators.protocol_generator import generate_knowledge_protocol, generate_periodic_protocol
 from directory.services.commission_service import find_appropriate_commission, get_commission_members_formatted
+from directory.utils.permissions import AccessControlHelper
 
 # Настройка логирования
 logger = logging.getLogger(__name__)
@@ -215,3 +221,81 @@ class KnowledgeProtocolCreateView(LoginRequiredMixin, FormView):
         else:
             messages.error(self.request, 'Ошибка при генерации протокола проверки знаний')
             return self.form_invalid(form)
+
+
+
+class PeriodicProtocolView(LoginRequiredMixin, TemplateView):
+    """
+    Карточка периодической проверки знаний с выбором сотрудников и скачиванием протокола.
+    """
+    template_name = 'directory/documents/periodic_protocol.html'
+
+    def get_base_queryset(self):
+        qs = Employee.objects.select_related(
+            'organization', 'subdivision', 'department', 'position'
+        )
+        qs = AccessControlHelper.filter_queryset(qs, self.request.user, self.request)
+        qs = qs.filter(position__isnull=False).filter(
+            Q(position__internship_period_days__gt=0) |
+            Q(position__is_responsible_for_safety=True)
+        )
+        return qs.order_by(
+            'organization__short_name_ru',
+            'subdivision__name',
+            'department__name',
+            'full_name_nominative'
+        )
+
+    def get_context_data(self, **kwargs):
+        context = super().get_context_data(**kwargs)
+        employees = list(self.get_base_queryset())
+        context['title'] = 'Периодическая проверка знаний'
+        context['employees'] = employees
+        return context
+
+    def post(self, request, *args, **kwargs):
+        employees_qs = self.get_base_queryset()
+        selected_ids = request.POST.getlist('employee_ids')
+        if selected_ids:
+            employees_qs = employees_qs.filter(id__in=selected_ids)
+
+        employees = list(employees_qs)
+        if not employees:
+            messages.error(request, "Нет выбранных сотрудников для протокола")
+            return redirect(request.path)
+
+        action = request.POST.get('action')
+        group_by_subdivision = action == 'download_by_subdivision'
+
+        if group_by_subdivision:
+            buffer = BytesIO()
+            with ZipFile(buffer, 'w') as zip_buffer:
+                grouped = {}
+                for emp in employees:
+                    key = emp.subdivision.name if emp.subdivision else None
+                    grouped.setdefault(key, []).append(emp)
+
+                for key, emps in grouped.items():
+                    doc = generate_periodic_protocol(emps, user=request.user, grouping_name=key)
+                    if not doc:
+                        continue
+                    name = key or 'Общий'
+                    filename = f"periodic_protocol_{slugify(name or 'obshchiy') or 'protocol'}.docx"
+                    zip_buffer.writestr(filename, doc['content'])
+
+            buffer.seek(0)
+            response = HttpResponse(buffer.getvalue(), content_type='application/zip')
+            response['Content-Disposition'] = 'attachment; filename="periodic_protocols.zip"'
+            return response
+
+        doc = generate_periodic_protocol(employees, user=request.user)
+        if not doc:
+            messages.error(request, "Не удалось сформировать протокол")
+            return redirect(request.path)
+
+        response = HttpResponse(
+            doc['content'],
+            content_type='application/vnd.openxmlformats-officedocument.wordprocessingml.document'
+        )
+        response['Content-Disposition'] = f'attachment; filename="{doc["filename"]}"'
+        return response

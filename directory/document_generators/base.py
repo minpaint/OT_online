@@ -24,6 +24,7 @@ logger = logging.getLogger(__name__)
 DOCUMENT_TYPE_NAMES = {
     'all_orders': 'Распоряжения',
     'knowledge_protocol': 'Протокол',
+    'periodic_protocol': 'Протокол',
     'doc_familiarization': 'Лист ознакомления',
     'siz_card': 'Карточка СИЗ',
     'personal_ot_card': 'Личная карточка',
