@@ -269,19 +269,15 @@ margin-bottom: 1rem;
  Действия <span id="selectedCount" class="badge bg-light text-dark ms-1">0</span>
  </button>
  <ul class="dropdown-menu" aria-labelledby="actionsDropdown">
- <li><a class="dropdown-item" href="#" id="btnIssueCard">
- <i class="fas fa-id-card"></i> Карточка учета
-</a></li>
  <li><a class="dropdown-item" href="#" id="btnIssueSIZ">
  <i class="fas fa-hard-hat"></i> Выдать СИЗ
+</a></li>
+ <li><a class="dropdown-item" href="#" id="btnMedicalReferralDropdown">
+ <i class="fas fa-stethoscope"></i> Выдать направление
 </a></li>
  <!-- Добавляем новый пункт выпадающего меню -->
  <li><a class="dropdown-item" href="#" id="btnGenerateDocuments">
  <i class="fas fa-file-alt"></i> Сгенерировать документы
-</a></li>
- <li><hr class="dropdown-divider"></li>
- <li><a class="dropdown-item" href="#" id="btnEditEmployee">
- <i class="fas fa-user-edit"></i> Редактировать
 </a></li>
  </ul>
  </div>
@@ -343,14 +339,17 @@ margin-bottom: 1rem;
  </td>
  <td>
  <div class="btn-group btn-group-sm">
- <a href="{% url 'directory:employees:employee_update' employee.pk %}"
- class="btn btn-outline-primary"><i class="fas fa-edit"></i></a>
- <a href="{% url 'directory:siz:siz_personal_card' employee.id %}"
- class="btn btn-outline-info"><i class="fas fa-id-card"></i></a>
- <a href="{% url 'directory:siz:siz_issue_for_employee' employee.id %}"
- class="btn btn-outline-success"><i class="fas fa-hard-hat"></i></a>
+ <button type="button" class="btn btn-outline-info btn-medical-referral" data-employee-id="{{ employee.id }}" title="Направление на МО">
+ <i class="fas fa-stethoscope"></i>
+ </button>
  <a href="{% url 'directory:documents:document_selection' employee.id %}"
- class="btn btn-outline-danger"><i class="fas fa-file-alt"></i></a>
+ class="btn btn-outline-danger" title="Создать документы">
+ <i class="fas fa-file-alt"></i>
+ </a>
+ <a href="{% url 'directory:siz:siz_personal_card' employee.id %}"
+ class="btn btn-outline-success" title="Выдать СИЗ">
+ <i class="fas fa-hard-hat"></i>
+ </a>
  </div>
  </td>
  </tr>
@@ -385,22 +384,17 @@ margin-bottom: 1rem;
  </td>
  <td>
  <div class="btn-group btn-group-sm">
- <a href="{% url 'directory:employees:employee_update' employee.pk %}"
- class="btn btn-outline-primary">
- <i class="fas fa-edit"></i>
- </a>
- <a href="{% url 'directory:siz:siz_personal_card' employee.id %}"
- class="btn btn-outline-info">
- <i class="fas fa-id-card"></i>
- </a>
- <a href="{% url 'directory:siz:siz_issue_for_employee' employee.id %}"
- class="btn btn-outline-success">
- <i class="fas fa-hard-hat"></i>
- </a>
+ <button type="button" class="btn btn-outline-info btn-medical-referral" data-employee-id="{{ employee.id }}" title="Направление на МО">
+ <i class="fas fa-stethoscope"></i>
+ </button>
  <!-- Добавляем кнопку генерации документов в строке сотрудника -->
  <a href="{% url 'directory:documents:document_selection' employee.id %}"
- class="btn btn-outline-danger">
+ class="btn btn-outline-danger" title="Создать документы">
  <i class="fas fa-file-alt"></i>
+ </a>
+ <a href="{% url 'directory:siz:siz_personal_card' employee.id %}"
+ class="btn btn-outline-success" title="Выдать СИЗ">
+ <i class="fas fa-hard-hat"></i>
  </a>
  </div>
  </td>
@@ -438,22 +432,17 @@ margin-bottom: 1rem;
  </td>
  <td>
  <div class="btn-group btn-group-sm">
- <a href="{% url 'directory:employees:employee_update' employee.pk %}"
- class="btn btn-outline-primary">
- <i class="fas fa-edit"></i>
- </a>
- <a href="{% url 'directory:siz:siz_personal_card' employee.id %}"
- class="btn btn-outline-info">
- <i class="fas fa-id-card"></i>
- </a>
- <a href="{% url 'directory:siz:siz_issue_for_employee' employee.id %}"
- class="btn btn-outline-success">
- <i class="fas fa-hard-hat"></i>
- </a>
+ <button type="button" class="btn btn-outline-info btn-medical-referral" data-employee-id="{{ employee.id }}" title="Направление на МО">
+ <i class="fas fa-stethoscope"></i>
+ </button>
  <!-- Добавляем кнопку генерации документов в строке сотрудника -->
  <a href="{% url 'directory:documents:document_selection' employee.id %}"
- class="btn btn-outline-danger">
+ class="btn btn-outline-danger" title="Создать документы">
  <i class="fas fa-file-alt"></i>
+ </a>
+ <a href="{% url 'directory:siz:siz_personal_card' employee.id %}"
+ class="btn btn-outline-success" title="Выдать СИЗ">
+ <i class="fas fa-hard-hat"></i>
  </a>
  </div>
  </td>
@@ -491,22 +480,17 @@ margin-bottom: 1rem;
  </td>
  <td>
  <div class="btn-group btn-group-sm">
- <a href="{% url 'directory:employees:employee_update' employee.pk %}"
- class="btn btn-outline-primary">
- <i class="fas fa-edit"></i>
- </a>
- <a href="{% url 'directory:siz:siz_personal_card' employee.id %}"
- class="btn btn-outline-info">
- <i class="fas fa-id-card"></i>
- </a>
- <a href="{% url 'directory:siz:siz_issue_for_employee' employee.id %}"
- class="btn btn-outline-success">
- <i class="fas fa-hard-hat"></i>
- </a>
+ <button type="button" class="btn btn-outline-info btn-medical-referral" data-employee-id="{{ employee.id }}" title="Направление на МО">
+ <i class="fas fa-stethoscope"></i>
+ </button>
  <!-- Добавляем кнопку генерации документов в строке сотрудника -->
  <a href="{% url 'directory:documents:document_selection' employee.id %}"
- class="btn btn-outline-danger">
+ class="btn btn-outline-danger" title="Создать документы">
  <i class="fas fa-file-alt"></i>
+ </a>
+ <a href="{% url 'directory:siz:siz_personal_card' employee.id %}"
+ class="btn btn-outline-success" title="Выдать СИЗ">
+ <i class="fas fa-hard-hat"></i>
  </a>
  </div>
  </td>
@@ -691,10 +675,10 @@ const selectAllCheckbox = document.getElementById('select-all');
 const actionsDropdown = document.getElementById('actionsDropdown');
 const generateDocumentsBtn = document.getElementById('generateDocumentsBtn');
 const btnGenerateDocuments = document.getElementById('btnGenerateDocuments');
-const btnIssueCard = document.getElementById('btnIssueCard');
 const btnIssueSIZ = document.getElementById('btnIssueSIZ');
-const btnEditEmployee = document.getElementById('btnEditEmployee');
+const btnMedicalReferralDropdown = document.getElementById('btnMedicalReferralDropdown');
 const btnMedicalReferral = document.getElementById('btnMedicalReferral');
+const rowMedicalButtons = document.querySelectorAll('.btn-medical-referral');
 
 // Функция для обновления состояния кнопок
  function updateButtonsState() {
@@ -712,10 +696,33 @@ generateDocumentsBtn.style.display = selectedCount === 1 ? 'inline-block' : 'non
 btnMedicalReferral.style.display = selectedCount === 1 ? 'inline-block' : 'none';
 }
 
+// �����뢠�� �������� ����� ���㤭��� �� �� ID
+ function selectSingleEmployee(employeeId) {
+checkboxes.forEach(checkbox => {
+checkbox.checked = checkbox.dataset.id === employeeId;
+});
+updateButtonsState();
+}
+
 // Обработчик для чекбоксов сотрудников
  checkboxes.forEach(checkbox => {
 checkbox.addEventListener('change', updateButtonsState);
 });
+ // ��ࠡ��稪 ��� ������ �㭪� �������� �� �������
+ if (rowMedicalButtons.length && btnMedicalReferral) {
+rowMedicalButtons.forEach(button => {
+button.addEventListener('click', function(e) {
+e.preventDefault();
+const employeeId = this.dataset.employeeId;
+if (!employeeId) {
+return;
+}
+selectSingleEmployee(employeeId);
+btnMedicalReferral.click();
+});
+});
+}
+
 
 // Обработчик для выбора всех/снятия выделения со всех
  if (selectAllCheckbox) {
@@ -751,9 +758,9 @@ window.location.href = documentSelectionUrl.replace('0', employeeId);
 });
 }
 
-// Обработчик для пункта меню "Карточка учета"
- if (btnIssueCard) {
-btnIssueCard.addEventListener('click', function(e) {
+// Обработчик для пункта меню "Выдать СИЗ" (теперь открывает карточку учета)
+ if (btnIssueSIZ) {
+btnIssueSIZ.addEventListener('click', function(e) {
 e.preventDefault();
 const selectedEmployee = document.querySelector('.employee-checkbox:checked');
 if (selectedEmployee) {
@@ -763,26 +770,16 @@ window.location.href = sizPersonalCardUrl.replace('0', employeeId);
 });
 }
 
-// Обработчик для пункта меню "Выдать СИЗ"
- if (btnIssueSIZ) {
-btnIssueSIZ.addEventListener('click', function(e) {
+// Обработчик для пункта меню "Выдать направление"
+ if (btnMedicalReferralDropdown) {
+btnMedicalReferralDropdown.addEventListener('click', function(e) {
 e.preventDefault();
 const selectedEmployee = document.querySelector('.employee-checkbox:checked');
 if (selectedEmployee) {
-const employeeId = selectedEmployee.dataset.id;
-window.location.href = sizIssueUrl.replace('0', employeeId);
+// Имитируем клик по кнопке "Направление"
+if (btnMedicalReferral) {
+btnMedicalReferral.click();
 }
-});
-}
-
-// Обработчик для пункта меню "Редактировать"
- if (btnEditEmployee) {
-btnEditEmployee.addEventListener('click', function(e) {
-e.preventDefault();
-const selectedEmployee = document.querySelector('.employee-checkbox:checked');
-if (selectedEmployee) {
-const employeeId = selectedEmployee.dataset.id;
-window.location.href = employeeUpdateUrl.replace('0', employeeId);
 }
 });
 }
