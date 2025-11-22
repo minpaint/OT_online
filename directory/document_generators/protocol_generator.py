@@ -180,8 +180,9 @@ def generate_periodic_protocol(
 
         context = prepare_employee_context(primary_employee)
         now = datetime.datetime.now()
-        context.setdefault('protocol_number', f"PP-{now.strftime('%Y%m%d')}-{primary_employee.id}")
-        context.setdefault('protocol_date', now.strftime("%d.%m.%Y"))
+        # Протокол номер/дата оставляем пустыми по требованию
+        context.setdefault('protocol_number', "")
+        context.setdefault('protocol_date', "")
 
         commission = find_appropriate_commission(primary_employee)
         cdata = get_commission_members_formatted(commission) if commission else {}
@@ -240,7 +241,7 @@ def generate_periodic_protocol(
         doc.save(buffer)
         buffer.seek(0)
 
-        filename = f"Протокол_периодической_проверки_{now.strftime('%Y%m%d')}.docx"
+        filename = "Протокол_периодической_проверки.docx"
         return {'content': buffer.getvalue(), 'filename': filename}
 
     except Exception:

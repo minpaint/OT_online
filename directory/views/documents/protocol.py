@@ -15,7 +15,7 @@ from zipfile import ZipFile
 
 from directory.models import Employee
 from directory.document_generators.protocol_generator import generate_knowledge_protocol, generate_periodic_protocol
-from directory.services.commission_service import find_appropriate_commission, get_commission_members_formatted
+from directory.utils import find_appropriate_commission, get_commission_members_formatted
 from directory.utils.permissions import AccessControlHelper
 
 # Настройка логирования
