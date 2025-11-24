@@ -132,13 +132,37 @@ def _reset_periodic_table(table):
         tbl = table._tbl
         tbl.remove(row._tr)
 
+    # Устанавливаем повторение шапки таблицы на каждой странице
+    if table.rows:
+        from docx.oxml import parse_xml
+        from docx.oxml.ns import nsdecls
+
+        header_row = table.rows[0]
+        # Получаем или создаем элемент trPr (table row properties)
+        tr = header_row._tr
+        trPr = tr.trPr
+        if trPr is None:
+            trPr = parse_xml(f'<w:trPr {nsdecls("w")}/>')
+            tr.insert(0, trPr)
+
+        # Добавляем тег tblHeader для повторения строки
+        tblHeader = parse_xml(f'<w:tblHeader {nsdecls("w")}/>')
+        trPr.append(tblHeader)
+
 
 def _fill_periodic_rows(table, employees_data: List[Dict[str, str]]):
     """Append rows with employee data to the protocol table."""
+    from docx.shared import Pt
+    from docx.oxml import parse_xml
+    from docx.oxml.ns import nsdecls
+
     for idx, emp in enumerate(employees_data, start=1):
         row = table.add_row()
         cells = row.cells
         cols = len(cells)
+
+        # Заполняем ячейки данными
+        # Используем сквозную нумерацию (стандартная практика для протоколов)
         cells[0].text = str(idx)
         if cols > 1:
             cells[1].text = emp.get('fio_nominative', '')
@@ -153,6 +177,28 @@ def _fill_periodic_rows(table, employees_data: List[Dict[str, str]]):
             cells[5].text = ""
         if cols > 6:
             cells[6].text = ""
+
+        # Запрещаем разрыв строки при переносе на новую страницу
+        tr = row._tr
+        trPr = tr.trPr
+        if trPr is None:
+            trPr = parse_xml(f'<w:trPr {nsdecls("w")}/>')
+            tr.insert(0, trPr)
+
+        # Добавляем свойство cantSplit (не разрывать строку)
+        cantSplit = parse_xml(f'<w:cantSplit {nsdecls("w")}/>')
+        trPr.append(cantSplit)
+
+        # Применяем форматирование Times New Roman ко всем ячейкам строки
+        from docx.enum.text import WD_ALIGN_PARAGRAPH
+        for cell_idx, cell in enumerate(cells):
+            for paragraph in cell.paragraphs:
+                # Центрируем первую колонку (№ п/п)
+                if cell_idx == 0:
+                    paragraph.alignment = WD_ALIGN_PARAGRAPH.CENTER
+                for run in paragraph.runs:
+                    run.font.name = 'Times New Roman'
+                    run.font.size = Pt(12)
 
 
 def generate_periodic_protocol(
@@ -185,7 +231,11 @@ def generate_periodic_protocol(
         context.setdefault('protocol_date', "")
 
         commission = find_appropriate_commission(primary_employee)
+        logger.info(f"[periodic_protocol] Найдена комиссия: {commission}")
+        logger.info(f"[periodic_protocol] Сотрудник: {primary_employee.full_name_nominative}, org={primary_employee.organization_id}, subdiv={primary_employee.subdivision_id}, dept={primary_employee.department_id}")
+
         cdata = get_commission_members_formatted(commission) if commission else {}
+        logger.info(f"[periodic_protocol] Данные комиссии: chairman={bool(cdata.get('chairman'))}, secretary={bool(cdata.get('secretary'))}, members={len(cdata.get('members_formatted', []))}")
 
         chairman = cdata.get('chairman', {})
         context.setdefault('chairman_name', chairman.get('name', '-'))
@@ -199,6 +249,20 @@ def generate_periodic_protocol(
 
         members = cdata.get('members_formatted', [])
         context.setdefault('members_formatted', members)
+
+        # Форматирование членов комиссии для шаблона
+        members_paragraphs = [
+            f"{m['name']} - {m['position'].lower()}"
+            for m in members
+        ]
+        context['members_paragraphs'] = members_paragraphs
+        logger.info(f"[periodic_protocol] Сформировано {len(members_paragraphs)} членов комиссии: {members_paragraphs}")
+
+        # Параграфы с инициалами для членов комиссии
+        members_initials_paragraphs = [
+            m['name_initials'] for m in members
+        ]
+        context['members_initials_paragraphs'] = members_initials_paragraphs
 
         if grouping_name:
             binding = decline_phrase(grouping_name, 'gent')
@@ -224,7 +288,7 @@ def generate_periodic_protocol(
             employees_data.append({
                 'fio_nominative': emp_ctx.get('fio_nominative', ''),
                 'position_nominative': emp_ctx.get('position_nominative', ''),
-                'ticket_number': idx,
+                'ticket_number': '',  # Номер билета оставляем пустым для ручного заполнения
             })
 
         doc = DocxTemplate(template_path)

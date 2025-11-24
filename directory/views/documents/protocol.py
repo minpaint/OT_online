@@ -297,5 +297,8 @@ class PeriodicProtocolView(LoginRequiredMixin, TemplateView):
             doc['content'],
             content_type='application/vnd.openxmlformats-officedocument.wordprocessingml.document'
         )
-        response['Content-Disposition'] = f'attachment; filename="{doc["filename"]}"'
+        # Кодируем имя файла для корректного отображения в разных браузерах
+        from urllib.parse import quote
+        filename_encoded = quote(doc["filename"])
+        response['Content-Disposition'] = f'attachment; filename="{doc["filename"]}"; filename*=UTF-8\'\'{filename_encoded}'
         return response
