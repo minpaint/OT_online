@@ -14,20 +14,6 @@ class Position(models.Model):
         ("IV", "IV"),
         ("V", "V"),
     ]
-    COMMISSION_ROLE_CHOICES = [
-        ('chairman', '👑 Председатель комиссии'),
-        ('member', '👤 Член комиссии'),
-        ('secretary', '📝 Секретарь комиссии'),
-        ('none', '❌ Не участвует в комиссии'),
-    ]
-
-    commission_role = models.CharField(
-        "Роль в комиссии",
-        max_length=10,
-        choices=COMMISSION_ROLE_CHOICES,
-        default='none',
-        help_text="Укажите роль сотрудника в комиссии"
-    )
 
     contract_work_name = models.TextField(
         "🔨 Наименование работы по договору подряда",

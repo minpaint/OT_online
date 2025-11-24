@@ -150,7 +150,6 @@ class PositionAdmin(TreeViewMixin, admin.ModelAdmin):
                 'organization',
                 'subdivision',
                 'department',
-                'commission_role',  # Оставляем поле, если оно используется где-то еще
                 'is_responsible_for_safety',
                 'can_be_internship_leader',
                 'can_sign_orders',

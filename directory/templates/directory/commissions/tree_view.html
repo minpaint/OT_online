@@ -39,7 +39,7 @@
 
                                                 <div id="commission-{{ commission.id }}" class="collapse">
                                                     <div class="commission-members">
-                                                        {% if commission.chairman %}
+                                                        {% if commission.chairman.name %}
                                                             <div class="member chairman">
                                                                 <span class="role-icon">👑</span>
                                                                 <span class="member-name">{{ commission.chairman.name }}</span>
@@ -55,7 +55,7 @@
                                                             </div>
                                                         {% endif %}
 
-                                                        {% if commission.secretary %}
+                                                        {% if commission.secretary.name %}
                                                             <div class="member secretary">
                                                                 <span class="role-icon">📝</span>
                                                                 <span class="member-name">{{ commission.secretary.name }}</span>
@@ -124,7 +124,7 @@
 
                                                             <div id="commission-{{ commission.id }}" class="collapse">
                                                                 <div class="commission-members">
-                                                                    {% if commission.chairman %}
+                                                                    {% if commission.chairman.name %}
                                                                         <div class="member chairman">
                                                                             <span class="role-icon">👑</span>
                                                                             <span class="member-name">{{ commission.chairman.name }}</span>
@@ -140,7 +140,7 @@
                                                                         </div>
                                                                     {% endif %}
 
-                                                                    {% if commission.secretary %}
+                                                                    {% if commission.secretary.name %}
                                                                         <div class="member secretary">
                                                                             <span class="role-icon">📝</span>
                                                                             <span class="member-name">{{ commission.secretary.name }}</span>
@@ -209,7 +209,7 @@
 
                                                                         <div id="commission-{{ commission.id }}" class="collapse">
                                                                             <div class="commission-members">
-                                                                                {% if commission.chairman %}
+                                                                                {% if commission.chairman.name %}
                                                                                     <div class="member chairman">
                                                                                         <span class="role-icon">👑</span>
                                                                                         <span class="member-name">{{ commission.chairman.name }}</span>
@@ -225,7 +225,7 @@
                                                                                     </div>
                                                                                 {% endif %}
 
-                                                                                {% if commission.secretary %}
+                                                                                {% if commission.secretary.name %}
                                                                                     <div class="member secretary">
                                                                                         <span class="role-icon">📝</span>
                                                                                         <span class="member-name">{{ commission.secretary.name }}</span>

@@ -112,9 +112,9 @@
                   {# Роли в комиссиях #}
                   {% for role in item.additional_data.commission_roles %}
                     <span class="position-attribute" title="{{ role.role_display }} в комиссии '{{ role.commission_name }}'">
-                      {% if role.role == 'chairman' %}🗳️
+                      {% if role.role == 'chairman' %}👑
                       {% elif role.role == 'secretary' %}📝
-                      {% else %}👥{% endif %}
+                      {% else %}👤{% endif %}
                     </span>
                   {% endfor %}
                 </td>
@@ -191,9 +191,9 @@
                     {# Роли в комиссиях #}
                     {% for role in item.additional_data.commission_roles %}
                       <span class="position-attribute" title="{{ role.role_display }} в комиссии '{{ role.commission_name }}'">
-                        {% if role.role == 'chairman' %}🗳️
+                        {% if role.role == 'chairman' %}👑
                         {% elif role.role == 'secretary' %}📝
-                        {% else %}👥{% endif %}
+                        {% else %}👤{% endif %}
                       </span>
                     {% endfor %}
                   </td>
@@ -269,9 +269,9 @@
                       {# Роли в комиссиях #}
                       {% for role in item.additional_data.commission_roles %}
                         <span class="position-attribute" title="{{ role.role_display }} в комиссии '{{ role.commission_name }}'">
-                          {% if role.role == 'chairman' %}🗳️
+                          {% if role.role == 'chairman' %}👑
                           {% elif role.role == 'secretary' %}📝
-                          {% else %}👥{% endif %}
+                          {% else %}👤{% endif %}
                         </span>
                       {% endfor %}
                     </td>

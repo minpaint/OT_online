@@ -15,8 +15,11 @@ def find_appropriate_commission(employee: Employee, commission_type: str = "ot")
       2. Подразделение (subdivision) без конкретного отдела
       3. Организация (organization), без subdivision/department
     """
+    # Уровень 1: Ищем комиссию на уровне отдела
     if employee.department_id:
         commission = Commission.objects.filter(
+            organization_id=employee.organization_id,
+            subdivision_id=employee.subdivision_id,
             department_id=employee.department_id,
             commission_type=commission_type,
             is_active=True
@@ -25,8 +28,10 @@ def find_appropriate_commission(employee: Employee, commission_type: str = "ot")
             logger.debug(f"Найдена комиссия на уровне отдела: {commission}")
             return commission
 
+    # Уровень 2: Ищем комиссию на уровне подразделения (без отдела)
     if employee.subdivision_id:
         commission = Commission.objects.filter(
+            organization_id=employee.organization_id,
             subdivision_id=employee.subdivision_id,
             department__isnull=True,
             commission_type=commission_type,
@@ -36,6 +41,7 @@ def find_appropriate_commission(employee: Employee, commission_type: str = "ot")
             logger.debug(f"Найдена комиссия на уровне подразделения: {commission}")
             return commission
 
+    # Уровень 3: Ищем комиссию на уровне организации (без подразделения и отдела)
     if employee.organization_id:
         commission = Commission.objects.filter(
             organization_id=employee.organization_id,
