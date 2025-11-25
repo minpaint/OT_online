@@ -620,6 +620,7 @@
 <div class="exam-layout" id="exam-root"
      data-answer-url="{% url 'directory:quiz:quiz_answer' attempt_id=attempt.id question_id=question.id %}"
      data-result-url="{{ result_url }}"
+     data-exit-url="{% url 'directory:quiz:quiz_exit' attempt_id=attempt.id %}"
      data-home-url="{% if request.session.quiz_token_mode %}{% url 'directory:quiz:exam_home' %}{% else %}{% url 'directory:quiz:quiz_list' %}{% endif %}"
      data-allow-skip="{{ allow_skip|yesno:'true,false' }}"
      data-time-left="{{ time_left_seconds|default_if_none:'' }}"
@@ -988,6 +989,7 @@
         const modalCancelBtn = document.getElementById('modal-cancel-btn');
         const modalConfirmBtn = document.getElementById('modal-confirm-btn');
         const homeUrl = root.dataset.homeUrl;
+        const exitUrl = root.dataset.exitUrl;
 
         if (homeBtn && modalOverlay) {
             homeBtn.addEventListener('click', () => {
@@ -998,8 +1000,23 @@
                 modalOverlay.classList.remove('active');
             });
 
-            modalConfirmBtn.addEventListener('click', () => {
+            modalConfirmBtn.addEventListener('click', async () => {
                 if (homeUrl) {
+                    // Сначала завершаем попытку через API
+                    if (exitUrl) {
+                        try {
+                            await fetch(exitUrl, {
+                                method: 'POST',
+                                headers: {
+                                    'X-CSRFToken': csrfToken,
+                                    'Content-Type': 'application/json'
+                                }
+                            });
+                        } catch (error) {
+                            console.error('Ошибка завершения попытки:', error);
+                        }
+                    }
+                    // Затем переходим на главную
                     window.location.href = homeUrl;
                 }
             });

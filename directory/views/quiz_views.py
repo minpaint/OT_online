@@ -31,11 +31,11 @@ def _find_first_skipped_question(attempt: QuizAttempt) -> Optional[int]:
         # Проверяем, есть ли ответ на этот вопрос
         user_answer = UserAnswer.objects.filter(
             attempt=attempt,
-            question_id=qo.question_id,
-            is_skipped=True
+            question_id=qo.question_id
         ).first()
 
-        if user_answer:
+        # Если ответа нет вообще, или он пропущен - это пропущенный вопрос
+        if not user_answer or user_answer.is_skipped:
             # Нашли пропущенный вопрос, возвращаем его номер (order + 1)
             return qo.order + 1
 
@@ -79,9 +79,32 @@ def quiz_list(request):
         # Получаем категории для этого квиза с сортировкой
         quiz_categories = quiz.get_exam_categories()
 
+        # Для каждой категории подсчитываем прогресс пользователя
+        categories_with_progress = []
+        for category in quiz_categories:
+            # Считаем сколько уникальных вопросов из этой категории пользователь ОТВЕТИЛ
+            # (правильно или неправильно, главное - не пропустил)
+            # в завершенных попытках тренировок
+            answered_count = UserAnswer.objects.filter(
+                attempt__user=request.user,
+                attempt__quiz=quiz,
+                attempt__category=category,
+                attempt__status=QuizAttempt.STATUS_COMPLETED,
+                question__category=category,
+                is_skipped=False  # Не считаем пропущенные
+            ).values('question_id').distinct().count()
+
+            total_questions = category.get_questions_count()
+
+            categories_with_progress.append({
+                'category': category,
+                'answered_count': answered_count,
+                'total_questions': total_questions,
+            })
+
         quizzes_with_categories.append({
             'quiz': quiz,
-            'categories': quiz_categories,
+            'categories': categories_with_progress,
         })
 
     # Статистика пользователя
@@ -522,6 +545,23 @@ def quiz_answer(request, attempt_id, question_id):
     }
 
     return JsonResponse(response_data)
+
+
+@login_required
+@require_POST
+def quiz_exit(request, attempt_id):
+    """Завершение попытки при выходе на главную"""
+    attempt = get_object_or_404(
+        QuizAttempt,
+        id=attempt_id,
+        user=request.user,
+        status=QuizAttempt.STATUS_IN_PROGRESS
+    )
+
+    # Завершаем попытку
+    _finalize_attempt(attempt, request)
+
+    return JsonResponse({'success': True})
 
 
 @login_required

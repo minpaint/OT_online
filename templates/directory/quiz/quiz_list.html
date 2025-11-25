@@ -436,20 +436,20 @@
                             </p>
 
                             <div class="row">
-                                {% for category in item.categories %}
+                                {% for cat_data in item.categories %}
                                 <div class="col-12">
                                     <div class="category-card">
                                         <div class="d-flex justify-content-between align-items-center">
                                             <h5 class="mb-0 d-flex align-items-center flex-grow-1">
                                                 <span class="category-number">{{ forloop.counter }}</span>
-                                                {{ category.name }}
+                                                {{ cat_data.category.name }}
                                             </h5>
                                             <span class="category-questions-count">
                                                 <i class="fas fa-chart-line"></i>
-                                                Пройдено 0 из {{ category.get_questions_count }}
+                                                Пройдено {{ cat_data.answered_count }} из {{ cat_data.total_questions }}
                                             </span>
-                                            {% if category.get_questions_count %}
-                                            <a href="{% url 'directory:quiz:quiz_start_category' quiz_id=item.quiz.id category_id=category.id %}"
+                                            {% if cat_data.total_questions %}
+                                            <a href="{% url 'directory:quiz:quiz_start_category' quiz_id=item.quiz.id category_id=cat_data.category.id %}"
                                                class="btn btn-training">
                                                 <i class="fas fa-play"></i> Тренировка
                                             </a>
