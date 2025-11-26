@@ -84,12 +84,12 @@ def quiz_list(request):
         for category in quiz_categories:
             # Считаем сколько уникальных вопросов из этой категории пользователь ОТВЕТИЛ
             # (правильно или неправильно, главное - не пропустил)
-            # в завершенных попытках тренировок
+            # в завершенных И незавершенных попытках тренировок
             answered_count = UserAnswer.objects.filter(
                 attempt__user=request.user,
                 attempt__quiz=quiz,
                 attempt__category=category,
-                attempt__status=QuizAttempt.STATUS_COMPLETED,
+                attempt__status__in=[QuizAttempt.STATUS_COMPLETED, QuizAttempt.STATUS_IN_PROGRESS],
                 question__category=category,
                 is_skipped=False  # Не считаем пропущенные
             ).values('question_id').distinct().count()
@@ -550,7 +550,7 @@ def quiz_answer(request, attempt_id, question_id):
 @login_required
 @require_POST
 def quiz_exit(request, attempt_id):
-    """Завершение попытки при выходе на главную"""
+    """Выход на главную с сохранением прогресса попытки"""
     attempt = get_object_or_404(
         QuizAttempt,
         id=attempt_id,
@@ -558,10 +558,36 @@ def quiz_exit(request, attempt_id):
         status=QuizAttempt.STATUS_IN_PROGRESS
     )
 
-    # Завершаем попытку
-    _finalize_attempt(attempt, request)
+    # НЕ завершаем попытку - оставляем её в статусе IN_PROGRESS
+    # чтобы пользователь мог вернуться и продолжить с того же места
+    # Попытка будет завершена только когда пользователь:
+    # 1. Ответит на все вопросы
+    # 2. Истечёт время (для экзаменов)
+    # 3. Превысит лимит ошибок (для экзаменов)
+    # 4. Вручную завершит тренировку через quiz_finish_early
 
     return JsonResponse({'success': True})
+
+
+@login_required
+@require_POST
+def quiz_finish_early(request, attempt_id):
+    """Досрочное завершение тренировки с сохранением прогресса"""
+    attempt = get_object_or_404(
+        QuizAttempt,
+        id=attempt_id,
+        user=request.user,
+        status=QuizAttempt.STATUS_IN_PROGRESS
+    )
+
+    # Завершаем попытку досрочно
+    # Все отвеченные правильно вопросы будут засчитаны в прогресс
+    _finalize_attempt(attempt, request)
+
+    return JsonResponse({
+        'success': True,
+        'redirect': reverse('directory:quiz:quiz_result', kwargs={'attempt_id': attempt.id})
+    })
 
 
 @login_required

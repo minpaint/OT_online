@@ -162,6 +162,7 @@ quiz_patterns = [
     path('<int:attempt_id>/question/<int:question_number>/', quiz_views.quiz_question, name='quiz_question'),
     path('<int:attempt_id>/answer/<int:question_id>/', quiz_views.quiz_answer, name='quiz_answer'),
     path('<int:attempt_id>/exit/', quiz_views.quiz_exit, name='quiz_exit'),
+    path('<int:attempt_id>/finish-early/', quiz_views.quiz_finish_early, name='quiz_finish_early'),
     path('<int:attempt_id>/result/', quiz_views.quiz_result, name='quiz_result'),
     path('history/', quiz_views.quiz_history, name='quiz_history'),
     path('category/<int:category_id>/', quiz_views.category_detail, name='category_detail'),

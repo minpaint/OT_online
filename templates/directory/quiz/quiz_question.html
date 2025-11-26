@@ -621,6 +621,7 @@
      data-answer-url="{% url 'directory:quiz:quiz_answer' attempt_id=attempt.id question_id=question.id %}"
      data-result-url="{{ result_url }}"
      data-exit-url="{% url 'directory:quiz:quiz_exit' attempt_id=attempt.id %}"
+     data-finish-early-url="{% url 'directory:quiz:quiz_finish_early' attempt_id=attempt.id %}"
      data-home-url="{% if request.session.quiz_token_mode %}{% url 'directory:quiz:exam_home' %}{% else %}{% url 'directory:quiz:quiz_list' %}{% endif %}"
      data-allow-skip="{{ allow_skip|yesno:'true,false' }}"
      data-time-left="{{ time_left_seconds|default_if_none:'' }}"
@@ -712,7 +713,7 @@
 
     <div class="exam-footer">
         <button class="exam-home-btn" id="exam-home-btn">
-            <i class="fas fa-home"></i> На главную
+            <i class="fas fa-stop-circle"></i> Закончить попытку
         </button>
         <button class="exam-skip-btn" id="exam-skip-btn" {% if not allow_skip %}disabled{% endif %}>
             Пропустить
@@ -724,20 +725,22 @@
 <div class="exam-modal-overlay" id="exam-modal-overlay">
     <div class="exam-modal">
         <h3 class="exam-modal-title">
-            <i class="fas fa-info-circle"></i> Выход на главную страницу
+            <i class="fas fa-info-circle"></i> Выход из тренировки
         </h3>
         <p class="exam-modal-text">
-            Вы можете вернуться к прохождению экзамена позже. Ваш прогресс будет сохранён, и вы сможете продолжить с того места, где остановились.
+            Выберите действие:
         </p>
-        <p class="exam-modal-text" style="font-weight: 600; color: #0b7a79;">
-            Хотите выйти на главную страницу?
-        </p>
-        <div class="exam-modal-buttons">
-            <button class="exam-modal-btn exam-modal-btn-secondary" id="modal-cancel-btn">
-                Остаться
+        <div class="exam-modal-buttons" style="flex-direction: column; gap: 10px;">
+            <button class="exam-modal-btn exam-modal-btn-primary" id="modal-continue-later-btn" style="width: 100%;">
+                <i class="fas fa-pause"></i> Продолжить позже
+                <small style="display: block; font-size: 0.85em; margin-top: 5px; opacity: 0.9;">Прогресс сохранится, вы сможете вернуться и продолжить</small>
             </button>
-            <button class="exam-modal-btn exam-modal-btn-primary" id="modal-confirm-btn">
-                Выйти на главную
+            <button class="exam-modal-btn exam-modal-btn-success" id="modal-finish-early-btn" style="width: 100%; background: #28a745;">
+                <i class="fas fa-check-circle"></i> Завершить тренировку
+                <small style="display: block; font-size: 0.85em; margin-top: 5px; opacity: 0.9;">Засчитать только отвеченные вопросы и обновить прогресс</small>
+            </button>
+            <button class="exam-modal-btn exam-modal-btn-secondary" id="modal-cancel-btn" style="width: 100%;">
+                <i class="fas fa-times"></i> Отмена
             </button>
         </div>
     </div>
@@ -987,37 +990,60 @@
         const homeBtn = document.getElementById('exam-home-btn');
         const modalOverlay = document.getElementById('exam-modal-overlay');
         const modalCancelBtn = document.getElementById('modal-cancel-btn');
-        const modalConfirmBtn = document.getElementById('modal-confirm-btn');
+        const modalContinueLaterBtn = document.getElementById('modal-continue-later-btn');
+        const modalFinishEarlyBtn = document.getElementById('modal-finish-early-btn');
         const homeUrl = root.dataset.homeUrl;
         const exitUrl = root.dataset.exitUrl;
+        const finishEarlyUrl = root.dataset.finishEarlyUrl;
 
         if (homeBtn && modalOverlay) {
             homeBtn.addEventListener('click', () => {
                 modalOverlay.classList.add('active');
             });
 
+            // Кнопка "Отмена"
             modalCancelBtn.addEventListener('click', () => {
                 modalOverlay.classList.remove('active');
             });
 
-            modalConfirmBtn.addEventListener('click', async () => {
-                if (homeUrl) {
-                    // Сначала завершаем попытку через API
-                    if (exitUrl) {
-                        try {
-                            await fetch(exitUrl, {
-                                method: 'POST',
-                                headers: {
-                                    'X-CSRFToken': csrfToken,
-                                    'Content-Type': 'application/json'
-                                }
-                            });
-                        } catch (error) {
-                            console.error('Ошибка завершения попытки:', error);
-                        }
+            // Кнопка "Продолжить позже" - сохраняет прогресс и возвращает на главную
+            modalContinueLaterBtn.addEventListener('click', async () => {
+                if (homeUrl && exitUrl) {
+                    try {
+                        // Сохраняем прогресс (НЕ завершая попытку)
+                        await fetch(exitUrl, {
+                            method: 'POST',
+                            headers: {
+                                'X-CSRFToken': csrfToken,
+                                'Content-Type': 'application/json'
+                            }
+                        });
+                    } catch (error) {
+                        console.error('Ошибка сохранения прогресса:', error);
                     }
-                    // Затем переходим на главную
+                    // Переходим на главную
                     window.location.href = homeUrl;
+                }
+            });
+
+            // Кнопка "Завершить тренировку" - завершает попытку и показывает результаты
+            modalFinishEarlyBtn.addEventListener('click', async () => {
+                if (finishEarlyUrl) {
+                    try {
+                        const response = await fetch(finishEarlyUrl, {
+                            method: 'POST',
+                            headers: {
+                                'X-CSRFToken': csrfToken,
+                                'Content-Type': 'application/json'
+                            }
+                        });
+                        const data = await response.json();
+                        if (data.success && data.redirect) {
+                            window.location.href = data.redirect;
+                        }
+                    } catch (error) {
+                        console.error('Ошибка завершения тренировки:', error);
+                    }
                 }
             });
 

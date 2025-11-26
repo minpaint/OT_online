@@ -403,26 +403,6 @@ class QuestionAdmin(NestedModelAdmin):
     answers_count.short_description = _('Ответов')
 
 
-@admin.register(Answer)
-class AnswerAdmin(admin.ModelAdmin):
-    """Админка для ответов (если нужно редактировать отдельно)"""
-    list_display = ['id', 'answer_text_short', 'question_link', 'is_correct', 'order']
-    list_filter = ['is_correct', 'question__category']
-    search_fields = ['answer_text', 'question__question_text']
-    ordering = ['question', 'order']
-
-    def answer_text_short(self, obj):
-        """Сокращенный текст ответа"""
-        return obj.answer_text[:60] + '...' if len(obj.answer_text) > 60 else obj.answer_text
-    answer_text_short.short_description = _('Текст ответа')
-
-    def question_link(self, obj):
-        """Ссылка на вопрос"""
-        url = reverse('admin:directory_question_change', args=[obj.question.id])
-        return format_html('<a href="{}">{}</a>', url, f'Вопрос #{obj.question.id}')
-    question_link.short_description = _('Вопрос')
-
-
 class UserAnswerInline(admin.TabularInline):
     """Inline для ответов пользователя"""
     model = UserAnswer
