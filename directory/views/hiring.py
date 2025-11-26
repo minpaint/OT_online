@@ -9,7 +9,7 @@ from django.contrib.auth.mixins import LoginRequiredMixin
 from django.urls import reverse_lazy, reverse
 from django.db import transaction
 from django.utils import timezone
-from django.http import JsonResponse, HttpResponseRedirect
+from django.http import JsonResponse, HttpResponseRedirect, HttpResponse
 from django.db.models import Q, Prefetch
 from django import forms
 from crispy_forms.helper import FormHelper
@@ -23,13 +23,18 @@ from directory.models import (
 )
 from deadline_control.models.medical_norm import MedicalExaminationNorm
 from directory.forms.hiring import CombinedEmployeeHiringForm, DocumentAttachmentForm
+from directory.forms.document_forms import DocumentSelectionForm
 from directory.utils.hiring_utils import create_hiring_from_employee, attach_document_to_hiring
-from directory.utils.declension import decline_full_name
+from directory.utils.declension import decline_full_name, get_initials_from_name
 from directory.forms.mixins import OrganizationRestrictionFormMixin
 from directory.mixins import AccessControlMixin, AccessControlObjectMixin
 from directory.utils.permissions import AccessControlHelper
+from directory.views.documents.selection import get_auto_selected_document_types
 
 import logging
+import io
+import zipfile
+from urllib.parse import quote
 
 logger = logging.getLogger(__name__)
 
@@ -78,6 +83,9 @@ class SimpleHiringView(LoginRequiredMixin, FormView):
             else:
                 contract_type = 'standard'
 
+            # Получаем дату начала работы из формы
+            hire_date = data.get('hire_date') or timezone.now().date()
+
             # Создаем сотрудника
             employee = Employee(
                 full_name_nominative=data['full_name_nominative'],
@@ -89,8 +97,8 @@ class SimpleHiringView(LoginRequiredMixin, FormView):
                 height=data.get('height'),
                 clothing_size=data.get('clothing_size'),
                 shoe_size=data.get('shoe_size'),
-                hire_date=timezone.now().date(),
-                start_date=timezone.now().date(),
+                hire_date=hire_date,
+                start_date=hire_date,
                 contract_type=contract_type,
                 status='active'
             )
@@ -109,17 +117,11 @@ class SimpleHiringView(LoginRequiredMixin, FormView):
                 for exam in medical_examinations:
                     exam.perform_examination(initial_medical_date)
 
-                messages.info(
-                    self.request,
-                    f'Дата первичного медосмотра ({initial_medical_date.strftime("%d.%m.%Y")}) '
-                    f'применена к {medical_examinations.count()} медосмотрам сотрудника'
-                )
-
             # Создаем запись о приеме
             hiring = EmployeeHiring(
                 employee=employee,
-                hiring_date=timezone.now().date(),
-                start_date=timezone.now().date(),
+                hiring_date=hire_date,
+                start_date=hire_date,
                 hiring_type=data['hiring_type'],
                 organization=data['organization'],
                 subdivision=data.get('subdivision'),
@@ -395,6 +397,18 @@ class HiringDetailView(LoginRequiredMixin, AccessControlObjectMixin, DetailView)
             initial={'documents': self.object.documents.all()}
         )
 
+        # Добавляем форму для генерации документов
+        employee = self.object.employee
+        auto_selected = get_auto_selected_document_types(employee)
+
+        context['document_selection_form'] = DocumentSelectionForm(
+            initial={
+                'employee_id': employee.id,
+                'document_types': auto_selected
+            }
+        )
+        context['employee'] = employee
+
         return context
 
     def post(self, request, *args, **kwargs):
@@ -415,7 +429,92 @@ class HiringDetailView(LoginRequiredMixin, AccessControlObjectMixin, DetailView)
                 messages.success(request, _(f'Прикреплено документов: {len(selected_docs)}'))
                 return redirect('directory:hiring:hiring_detail', pk=self.object.pk)
 
+        # Обработка формы генерации документов
+        if 'generate_documents' in request.POST:
+            return self._handle_document_generation(request)
+
         return self.get(request, *args, **kwargs)
+
+    def _handle_document_generation(self, request):
+        """Обработка генерации документов"""
+        form = DocumentSelectionForm(request.POST)
+
+        if not form.is_valid():
+            messages.error(request, "Ошибка в форме выбора документов")
+            return redirect('directory:hiring:hiring_detail', pk=self.object.pk)
+
+        document_types = form.cleaned_data.get('document_types', [])
+
+        if not document_types:
+            messages.error(request, "Не выбран ни один тип документа")
+            return redirect('directory:hiring:hiring_detail', pk=self.object.pk)
+
+        employee = self.object.employee
+
+        # Импортируем генераторы
+        from directory.document_generators.order_generator import generate_all_orders
+        from directory.document_generators.protocol_generator import generate_knowledge_protocol
+        from directory.document_generators.familiarization_generator import generate_familiarization_document
+        from directory.document_generators.ot_card_generator import generate_personal_ot_card
+        from directory.document_generators.journal_example_generator import generate_journal_example
+        from directory.document_generators.siz_card_docx_generator import generate_siz_card_docx
+
+        generator_map = {
+            'all_orders': generate_all_orders,
+            'knowledge_protocol': generate_knowledge_protocol,
+            'doc_familiarization': generate_familiarization_document,
+            'personal_ot_card': generate_personal_ot_card,
+            'journal_example': generate_journal_example,
+            'siz_card': generate_siz_card_docx,
+        }
+
+        # Генерируем документы
+        files_to_archive = []
+
+        for doc_type in document_types:
+            try:
+                generator_func = generator_map.get(doc_type)
+                if generator_func:
+                    if doc_type == 'doc_familiarization':
+                        result = generator_func(employee=employee, user=request.user, document_list=None)
+                    else:
+                        result = generator_func(employee=employee, user=request.user)
+
+                    if result and isinstance(result, dict) and 'content' in result and 'filename' in result:
+                        files_to_archive.append((result['content'], result['filename']))
+                        logger.info(f"Сгенерирован документ: {result['filename']}")
+            except Exception as e:
+                logger.error(f"Ошибка при генерации {doc_type}: {str(e)}", exc_info=True)
+                messages.warning(request, f"Ошибка при генерации документа типа {doc_type}: {str(e)}")
+                continue
+
+        if not files_to_archive:
+            messages.error(request, "Не удалось сгенерировать ни один документ")
+            return redirect('directory:hiring:hiring_detail', pk=self.object.pk)
+
+        # Создаем архив
+        try:
+            zip_buffer = io.BytesIO()
+            with zipfile.ZipFile(zip_buffer, 'w', zipfile.ZIP_DEFLATED) as zipf:
+                for content, filename in files_to_archive:
+                    zipf.writestr(filename, content)
+
+            zip_buffer.seek(0)
+
+            employee_initials = get_initials_from_name(employee.full_name_nominative)
+            zip_filename = f"Документы_{employee_initials}.zip"
+
+            response = HttpResponse(zip_buffer.getvalue(), content_type='application/zip')
+            encoded_filename = quote(zip_filename)
+            response['Content-Disposition'] = f"attachment; filename*=UTF-8''{encoded_filename}"
+
+            messages.success(request, f"Успешно сгенерировано документов: {len(files_to_archive)}")
+            return response
+
+        except Exception as e:
+            logger.error(f"Ошибка при создании архива: {str(e)}", exc_info=True)
+            messages.error(request, f"Ошибка при создании архива: {str(e)}")
+            return redirect('directory:hiring:hiring_detail', pk=self.object.pk)
 
 
 class HiringCreateView(LoginRequiredMixin, CreateView):

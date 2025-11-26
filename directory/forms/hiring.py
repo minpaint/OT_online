@@ -1,7 +1,7 @@
 # directory/forms/hiring.py
 from django import forms
 from django.utils.translation import gettext_lazy as _
-# from django.utils import timezone
+from django.utils import timezone
 # from django.db import transaction
 # from django.forms import formset_factory
 
@@ -43,6 +43,19 @@ class CombinedEmployeeHiringForm(forms.Form):
         initial='new',
         required=True,
         widget=forms.Select(attrs={'class': 'form-control'})
+    )
+
+    hire_date = forms.DateField(
+        label=_("Дата начала работы"),
+        required=True,
+        initial=timezone.now().date,
+        widget=forms.DateInput(
+            attrs={
+                'type': 'date',
+                'class': 'form-control'
+            },
+            format='%Y-%m-%d'
+        )
     )
 
     organization = forms.ModelChoiceField(
@@ -165,52 +178,71 @@ class CombinedEmployeeHiringForm(forms.Form):
         self.helper.attrs = {'novalidate': ''}  # Отключаем HTML5 валидацию для Select2
 
         self.helper.layout = Layout(
-            # Персональные данные - компактно в одну строку
+            # Персональные данные - две колонки
             Fieldset(
                 '',  # Убираем заголовок - он будет в карточке
-                HTML('<h5 class="section-title mb-3"><i class="fas fa-user"></i> Персональные данные</h5>'),
-                Row(
-                    Column('full_name_nominative', css_class='form-group col-md-5 mb-3'),
-                    Column('date_of_birth', css_class='form-group col-md-3 mb-3'),
-                    Column('hiring_type', css_class='form-group col-md-4 mb-3'),
-                ),
+                HTML('<h5 class="section-title mb-3"><i class="fas fa-user"></i> Данные сотрудника</h5>'),
+                HTML('<div class="row">'),
+                HTML('<div class="col-md-6">'),
+                Field('full_name_nominative', css_class='form-control'),
+                HTML('</div>'),
+                HTML('<div class="col-md-6">'),
+                Field('date_of_birth', css_class='form-control'),
+                HTML('</div>'),
+                HTML('</div>'),
+                HTML('<div class="row">'),
+                HTML('<div class="col-md-6">'),
+                Field('hire_date', css_class='form-control'),
+                HTML('</div>'),
+                HTML('<div class="col-md-6">'),
+                Field('hiring_type', css_class='form-control'),
+                HTML('</div>'),
+                HTML('</div>'),
                 css_class='form-section'
             ),
 
-            # Организационная структура - компактнее, в 2 колонки
+            # Организационная структура - две колонки
             Fieldset(
                 '',
                 HTML('<h5 class="section-title mb-3 mt-4"><i class="fas fa-sitemap"></i> Организационная структура</h5>'),
-                Row(
-                    Column('organization', css_class='form-group col-md-6 mb-3'),
-                    Column('subdivision', css_class='form-group col-md-6 mb-3'),
-                ),
-                Row(
-                    Column('department', css_class='form-group col-md-6 mb-3'),
-                    Column('position', css_class='form-group col-md-6 mb-3'),
-                ),
+                HTML('<div class="row">'),
+                HTML('<div class="col-md-6">'),
+                Field('organization', css_class='form-control'),
+                HTML('</div>'),
+                HTML('<div class="col-md-6">'),
+                Field('subdivision', css_class='form-control'),
+                HTML('</div>'),
+                HTML('</div>'),
+                HTML('<div class="row">'),
+                HTML('<div class="col-md-6">'),
+                Field('department', css_class='form-control'),
+                HTML('</div>'),
+                HTML('<div class="col-md-6">'),
+                Field('position', css_class='form-control'),
+                HTML('</div>'),
+                HTML('</div>'),
                 css_class='form-section'
             ),
 
-            # Медосмотр - скрытая секция
+            # Медосмотр - скрытая секция (адаптивная)
             Div(
                 HTML('<h5 class="section-title mb-3 mt-4"><i class="fas fa-stethoscope"></i> Информация для медосмотра</h5>'),
                 HTML('<div class="alert alert-info mb-3"><i class="fas fa-info-circle"></i> Для данной должности требуется медицинский осмотр. Пожалуйста, заполните необходимые данные.</div>'),
                 Row(
-                    Column('initial_medical_examination_date', css_class='form-group col-md-6 mb-3'),
+                    Column('initial_medical_examination_date', css_class='form-group col-12 col-md-4 mb-3'),
                 ),
                 css_class='form-section d-none',
                 id='medical-section'
             ),
 
-            # СИЗ - скрытая секция
+            # СИЗ - скрытая секция (все в одну строку для десктопа)
             Div(
                 HTML('<h5 class="section-title mb-3 mt-4"><i class="fas fa-hard-hat"></i> Информация для СИЗ</h5>'),
                 HTML('<div class="alert alert-success mb-3"><i class="fas fa-info-circle"></i> Для данной должности предусмотрена выдача СИЗ. Укажите антропометрические данные.</div>'),
                 Row(
-                    Column('height', css_class='form-group col-md-4 mb-3'),
-                    Column('clothing_size', css_class='form-group col-md-4 mb-3'),
-                    Column('shoe_size', css_class='form-group col-md-4 mb-3'),
+                    Column('height', css_class='form-group col-12 col-sm-4 col-md-4 col-lg-3 mb-3'),
+                    Column('clothing_size', css_class='form-group col-12 col-sm-4 col-md-4 col-lg-3 mb-3'),
+                    Column('shoe_size', css_class='form-group col-12 col-sm-4 col-md-4 col-lg-3 mb-3'),
                 ),
                 css_class='form-section d-none',
                 id='siz-section'

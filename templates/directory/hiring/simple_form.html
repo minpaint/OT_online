@@ -312,6 +312,132 @@
     width: 100%; /* Чтобы линия была на всю ширину */
   }
 
+  /* 📱 АДАПТИВНЫЕ СТИЛИ ДЛЯ МОБИЛЬНЫХ УСТРОЙСТВ */
+
+  /* Для планшетов (768px - 991px) */
+  @media (max-width: 991px) {
+    .card-body {
+      padding: 1.5rem;
+    }
+
+    .section-title {
+      font-size: 1.1rem;
+    }
+
+    label {
+      font-size: 0.85rem;
+    }
+  }
+
+  /* Для мобильных устройств (до 768px) */
+  @media (max-width: 767px) {
+    .container {
+      padding-left: 0.75rem;
+      padding-right: 0.75rem;
+    }
+
+    .card-body {
+      padding: 1rem;
+    }
+
+    .card-header {
+      padding: 1rem;
+    }
+
+    .card-header h5 {
+      font-size: 1rem;
+    }
+
+    .section-title {
+      font-size: 1rem;
+      margin-bottom: 0.75rem;
+    }
+
+    .form-section {
+      margin-bottom: 1rem;
+    }
+
+    label {
+      font-size: 0.85rem;
+      margin-bottom: 0.375rem;
+    }
+
+    .form-control {
+      font-size: 0.9rem;
+      padding: 0.5rem 0.625rem;
+    }
+
+    /* Select2 на мобильных */
+    .select2-container .select2-selection--single {
+      height: 38px !important;
+    }
+
+    .select2-selection__rendered {
+      line-height: 36px !important;
+      font-size: 0.9rem !important;
+      padding-left: 10px !important;
+    }
+
+    /* Кнопки на мобильных */
+    #hiring-form .btn-lg {
+      padding: 0.625rem 1rem;
+      font-size: 0.95rem;
+    }
+
+    /* Алерты компактнее */
+    .alert {
+      padding: 0.75rem 1rem;
+      font-size: 0.85rem;
+    }
+
+    /* Кнопки формы - на всю ширину на мобильных */
+    #hiring-form .form-actions .d-flex {
+      flex-direction: column;
+      gap: 0.75rem;
+    }
+
+    #hiring-form .form-actions .btn {
+      width: 100%;
+    }
+
+    /* Уменьшаем отступы между строками */
+    .row {
+      margin-left: -0.5rem;
+      margin-right: -0.5rem;
+    }
+
+    .row > [class*='col-'] {
+      padding-left: 0.5rem;
+      padding-right: 0.5rem;
+    }
+  }
+
+  /* Для очень маленьких устройств (до 375px) */
+  @media (max-width: 374px) {
+    .card-body {
+      padding: 0.75rem;
+    }
+
+    .section-title {
+      font-size: 0.95rem;
+    }
+
+    label {
+      font-size: 0.8rem;
+    }
+
+    .form-control {
+      font-size: 0.85rem;
+    }
+  }
+
+  /* Улучшение читаемости на больших экранах */
+  @media (min-width: 1400px) {
+    .container {
+      max-width: 1200px;
+    }
+  }
+
 </style>
 {% endblock %}
 
