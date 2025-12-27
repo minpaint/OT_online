@@ -1,0 +1,594 @@
+{% extends 'base.html' %}
+{% load static %}
+
+{% block title %}{{ title }} - OT Online{% endblock %}
+
+{% block content %}
+<div class="container-fluid mt-4">
+    <div class="row mb-4">
+        <div class="col">
+            <h2>🛡️ {{ title }}</h2>
+            <p class="text-muted">Генерация карточек СИЗ для сотрудников</p>
+        </div>
+    </div>
+
+    <!-- ====== НАВИГАЦИЯ ВКЛАДОК ====== -->
+    <ul class="nav nav-tabs mb-4" id="sizCardTabs" role="tablist">
+        <li class="nav-item" role="presentation">
+            <button class="nav-link active" id="by-employee-tab" data-bs-toggle="tab"
+                    data-bs-target="#by-employee" type="button" role="tab">
+                👤 По сотруднику
+            </button>
+        </li>
+        <li class="nav-item" role="presentation">
+            <button class="nav-link" id="by-subdivision-tab" data-bs-toggle="tab"
+                    data-bs-target="#by-subdivision" type="button" role="tab">
+                🏢 По подразделениям
+            </button>
+        </li>
+    </ul>
+
+    <div class="tab-content" id="sizCardTabsContent">
+        <!-- ====== ВКЛАДКА 1: ПО СОТРУДНИКУ ====== -->
+        <div class="tab-pane fade show active" id="by-employee" role="tabpanel">
+            <div class="card">
+                <div class="card-body">
+                    <h5 class="mb-3">Выберите сотрудника для работы с карточкой СИЗ</h5>
+
+                    <!-- Форма выбора сотрудника -->
+                    <div class="row mb-4">
+                        <div class="col-md-8">
+                            <label for="employee-select" class="form-label">
+                                Сотрудник <span class="text-danger">*</span>
+                            </label>
+                            <select id="employee-select" class="form-control" style="width: 100%;">
+                                <option value="">-- Начните вводить ФИО сотрудника --</option>
+                            </select>
+                            <small class="form-text text-muted">
+                                Введите не менее 3 символов для поиска сотрудника
+                            </small>
+                        </div>
+                    </div>
+
+                    <!-- Информация о выбранном сотруднике (скрыта по умолчанию) -->
+                    <div id="employee-info" class="d-none">
+                        <hr>
+                        <div class="row mb-4">
+                            <div class="col-md-6">
+                                <h6 class="text-muted">Информация о сотруднике:</h6>
+                                <table class="table table-sm">
+                                    <tr>
+                                        <th style="width: 40%;">ФИО:</th>
+                                        <td id="employee-fio"></td>
+                                    </tr>
+                                    <tr>
+                                        <th>Должность:</th>
+                                        <td id="employee-position"></td>
+                                    </tr>
+                                    <tr>
+                                        <th>Подразделение:</th>
+                                        <td id="employee-subdivision"></td>
+                                    </tr>
+                                    <tr>
+                                        <th>Организация:</th>
+                                        <td id="employee-organization"></td>
+                                    </tr>
+                                </table>
+                            </div>
+                        </div>
+
+                        <!-- Кнопки действий -->
+                        <div class="d-flex gap-3">
+                            <a href="#" id="btn-go-to-personal-card" class="btn btn-primary">
+                                📋 Перейти к выдаче СИЗ
+                            </a>
+                            <a href="#" id="btn-download-card" class="btn btn-success">
+                                📥 Скачать карточку СИЗ
+                            </a>
+                        </div>
+                    </div>
+
+                    <!-- Placeholder когда сотрудник не выбран -->
+                    <div id="employee-placeholder" class="alert alert-info">
+                        ℹ️ Выберите сотрудника из списка, чтобы увидеть доступные действия
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- ====== ВКЛАДКА 2: ПО ПОДРАЗДЕЛЕНИЯМ ====== -->
+        <div class="tab-pane fade" id="by-subdivision" role="tabpanel">
+            {% if subdivisions %}
+            <form method="post" action="{% url 'directory:siz:mass_generation_generate' %}" id="mass-generation-form">
+                {% csrf_token %}
+
+                <div class="row mb-3">
+                    <div class="col-md-4 mb-3 mb-md-0">
+                        <label for="organization-filter" class="form-label">Фильтр по организации</label>
+                        <select id="organization-filter" class="form-select">
+                            <option value="">Все организации</option>
+                            {% regroup subdivisions by organization as organization_list %}
+                            {% for org_group in organization_list %}
+                            <option value="{{ org_group.grouper.id }}">{{ org_group.grouper.full_name_ru }}</option>
+                            {% endfor %}
+                        </select>
+                    </div>
+                </div>
+
+                <div class="row mb-3">
+                    <div class="col">
+                        <div class="btn-group" role="group">
+                            <button type="button" class="btn btn-sm btn-outline-primary" id="select-all">
+                                ✓ Выбрать все
+                            </button>
+                            <button type="button" class="btn btn-sm btn-outline-secondary" id="deselect-all">
+                                ✗ Снять все
+                            </button>
+                        </div>
+                        <div class="d-inline-flex align-items-center ms-3">
+                            <label for="id_issue_date" class="me-2 mb-0 text-muted text-nowrap">Дата выдачи</label>
+                            <input type="date" name="issue_date" id="id_issue_date" class="form-control form-control-sm w-auto">
+                        </div>
+                        <button type="submit" class="btn btn-success ms-3" id="generate-btn">
+                            📥 Сгенерировать карточки СИЗ
+                        </button>
+                        <span class="ms-3 text-muted" id="selected-count">Выбрано: 0</span>
+                    </div>
+                </div>
+
+                <div class="card">
+                    <div class="card-body">
+                        <!-- Сообщение когда не выбрана организация -->
+                        <div id="no-organization-message" class="alert alert-info text-center" style="display: none;">
+                            <i class="bi bi-info-circle"></i>
+                            👆 Выберите организацию из списка выше, чтобы увидеть подразделения
+                        </div>
+
+                        <div class="table-responsive">
+                            <table class="table table-hover table-striped">
+                                <thead class="table-dark">
+                                    <tr>
+                                        <th style="width: 50px;">
+                                            <input type="checkbox" id="select-all-checkbox" class="form-check-input">
+                                        </th>
+                                        <th>Организация</th>
+                                        <th>Структурное подразделение</th>
+                                        <th class="text-center">Сотрудников с нормами СИЗ</th>
+                                    </tr>
+                                </thead>
+                                <tbody id="subdivisions-tbody">
+                                    {% for subdivision in subdivisions %}
+                                    <tr class="subdivision-row" data-organization-id="{{ subdivision.organization.id }}">
+                                        <td>
+                                            <input type="checkbox"
+                                                   name="subdivision_ids"
+                                                   value="{{ subdivision.id }}"
+                                                   class="form-check-input subdivision-checkbox"
+                                                   data-count="{{ subdivision.employees_with_norms_count }}">
+                                        </td>
+                                        <td>{{ subdivision.organization.full_name_ru }}</td>
+                                        <td>
+                                            <strong>{{ subdivision.name }}</strong>
+                                        </td>
+                                        <td class="text-center">
+                                            <span class="badge bg-info">{{ subdivision.employees_with_norms_count }}</span>
+                                        </td>
+                                    </tr>
+                                    {% endfor %}
+                                </tbody>
+                            </table>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="row mt-3">
+                    <div class="col">
+                        <button type="submit" class="btn btn-success">
+                            📥 Сгенерировать карточки СИЗ
+                        </button>
+                        <a href="{% url 'directory:employee_home' %}" class="btn btn-secondary">
+                            ← Назад
+                        </a>
+                    </div>
+                </div>
+            </form>
+
+            {% else %}
+            <div class="alert alert-info">
+                <h5>ℹ️ Нет данных для генерации</h5>
+                <p>Не найдено структурных подразделений с сотрудниками, для которых установлены нормы СИЗ.</p>
+                <p>Убедитесь, что:</p>
+                <ul>
+                    <li>Созданы нормы СИЗ для должностей</li>
+                    <li>Есть сотрудники на должностях с нормами СИЗ</li>
+                    <li>У вас есть доступ к организациям</li>
+                </ul>
+                <a href="{% url 'directory:employee_home' %}" class="btn btn-primary mt-2">
+                    ← Вернуться на главную
+                </a>
+            </div>
+            {% endif %}
+        </div>
+    </div>
+</div>
+
+<!-- Индикатор загрузки (общий для обеих вкладок) -->
+<div id="loading-overlay" style="display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.7); z-index: 9999;">
+    <div style="position: absolute; top: 50%; left: 50%; transform: translate(-50%, -50%); text-align: center;">
+        <div class="spinner-border text-light" role="status" style="width: 4rem; height: 4rem;">
+            <span class="visually-hidden">Загрузка...</span>
+        </div>
+        <p class="text-light mt-3 fs-5">Загрузка...</p>
+        <p class="text-light">Это может занять некоторое время</p>
+    </div>
+</div>
+
+{% endblock %}
+
+{% block extra_js %}
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+    // ========== КОД ДЛЯ ВКЛАДКИ "ПО ПОДРАЗДЕЛЕНИЯМ" (существующий) ==========
+    const form = document.getElementById('mass-generation-form');
+
+    if (form) {
+        const checkboxes = document.querySelectorAll('.subdivision-checkbox');
+        const selectAllCheckbox = document.getElementById('select-all-checkbox');
+        const selectAllBtn = document.getElementById('select-all');
+        const deselectAllBtn = document.getElementById('deselect-all');
+        const selectedCountSpan = document.getElementById('selected-count');
+        const loadingOverlay = document.getElementById('loading-overlay');
+        const generateBtn = document.getElementById('generate-btn');
+        const submitButtons = document.querySelectorAll('button[type="submit"]');
+        const organizationFilter = document.getElementById('organization-filter');
+        const subdivisionRows = document.querySelectorAll('.subdivision-row');
+        const noOrgMessage = document.getElementById('no-organization-message');
+        const subdivisionsTable = document.querySelector('.table-responsive');
+
+        // Функция фильтрации
+        function applyOrganizationFilter() {
+            const selectedOrgId = organizationFilter.value;
+            let hasVisibleRows = false;
+
+            subdivisionRows.forEach(row => {
+                if (selectedOrgId === '' || row.dataset.organizationId === selectedOrgId) {
+                    row.style.display = '';
+                    if (selectedOrgId !== '') {
+                        hasVisibleRows = true;
+                    }
+                } else {
+                    row.style.display = 'none';
+                    // Снимаем галочку с скрытых подразделений
+                    const checkbox = row.querySelector('.subdivision-checkbox');
+                    if (checkbox) {
+                        checkbox.checked = false;
+                    }
+                }
+            });
+
+            // Показываем сообщение если не выбрана организация и их несколько
+            if (selectedOrgId === '' && organizationFilter.options.length > 2) {
+                noOrgMessage.style.display = 'block';
+                subdivisionsTable.style.display = 'none';
+            } else {
+                noOrgMessage.style.display = 'none';
+                subdivisionsTable.style.display = 'block';
+            }
+
+            updateSelectedCount();
+        }
+
+        // Обработчик изменения фильтра
+        organizationFilter.addEventListener('change', applyOrganizationFilter);
+
+        // Автоматический выбор организации при загрузке
+        const orgOptions = organizationFilter.querySelectorAll('option');
+        const orgCount = orgOptions.length - 1; // Минус опция "Все организации"
+
+        if (orgCount === 1) {
+            // Если доступна только одна организация - выбираем её автоматически
+            organizationFilter.selectedIndex = 1; // Выбираем первую (не "Все организации")
+            applyOrganizationFilter();
+        } else if (orgCount > 1) {
+            // Если несколько организаций - скрываем таблицу, показываем сообщение
+            subdivisionRows.forEach(row => {
+                row.style.display = 'none';
+            });
+            noOrgMessage.style.display = 'block';
+            subdivisionsTable.style.display = 'none';
+        } else {
+            // Если нет организаций (не должно быть), применяем обычный фильтр
+            applyOrganizationFilter();
+        }
+
+        function getVisibleCheckboxes() {
+            return Array.from(checkboxes).filter(cb => {
+                const row = cb.closest('tr');
+                return row && row.style.display !== 'none';
+            });
+        }
+
+        function updateSelectedCount() {
+            const checked = document.querySelectorAll('.subdivision-checkbox:checked');
+            let totalEmployees = 0;
+            checked.forEach(cb => {
+                totalEmployees += parseInt(cb.dataset.count || 0);
+            });
+            selectedCountSpan.textContent = `Выбрано: ${checked.length} подразделений (≈${totalEmployees} карточек)`;
+
+            // Обновляем состояние главного чекбокса с учетом видимых строк
+            const visibleCheckboxes = getVisibleCheckboxes();
+            const checkedVisible = visibleCheckboxes.filter(cb => cb.checked);
+
+            if (checkedVisible.length === 0) {
+                selectAllCheckbox.checked = false;
+                selectAllCheckbox.indeterminate = false;
+            } else if (checkedVisible.length === visibleCheckboxes.length) {
+                selectAllCheckbox.checked = true;
+                selectAllCheckbox.indeterminate = false;
+            } else {
+                selectAllCheckbox.checked = false;
+                selectAllCheckbox.indeterminate = true;
+            }
+        }
+
+        // Обработка кликов по чекбоксам
+        checkboxes.forEach(cb => {
+            cb.addEventListener('change', updateSelectedCount);
+        });
+
+        // Выбрать все (только видимые)
+        selectAllCheckbox.addEventListener('change', function() {
+            const visibleCheckboxes = getVisibleCheckboxes();
+            visibleCheckboxes.forEach(cb => {
+                cb.checked = this.checked;
+            });
+            updateSelectedCount();
+        });
+
+        selectAllBtn.addEventListener('click', function() {
+            const visibleCheckboxes = getVisibleCheckboxes();
+            visibleCheckboxes.forEach(cb => {
+                cb.checked = true;
+            });
+            updateSelectedCount();
+        });
+
+        // Снять все (только видимые)
+        deselectAllBtn.addEventListener('click', function() {
+            const visibleCheckboxes = getVisibleCheckboxes();
+            visibleCheckboxes.forEach(cb => {
+                cb.checked = false;
+            });
+            updateSelectedCount();
+        });
+
+        // Обработка отправки формы
+        form.addEventListener('submit', async function(e) {
+            const checked = document.querySelectorAll('.subdivision-checkbox:checked');
+
+            if (checked.length === 0) {
+                e.preventDefault();
+                alert('Пожалуйста, выберите хотя бы одно подразделение');
+                return false;
+            }
+
+            e.preventDefault();
+
+            // Показываем индикатор загрузки
+            loadingOverlay.style.display = 'block';
+            submitButtons.forEach(btn => {
+                btn.disabled = true;
+            });
+
+            try {
+                const formData = new FormData(form);
+                const response = await fetch(form.action, {
+                    method: 'POST',
+                    body: formData,
+                    headers: {
+                        'X-Requested-With': 'XMLHttpRequest'
+                    }
+                });
+
+                if (!response.ok) {
+                    const errorText = await response.text();
+                    throw new Error(errorText || `Ошибка сервера: ${response.status}`);
+                }
+
+                const blob = await response.blob();
+                const contentDisposition = response.headers.get('Content-Disposition') || '';
+                const filenameMatch = contentDisposition.match(/filename\*=UTF-8''([^;]+)/i)
+                    || contentDisposition.match(/filename="([^"]+)"/i);
+                const filename = filenameMatch ? decodeURIComponent(filenameMatch[1]) : 'Карточки_СИЗ.zip';
+
+                const url = window.URL.createObjectURL(blob);
+                const a = document.createElement('a');
+                a.href = url;
+                a.download = filename;
+                document.body.appendChild(a);
+                a.click();
+                a.remove();
+                window.URL.revokeObjectURL(url);
+            } catch (err) {
+                alert(`Не удалось скачать архив: ${err.message}`);
+            } finally {
+                loadingOverlay.style.display = 'none';
+                submitButtons.forEach(btn => {
+                    btn.disabled = false;
+                });
+            }
+        });
+
+        // Инициализация
+        updateSelectedCount();
+    }
+
+    // ========== КОД ДЛЯ ВКЛАДКИ "ПО СОТРУДНИКУ" (новый) ==========
+
+    // Инициализация Select2 для autocomplete сотрудников
+    $('#employee-select').select2({
+        ajax: {
+            url: '{% url "directory:employee-for-commission-autocomplete" %}',
+            dataType: 'json',
+            delay: 250,
+            data: function (params) {
+                return {
+                    q: params.term, // Поисковый запрос
+                    page: params.page || 1
+                };
+            },
+            processResults: function (data) {
+                return {
+                    results: data.results,
+                    pagination: data.pagination
+                };
+            },
+            cache: true
+        },
+        minimumInputLength: 3,
+        placeholder: '-- Начните вводить ФИО сотрудника --',
+        allowClear: true,
+        language: {
+            inputTooShort: function () {
+                return 'Введите минимум 3 символа';
+            },
+            searching: function () {
+                return 'Поиск...';
+            },
+            noResults: function () {
+                return 'Сотрудники не найдены';
+            }
+        }
+    });
+
+    // Обработка выбора сотрудника
+    $('#employee-select').on('select2:select', function (e) {
+        const employeeId = e.params.data.id;
+        const employeeText = e.params.data.text;
+
+        // Показываем индикатор загрузки
+        $('#loading-overlay').show();
+
+        // Запрашиваем детальную информацию о сотруднике
+        fetch(`/directory/api/employee/${employeeId}/info/`)
+            .then(response => {
+                if (!response.ok) {
+                    throw new Error('Ошибка загрузки данных сотрудника');
+                }
+                return response.json();
+            })
+            .then(data => {
+                // Заполняем информацию о сотруднике
+                $('#employee-fio').text(data.full_name_nominative || '-');
+                $('#employee-position').text(data.position_name || '-');
+                $('#employee-subdivision').text(data.subdivision_name || '-');
+                $('#employee-organization').text(data.organization_name || '-');
+
+                // Обновляем ссылки на кнопках
+                $('#btn-go-to-personal-card').attr('href',
+                    `/directory/siz/personal-card/${employeeId}/`);
+                $('#btn-download-card').attr('href',
+                    `/directory/siz/siz-card/${employeeId}/`);
+
+                // Показываем блок с информацией и кнопками
+                $('#employee-placeholder').addClass('d-none');
+                $('#employee-info').removeClass('d-none');
+            })
+            .catch(error => {
+                console.error('Ошибка:', error);
+                alert('Не удалось загрузить информацию о сотруднике');
+            })
+            .finally(() => {
+                $('#loading-overlay').hide();
+            });
+    });
+
+    // Обработка очистки выбора
+    $('#employee-select').on('select2:clear', function (e) {
+        $('#employee-info').addClass('d-none');
+        $('#employee-placeholder').removeClass('d-none');
+    });
+});
+</script>
+
+<style>
+/* Стили для вкладок */
+.nav-tabs {
+    border-bottom: 2px solid #dee2e6;
+}
+
+.nav-tabs .nav-link {
+    color: #495057;
+    font-weight: 500;
+    border: none;
+    border-bottom: 3px solid transparent;
+    padding: 0.75rem 1.5rem;
+    transition: all 0.3s ease;
+}
+
+.nav-tabs .nav-link:hover {
+    color: #0d6efd;
+    border-bottom-color: #0d6efd;
+    background-color: rgba(13, 110, 253, 0.05);
+}
+
+.nav-tabs .nav-link.active {
+    color: #0d6efd;
+    font-weight: 600;
+    border-bottom-color: #0d6efd;
+    background-color: rgba(13, 110, 253, 0.05);
+}
+
+/* Стили для вкладки "По подразделениям" */
+.table-hover tbody tr:hover {
+    background-color: rgba(0, 123, 255, 0.05);
+}
+
+.subdivision-checkbox {
+    cursor: pointer;
+    width: 20px;
+    height: 20px;
+}
+
+#select-all-checkbox {
+    cursor: pointer;
+    width: 20px;
+    height: 20px;
+}
+
+/* Стили для вкладки "По сотруднику" */
+#by-employee .select2-container {
+    font-size: 1rem;
+}
+
+#by-employee .select2-selection--single {
+    height: 42px !important;
+    border: 1.5px solid #e2e8f0 !important;
+}
+
+#by-employee .select2-selection__rendered {
+    line-height: 40px !important;
+}
+
+/* Адаптация кнопок */
+#by-employee .btn {
+    padding: 0.625rem 1.25rem;
+    font-weight: 500;
+}
+
+#by-employee .gap-3 {
+    gap: 1rem !important;
+}
+
+/* Улучшенная таблица информации */
+#employee-info table th {
+    font-weight: 600;
+    color: #6c757d;
+}
+
+#employee-info table td {
+    color: #212529;
+}
+</style>
+{% endblock %}

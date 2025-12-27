@@ -36,6 +36,10 @@ from directory.views.documents import (
     GeneratedDocumentListView,
     document_download,
     PeriodicProtocolView,
+    InstructionJournalView,
+    send_instruction_sample,
+    send_instruction_samples_for_organization,
+    preview_mass_send_instruction_samples,
 )
 
 
@@ -104,6 +108,10 @@ document_patterns = [
     path('', GeneratedDocumentListView.as_view(), name='document_list'),
     path('selection/<int:employee_id>/', DocumentSelectionView.as_view(), name='document_selection'),
     path('periodic-protocol/', PeriodicProtocolView.as_view(), name='periodic_protocol'),
+    path('instruction-journal/', InstructionJournalView.as_view(), name='instruction_journal'),
+    path('instruction-journal/send/<int:subdivision_id>/', send_instruction_sample, name='send_instruction_sample'),
+    path('instruction-journal/send-org/<int:organization_id>/', send_instruction_samples_for_organization, name='send_instruction_sample_org'),
+    path('instruction-journal/preview-mass/<int:organization_id>/', preview_mass_send_instruction_samples, name='preview_mass_send_instruction_samples'),
     path('<int:pk>/download/', document_download, name='document_download'),
 ]
 
@@ -130,7 +138,10 @@ siz_patterns = [
     path('issue/employee/<int:employee_id>/', siz_issued.SIZIssueFormView.as_view(), name='siz_issue_for_employee'),
     path('personal-card/<int:employee_id>/', siz_issued.SIZPersonalCardView.as_view(), name='siz_personal_card'),
     path('return/<int:siz_issued_id>/', siz_issued.SIZIssueReturnView.as_view(), name='siz_return'),
-    path('siz/siz-card/<int:employee_id>/', generate_siz_card_docx_view, name='siz_card'),
+    path('siz-card/<int:employee_id>/', generate_siz_card_docx_view, name='siz_card'),
+    # Карточки СИЗ (массовая генерация)
+    path('mass-generation/', siz.SIZMassGenerationView.as_view(), name='mass_generation'),
+    path('mass-generation/generate/', siz.generate_siz_cards_bulk, name='mass_generation_generate'),
 ]
 
 # 📑 Приемы на работу
@@ -245,7 +256,7 @@ auth_patterns = [
 
 # 🌐 Основные маршруты
 urlpatterns = [
-    path('', HomePageView.as_view(), name='home'),
+    path('', HomePageView.as_view(), name='employee_home'),
     path('introductory-briefing/', IntroductoryBriefingView.as_view(), name='introductory_briefing'),
     path('debug-permissions/', debug_permissions_view, name='debug_permissions'),  # Отладка
     path('auth/', include((auth_patterns, 'auth'))),
@@ -273,4 +284,7 @@ urlpatterns = [
     path('api/medical/position/<int:position_id>/norms/', medical_examination.api_position_medical_norms,
          name='api_position_medical_norms'),
     path('api/subdivisions/', employees.get_subdivisions, name='api-subdivisions'),
+
+    # API для сотрудников
+    path('api/employee/<int:employee_id>/info/', employees.employee_info_api, name='employee_info_api'),
 ]

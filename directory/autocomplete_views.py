@@ -372,9 +372,16 @@ class EmployeeForCommissionAutocomplete(autocomplete.Select2QuerySetView):
         if not self.request.user.is_authenticated:
             return Employee.objects.none()
 
-        qs = Employee.objects.all()
+        # Получаем доступные организации через AccessControlHelper
+        from directory.utils.permissions import AccessControlHelper
+        accessible_orgs = AccessControlHelper.get_accessible_organizations(
+            self.request.user, self.request
+        )
 
-        # Получаем параметры из forwarded
+        # Базовый queryset с фильтрацией по доступным организациям
+        qs = Employee.objects.filter(organization__in=accessible_orgs)
+
+        # Получаем параметры из forwarded (для использования в комиссиях)
         organization_id = self.forwarded.get('organization', None)
         subdivision_id = self.forwarded.get('subdivision', None)
         department_id = self.forwarded.get('department', None)
@@ -396,15 +403,14 @@ class EmployeeForCommissionAutocomplete(autocomplete.Select2QuerySetView):
             except Commission.DoesNotExist:
                 pass
 
-        # Фильтруем по иерархии
+        # Фильтруем по иерархии (если параметры переданы)
         if department_id:
-            qs = qs.filter(department_id=department_id)
+            qs = qs.filter(position__department_id=department_id)
         elif subdivision_id:
-            qs = qs.filter(subdivision_id=subdivision_id)
+            qs = qs.filter(position__department__subdivision_id=subdivision_id)
         elif organization_id:
             qs = qs.filter(organization_id=organization_id)
-        else:
-            return Employee.objects.none()
+        # Иначе показываем всех сотрудников из доступных организаций
 
         # Поиск по ФИО
         if self.q:
@@ -412,7 +418,12 @@ class EmployeeForCommissionAutocomplete(autocomplete.Select2QuerySetView):
                 Q(full_name_nominative__icontains=self.q)
             )
 
-        return qs.select_related('position', 'organization', 'subdivision', 'department').order_by('full_name_nominative')
+        return qs.select_related(
+            'position',
+            'organization',
+            'position__department',
+            'position__department__subdivision'
+        ).order_by('full_name_nominative')
 
     def get_result_label(self, item):
         # Форматируем результат для отображения

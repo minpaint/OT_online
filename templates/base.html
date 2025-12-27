@@ -34,7 +34,7 @@
             top: 0;
             left: 0;
             height: 100vh;
-            width: 260px;
+            width: 200px;
             background: linear-gradient(180deg, #2c3e50 0%, #34495e 100%);
             padding: 0;
             overflow-y: auto;
@@ -93,11 +93,12 @@
 
         .sidebar-nav .nav-link {
             color: rgba(255,255,255,0.8);
-            padding: 14px 20px;
+            padding: 10px 15px;
             display: block;
             text-decoration: none;
             transition: all 0.3s ease;
             border-left: 3px solid transparent;
+            font-size: 0.9rem;
         }
 
         .sidebar-nav .nav-link:hover {
@@ -113,17 +114,49 @@
         }
 
         .sidebar-section {
-            padding: 10px 20px 5px;
+            padding: 8px 15px 5px;
             color: rgba(255,255,255,0.5);
-            font-size: 0.75rem;
+            font-size: 0.7rem;
             font-weight: 600;
             text-transform: uppercase;
             letter-spacing: 0.5px;
-            margin-top: 15px;
+            margin-top: 10px;
+            cursor: pointer;
+            user-select: none;
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            transition: all 0.2s ease;
+        }
+
+        .sidebar-section:hover {
+            color: rgba(255,255,255,0.8);
+            background: rgba(255,255,255,0.05);
+        }
+
+        .sidebar-section-icon {
+            font-size: 0.6rem;
+            transition: transform 0.3s ease;
+        }
+
+        .sidebar-section.collapsed .sidebar-section-icon {
+            transform: rotate(-90deg);
+        }
+
+        .sidebar-section-content {
+            max-height: 1000px;
+            overflow: hidden;
+            transition: max-height 0.3s ease, opacity 0.3s ease;
+            opacity: 1;
+        }
+
+        .sidebar-section-content.collapsed {
+            max-height: 0;
+            opacity: 0;
         }
 
         .main-content {
-            margin-left: 260px;
+            margin-left: 200px;
             min-height: 100vh;
             background: #f8f9fa;
         }
@@ -202,8 +235,9 @@
 
         .sidebar-nav .dropdown-item {
             color: rgba(255,255,255,0.7);
-            padding: 10px 20px 10px 40px;
+            padding: 8px 15px 8px 35px;
             border-left: 3px solid transparent;
+            font-size: 0.85rem;
         }
 
         .sidebar-nav .dropdown-item:hover {
@@ -232,104 +266,165 @@
 
         {% if user.is_authenticated %}
         <ul class="sidebar-nav">
-            <div class="sidebar-section">Основное</div>
+            <!-- Секция: Основное -->
+            <div class="sidebar-section" onclick="toggleSection('main')">
+                <span>Основное</span>
+                <span class="sidebar-section-icon">▼</span>
+            </div>
+            <div class="sidebar-section-content" id="section-main">
+                <li class="nav-item">
+                    <a class="nav-link" href="/">
+                        ⏰ Контроль сроков
+                    </a>
+                </li>
 
-            {% check_url_visibility user 'directory:introductory_briefing' as show_briefing %}
-            {% if show_briefing %}
-            <li class="nav-item">
-                <a class="nav-link" href="{% url 'directory:introductory_briefing' %}">
-                    📺 Вводный инструктаж
-                </a>
-            </li>
-            {% endif %}
+                {% check_url_visibility user 'directory:introductory_briefing' as show_briefing %}
+                {% if show_briefing %}
+                <li class="nav-item">
+                    <a class="nav-link" href="{% url 'directory:introductory_briefing' %}">
+                        📺 Вводный инструктаж
+                    </a>
+                </li>
+                {% endif %}
 
-            {% check_url_visibility user 'directory:home' as show_employees %}
-            {% if show_employees %}
-            <li class="nav-item">
-                <a class="nav-link" href="/">
-                    👥 Сотрудники
-                </a>
-            </li>
-            {% endif %}
+                {% check_url_visibility user 'directory:employee_home' as show_employees %}
+                {% if show_employees %}
+                <li class="nav-item">
+                    <a class="nav-link" href="{% url 'directory:employee_home' %}">
+                        👥 Сотрудники
+                    </a>
+                </li>
+                {% endif %}
 
-            {% check_url_visibility user 'directory:hiring:hiring_list' as show_hiring %}
-            {% if show_hiring %}
-            <li class="nav-item">
-                <a class="nav-link" href="{% url 'directory:hiring:hiring_list' %}">
-                    ➕ Приемы на работу
-                </a>
-            </li>
-            {% endif %}
+                {% check_url_visibility user 'directory:hiring:hiring_list' as show_hiring %}
+                {% if show_hiring %}
+                <li class="nav-item">
+                    <a class="nav-link" href="{% url 'directory:hiring:hiring_list' %}">
+                        ➕ Приемы на работу
+                    </a>
+                </li>
+                {% endif %}
 
-            <div class="sidebar-section">
-                ⏰ Контроль сроков
-                {% if deadline_notifications_count > 0 %}
-                <span class="badge badge-{% if deadline_overdue_total > 0 %}danger{% else %}warning{% endif %} float-right">
-                    {{ deadline_notifications_count }}
-                </span>
+                {% check_url_visibility user 'directory:documents:periodic_protocol' as show_periodic_protocol %}
+                {% if show_periodic_protocol %}
+                <li class="nav-item">
+                    <a class="nav-link" href="{% url 'directory:documents:periodic_protocol' %}">
+                        📋 Проверка знаний
+                    </a>
+                </li>
+                {% endif %}
+
+                {% check_url_visibility user 'directory:siz:mass_generation' as show_siz_cards %}
+                {% if show_siz_cards %}
+                <li class="nav-item">
+                    <a class="nav-link" href="{% url 'directory:siz:mass_generation' %}">
+                        🛡️ Карточки СИЗ
+                    </a>
+                </li>
+                {% endif %}
+
+                {% check_url_visibility user 'directory:documents:instruction_journal' as show_instruction_journal %}
+                {% if show_instruction_journal %}
+                <li class="nav-item">
+                    <a class="nav-link" href="{% url 'directory:documents:instruction_journal' %}">
+                        📝 Журнал инструктажей
+                    </a>
+                </li>
                 {% endif %}
             </div>
 
-            {% check_url_visibility user 'deadline_control:dashboard' as show_dashboard %}
-            {% if show_dashboard %}
-            <li class="nav-item">
-                <a class="nav-link" href="{% url 'deadline_control:dashboard' %}">
-                    📊 Dashboard
-                    {% if deadline_overdue_total > 0 %}
-                    <span class="badge badge-danger">{{ deadline_overdue_total }}</span>
-                    {% elif deadline_upcoming_total > 0 %}
-                    <span class="badge badge-warning">{{ deadline_upcoming_total }}</span>
+            <!-- Секция: Контроль сроков -->
+            <div class="sidebar-section collapsed" onclick="toggleSection('deadlines')">
+                <span>
+                    ⏰ Сроки
+                    {% if deadline_notifications_count > 0 %}
+                    <span class="badge badge-{% if deadline_overdue_total > 0 %}danger{% else %}warning{% endif %} ms-1" style="font-size: 0.65rem;">
+                        {{ deadline_notifications_count }}
+                    </span>
                     {% endif %}
-                </a>
-            </li>
-            {% endif %}
+                </span>
+                <span class="sidebar-section-icon">▼</span>
+            </div>
+            <div class="sidebar-section-content collapsed" id="section-deadlines">
+                {% check_url_visibility user 'deadline_control:dashboard' as show_dashboard %}
+                {% if show_dashboard %}
+                <li class="nav-item">
+                    <a class="nav-link" href="{% url 'deadline_control:dashboard' %}">
+                        📊 Dashboard
+                        {% if deadline_overdue_total > 0 %}
+                        <span class="badge badge-danger ms-1">{{ deadline_overdue_total }}</span>
+                        {% elif deadline_upcoming_total > 0 %}
+                        <span class="badge badge-warning ms-1">{{ deadline_upcoming_total }}</span>
+                        {% endif %}
+                    </a>
+                </li>
+                {% endif %}
 
-            {% check_url_visibility user 'deadline_control:equipment:list' as show_equipment %}
-            {% if show_equipment %}
-            <li class="nav-item">
-                <a class="nav-link" href="{% url 'deadline_control:equipment:list' %}">
-                    ⚙️ ТО оборудования
-                </a>
-            </li>
-            {% endif %}
+                {% check_url_visibility user 'deadline_control:equipment:list' as show_equipment %}
+                {% if show_equipment %}
+                <li class="nav-item">
+                    <a class="nav-link" href="{% url 'deadline_control:equipment:list' %}">
+                        ⚙️ ТО оборудования
+                    </a>
+                </li>
+                {% endif %}
 
-            {% check_url_visibility user 'deadline_control:key_deadline:list' as show_deadlines %}
-            {% if show_deadlines %}
-            <li class="nav-item">
-                <a class="nav-link" href="{% url 'deadline_control:key_deadline:list' %}">
-                    📅 Ключевые сроки
-                </a>
-            </li>
-            {% endif %}
+                {% check_url_visibility user 'deadline_control:key_deadline:list' as show_deadlines %}
+                {% if show_deadlines %}
+                <li class="nav-item">
+                    <a class="nav-link" href="{% url 'deadline_control:key_deadline:list' %}">
+                        📅 Ключевые сроки
+                    </a>
+                </li>
+                {% endif %}
 
-            {% check_url_visibility user 'deadline_control:medical:list' as show_medical %}
-            {% if show_medical %}
-            <li class="nav-item">
-                <a class="nav-link" href="{% url 'deadline_control:medical:list' %}">
-                    🏥 Медосмотры
-                </a>
-            </li>
-            {% endif %}
+                {% check_url_visibility user 'deadline_control:medical:list' as show_medical %}
+                {% if show_medical %}
+                <li class="nav-item">
+                    <a class="nav-link" href="{% url 'deadline_control:medical:list' %}">
+                        🏥 Медосмотры
+                    </a>
+                </li>
+                {% endif %}
+            </div>
 
-            <div class="sidebar-section">Дополнительно</div>
+            <!-- Секция: Дополнительно -->
+            <div class="sidebar-section collapsed" onclick="toggleSection('extra')">
+                <span>Дополнительно</span>
+                <span class="sidebar-section-icon">▼</span>
+            </div>
+            <div class="sidebar-section-content collapsed" id="section-extra">
+                {% check_url_visibility user 'directory:quiz:quiz_list' as show_quiz %}
+                {% if show_quiz %}
+                <li class="nav-item">
+                    <a class="nav-link" href="{% url 'directory:quiz:quiz_list' %}">
+                        📝 Экзамены в исполкомах
+                    </a>
+                </li>
+                {% endif %}
 
-            {% check_url_visibility user 'directory:quiz:quiz_list' as show_quiz %}
-            {% if show_quiz %}
-            <li class="nav-item">
-                <a class="nav-link" href="{% url 'directory:quiz:quiz_list' %}">
-                    📝 Экзамены
-                </a>
-            </li>
-            {% endif %}
+                {% check_url_visibility user 'directory:commissions:commission_list' as show_commissions %}
+                {% if show_commissions %}
+                <li class="nav-item">
+                    <a class="nav-link" href="{% url 'directory:commissions:commission_list' %}">
+                        👥 Комиссии
+                    </a>
+                </li>
+                {% endif %}
 
-            {% check_url_visibility user 'directory:commissions:commission_list' as show_commissions %}
-            {% if show_commissions %}
-            <li class="nav-item">
-                <a class="nav-link" href="{% url 'directory:commissions:commission_list' %}">
-                    👥 Комиссии
-                </a>
-            </li>
-            {% endif %}
+                {% if user.is_staff %}
+                <li class="nav-item">
+                    <a class="nav-link" href="{% url 'admin:global_import' %}">
+                        📊 Единый импорт/экспорт
+                    </a>
+                </li>
+                <li class="nav-item">
+                    <a class="nav-link" href="{% url 'admin:registry_import' %}">
+                        📋 Импорт реестра
+                    </a>
+                </li>
+                {% endif %}
+            </div>
         </ul>
         {% endif %}
     </div>
@@ -428,6 +523,34 @@
         function toggleSidebar() {
             document.getElementById('sidebar').classList.toggle('show');
         }
+
+        // Функция для сворачивания/разворачивания секций меню
+        function toggleSection(sectionName) {
+            const section = document.querySelector(`[onclick="toggleSection('${sectionName}')"]`);
+            const content = document.getElementById('section-' + sectionName);
+
+            section.classList.toggle('collapsed');
+            content.classList.toggle('collapsed');
+
+            // Сохраняем состояние в localStorage
+            const isCollapsed = content.classList.contains('collapsed');
+            localStorage.setItem('sidebar-section-' + sectionName, isCollapsed ? 'collapsed' : 'expanded');
+        }
+
+        // Восстанавливаем состояние секций из localStorage при загрузке
+        document.addEventListener('DOMContentLoaded', function() {
+            ['main', 'deadlines', 'extra'].forEach(function(sectionName) {
+                const savedState = localStorage.getItem('sidebar-section-' + sectionName);
+                if (savedState === 'collapsed') {
+                    const section = document.querySelector(`[onclick="toggleSection('${sectionName}')"]`);
+                    const content = document.getElementById('section-' + sectionName);
+                    if (section && content) {
+                        section.classList.add('collapsed');
+                        content.classList.add('collapsed');
+                    }
+                }
+            });
+        });
 
         // Закрытие сайдбара при клике вне его на мобильных устройствах
         document.addEventListener('click', function(event) {

@@ -1,8 +1,10 @@
 from django.views.generic import ListView, CreateView, UpdateView, DeleteView, FormView, DetailView
 from django.contrib.auth.mixins import LoginRequiredMixin
+from django.contrib.auth.decorators import login_required
 from django.urls import reverse_lazy, reverse
 from django.http import JsonResponse
-from django.shortcuts import render, redirect
+from django.shortcuts import render, redirect, get_object_or_404
+from django.views.decorators.http import require_GET
 from django.contrib import messages
 from django.utils.translation import gettext_lazy as _
 from django.utils import timezone
@@ -63,6 +65,7 @@ class EmployeeListView(LoginRequiredMixin, AccessControlMixin, ListView):
 class EmployeeTreeView(LoginRequiredMixin, AccessControlMixin, ListView):
     """
     🌳 Древовидное представление сотрудников по организационной структуре
+    ОПТИМИЗИРОВАНО для работы с 3000+ сотрудниками
     """
     model = Employee
     template_name = 'directory/employees/tree_view.html'
@@ -71,6 +74,11 @@ class EmployeeTreeView(LoginRequiredMixin, AccessControlMixin, ListView):
     def get_queryset(self):
         # AccessControlMixin автоматически фильтрует по правам доступа
         queryset = super().get_queryset()
+
+        # 🚀 ДЕФОЛТНЫЙ ФИЛЬТР: показываем только активных сотрудников
+        # (исключаем кандидатов и уволенных для ускорения загрузки)
+        if not self.request.GET.get('status'):
+            queryset = queryset.tree_visible()  # Использует метод из EmployeeQuerySet
 
         # Фильтрация по должности
         position = self.request.GET.get('position')
@@ -82,6 +90,7 @@ class EmployeeTreeView(LoginRequiredMixin, AccessControlMixin, ListView):
         if search:
             queryset = queryset.filter(full_name_nominative__icontains=search)
 
+        # 🚀 ОПТИМИЗАЦИЯ: загружаем все связанные объекты одним запросом
         return queryset.select_related('position', 'subdivision', 'organization', 'department')
 
     def get_context_data(self, **kwargs):
@@ -99,61 +108,79 @@ class EmployeeTreeView(LoginRequiredMixin, AccessControlMixin, ListView):
             self.request.user, self.request
         )
 
+        # 🚀 ОПТИМИЗАЦИЯ: получаем всех сотрудников ОДНИМ запросом
+        # Используем уже оптимизированный queryset из get_queryset()
+        all_employees = list(self.get_queryset())
+
+        # 🚀 ОПТИМИЗАЦИЯ: группируем сотрудников по ключам в памяти (быстрее, чем N запросов к БД)
+        from collections import defaultdict
+
+        # Группируем сотрудников по (org_id, sub_id, dept_id)
+        employees_by_org = defaultdict(list)
+        employees_by_sub = defaultdict(list)
+        employees_by_dept = defaultdict(list)
+
+        for emp in all_employees:
+            org_id = emp.organization_id
+            sub_id = emp.subdivision_id
+            dept_id = emp.department_id
+
+            if sub_id is None and dept_id is None:
+                # Сотрудник на уровне организации
+                employees_by_org[org_id].append(emp)
+            elif dept_id is None:
+                # Сотрудник на уровне подразделения (без отдела)
+                employees_by_sub[(org_id, sub_id)].append(emp)
+            else:
+                # Сотрудник в отделе
+                employees_by_dept[(org_id, sub_id, dept_id)].append(emp)
+
         # Создаем древовидную структуру данных
         tree_data = []
 
         for org in allowed_orgs:
-            # Сотрудники на уровне организации (без подразделения)
-            org_employees = self.get_queryset().filter(
-                organization=org,
-                subdivision__isnull=True,
-                department__isnull=True
-            )
+            org_employees = employees_by_org.get(org.id, [])
 
             org_data = {
                 'id': org.id,
                 'name': org.short_name_ru or org.full_name_ru,
-                'employees': list(org_employees),
+                'employees': org_employees,
                 'subdivisions': []
             }
 
             # Получаем только доступные подразделения этой организации
-            for subdivision in org.subdivisions.filter(id__in=allowed_subdivisions):
-                sub_employees = self.get_queryset().filter(
-                    organization=org,
-                    subdivision=subdivision,
-                    department__isnull=True
-                )
+            org_subdivisions = org.subdivisions.filter(id__in=allowed_subdivisions)
+
+            for subdivision in org_subdivisions:
+                sub_employees = employees_by_sub.get((org.id, subdivision.id), [])
 
                 sub_data = {
                     'id': subdivision.id,
                     'name': subdivision.name,
-                    'employees': list(sub_employees),
+                    'employees': sub_employees,
                     'departments': []
                 }
 
                 # Получаем только доступные отделы этого подразделения
-                for department in subdivision.departments.filter(id__in=allowed_departments):
-                    dept_employees = self.get_queryset().filter(
-                        organization=org,
-                        subdivision=subdivision,
-                        department=department
-                    )
+                sub_departments = subdivision.departments.filter(id__in=allowed_departments)
 
-                    if dept_employees.exists():
+                for department in sub_departments:
+                    dept_employees = employees_by_dept.get((org.id, subdivision.id, department.id), [])
+
+                    if dept_employees:
                         dept_data = {
                             'id': department.id,
                             'name': department.name,
-                            'employees': list(dept_employees)
+                            'employees': dept_employees
                         }
                         sub_data['departments'].append(dept_data)
 
                 # Добавляем подразделение только если есть сотрудники или отделы
-                if sub_employees.exists() or sub_data['departments']:
+                if sub_employees or sub_data['departments']:
                     org_data['subdivisions'].append(sub_data)
 
             # Добавляем организацию только если есть сотрудники или подразделения
-            if org_employees.exists() or org_data['subdivisions']:
+            if org_employees or org_data['subdivisions']:
                 tree_data.append(org_data)
 
         context['tree_data'] = tree_data
@@ -324,3 +351,32 @@ def get_positions(request):
         subdivision_id=subdivision_id
     ).values('id', 'position_name')  # Изменено с name на position_name
     return JsonResponse(list(positions), safe=False)
+
+
+@require_GET
+@login_required
+def employee_info_api(request, employee_id):
+    """
+    🔍 API для получения детальной информации о сотруднике
+    Используется во вкладке "По сотруднику" на странице карточек СИЗ
+    """
+    employee = get_object_or_404(Employee, pk=employee_id)
+
+    # Проверка прав доступа
+    if not AccessControlHelper.can_access_object(request.user, employee):
+        return JsonResponse({'error': 'Нет доступа к этому сотруднику'}, status=403)
+
+    # Формируем ответ
+    data = {
+        'id': employee.id,
+        'full_name_nominative': employee.full_name_nominative,
+        'position_name': employee.position.position_name if employee.position else None,
+        'subdivision_name': employee.position.department.subdivision.name if (
+            employee.position and
+            employee.position.department and
+            employee.position.department.subdivision
+        ) else None,
+        'organization_name': employee.organization.short_name_ru if employee.organization else None,
+    }
+
+    return JsonResponse(data)

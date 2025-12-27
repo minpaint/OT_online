@@ -1,17 +1,26 @@
 from django.shortcuts import render, get_object_or_404
 from django.views.generic import ListView, CreateView
 from django.contrib.auth.mixins import LoginRequiredMixin
-from django.http import JsonResponse
+from django.http import JsonResponse, HttpResponse
 from django.urls import reverse_lazy
-from django.views.decorators.http import require_GET
-from directory.models import Employee, SIZIssued  # Добавляем импорт SIZIssued
-
+from django.views.decorators.http import require_GET, require_POST
+from django.contrib.auth.decorators import login_required
+from django.db.models import Count, Q, Subquery, OuterRef, IntegerField
+from django.db.models.functions import Coalesce
+from directory.models import Employee, SIZIssued
 from directory.models.siz import SIZ, SIZNorm
 from directory.models.position import Position
-from directory.models import Employee
+from directory.models.subdivision import StructuralSubdivision
 from directory.forms.siz import SIZForm, SIZNormForm
 from directory.mixins import AccessControlMixin, AccessControlObjectMixin
 from directory.utils.permissions import AccessControlHelper
+import zipfile
+import io
+import re
+from datetime import datetime
+import logging
+
+logger = logging.getLogger(__name__)
 
 
 class SIZListView(LoginRequiredMixin, ListView):
@@ -222,3 +231,153 @@ def get_siz_details(request, siz_id):
     }
 
     return JsonResponse(result)
+
+
+# =============================================
+# МАССОВАЯ ГЕНЕРАЦИЯ КАРТОЧЕК СИЗ
+# =============================================
+
+
+class SIZMassGenerationView(LoginRequiredMixin, ListView):
+    """
+    📦 Массовая генерация карточек СИЗ по структурным подразделениям
+    """
+    model = StructuralSubdivision
+    template_name = 'directory/siz/mass_generation.html'
+    context_object_name = 'subdivisions'
+
+    def get_queryset(self):
+        """Получаем только те подразделения, где есть сотрудники с нормами СИЗ"""
+        accessible_orgs = AccessControlHelper.get_accessible_organizations(
+            self.request.user, self.request
+        )
+
+        # Subquery to get the count of employees with SIZ norms for each subdivision.
+        # We define a subquery that looks at the Employee model.
+        employees_with_norms = Employee.objects.filter(
+            # Then we apply the filter conditions to find employees with SIZ norms.
+            Q(position__siz_norms__isnull=False) |
+            Q(position__position_name__in=Position.objects.filter(
+                siz_norms__isnull=False
+            ).values_list('position_name', flat=True)),
+            # We link each employee to the outer StructuralSubdivision query via their position path.
+            position__department__subdivision=OuterRef('pk')
+        ).order_by().values(
+            # We need to tell the subquery to group by the subdivision to count per subdivision.
+            'position__department__subdivision'
+        ).annotate(
+            # We count the unique employees.
+            count=Count('id', distinct=True)
+        ).values('count')
+
+        queryset = StructuralSubdivision.objects.filter(
+            organization__in=accessible_orgs
+        ).annotate(
+            # Annotate the main queryset with the count from the subquery.
+            # Use Coalesce to handle cases where a subdivision has no such employees (results in NULL).
+            employees_with_norms_count=Coalesce(
+                Subquery(employees_with_norms, output_field=IntegerField()),
+                0
+            )
+        ).filter(
+            # Now filter the main queryset to only include subdivisions with more than 0 such employees.
+            employees_with_norms_count__gt=0
+        ).select_related('organization').order_by('organization__full_name_ru', 'name')
+
+        return queryset
+
+    def get_context_data(self, **kwargs):
+        context = super().get_context_data(**kwargs)
+        context['title'] = 'Массовая генерация карточек СИЗ'
+        return context
+
+
+@login_required
+@require_POST
+def generate_siz_cards_bulk(request):
+    """
+    📦 Генерация ZIP-архива с карточками СИЗ для выбранных подразделений
+    """
+    from directory.document_generators.siz_card_docx_generator import generate_siz_card_docx
+
+    subdivision_ids = request.POST.getlist('subdivision_ids')
+
+    if not subdivision_ids:
+        return HttpResponse("Не выбрано ни одного подразделения", status=400)
+
+    # Создаём ZIP-архив в памяти
+    zip_buffer = io.BytesIO()
+
+    with zipfile.ZipFile(zip_buffer, 'w', zipfile.ZIP_DEFLATED) as zip_file:
+        generated_count = 0
+        errors = []
+
+        for subdivision_id in subdivision_ids:
+            try:
+                subdivision = StructuralSubdivision.objects.get(pk=subdivision_id)
+
+                # Получаем всех сотрудников подразделения, у которых есть нормы СИЗ
+                employees = Employee.objects.filter(
+                    position__department__subdivision=subdivision
+                ).select_related('position', 'position__department')
+
+                for employee in employees:
+                    if not employee.position:
+                        continue
+
+                    # Проверяем, есть ли нормы для должности (прямо или через эталонную)
+                    has_norms = SIZNorm.objects.filter(position=employee.position).exists()
+
+                    if not has_norms:
+                        # Ищем эталонную должность
+                        reference_positions = Position.objects.filter(
+                            position_name=employee.position.position_name
+                        )
+                        has_norms = any(
+                            SIZNorm.objects.filter(position=pos).exists()
+                            for pos in reference_positions
+                        )
+
+                    if not has_norms:
+                        continue
+
+                    # Генерируем карточку
+                    result = generate_siz_card_docx(employee, request.user)
+
+                    if result and 'content' in result:
+                        # Формируем безопасное имя файла
+                        safe_subdivision = re.sub(r'[<>:"/\\|?*]', '_', subdivision.name)
+                        safe_employee = re.sub(r'[<>:"/\\|?*]', '_', employee.full_name_nominative)
+
+                        # Добавляем файл в архив
+                        file_path = f"{safe_subdivision}/{safe_employee}_карточка_СИЗ.docx"
+                        zip_file.writestr(file_path, result['content'])
+                        generated_count += 1
+
+                        logger.info(f"Добавлена карточка: {file_path}")
+                    else:
+                        errors.append(f"Ошибка генерации для {employee.full_name_nominative}")
+
+            except Exception as e:
+                logger.error(f"Ошибка при обработке подразделения {subdivision_id}: {e}")
+                errors.append(f"Ошибка подразделения ID={subdivision_id}: {str(e)}")
+
+        # Добавляем файл со сводкой
+        summary = f"""Массовая генерация карточек СИЗ
+Дата: {datetime.now().strftime('%d.%m.%Y %H:%M')}
+Сгенерировано карточек: {generated_count}
+
+"""
+        if errors:
+            summary += "Ошибки:\n" + "\n".join(errors)
+
+        zip_file.writestr("_summary.txt", summary.encode('utf-8'))
+
+    # Отправляем архив пользователю
+    zip_buffer.seek(0)
+    response = HttpResponse(zip_buffer.read(), content_type='application/zip')
+    response['Content-Disposition'] = f'attachment; filename="Карточки_СИЗ_{datetime.now().strftime("%Y%m%d_%H%M%S")}.zip"'
+
+    logger.info(f"Массовая генерация завершена. Создано файлов: {generated_count}")
+
+    return response
