@@ -113,12 +113,10 @@ def update_medical_date(request, pk):
     """Обновление даты следующего медосмотра (ручное редактирование)"""
     exam = get_object_or_404(EmployeeMedicalExamination, pk=pk)
 
-    # Проверка прав доступа
-    if not request.user.is_superuser and hasattr(request.user, 'profile'):
-        allowed_orgs = request.user.profile.organizations.all()
-        if exam.employee.organization not in allowed_orgs:
-            messages.error(request, 'У вас нет прав для выполнения этой операции')
-            return redirect('deadline_control:medical:list')
+    # Проверка прав доступа через AccessControlHelper (поддерживает иерархию)
+    if not AccessControlHelper.can_access_object(request.user, exam.employee):
+        messages.error(request, 'У вас нет прав для выполнения этой операции')
+        return redirect('deadline_control:medical:list')
 
     date_str = request.POST.get('next_date')
     notes = request.POST.get('notes', '')
@@ -156,12 +154,10 @@ def update_employee_medical_examinations(request, employee_id):
 
     employee = get_object_or_404(Employee, pk=employee_id)
 
-    # Проверка прав доступа
-    if not request.user.is_superuser and hasattr(request.user, 'profile'):
-        allowed_orgs = request.user.profile.organizations.all()
-        if employee.organization not in allowed_orgs:
-            messages.error(request, 'У вас нет прав для выполнения этой операции')
-            return redirect('deadline_control:medical:list')
+    # Проверка прав доступа через AccessControlHelper (поддерживает иерархию)
+    if not AccessControlHelper.can_access_object(request.user, employee):
+        messages.error(request, 'У вас нет прав для выполнения этой операции')
+        return redirect('deadline_control:medical:list')
 
     # Получаем дату прохождения медосмотра из формы
     date_str = request.POST.get('examination_date')
@@ -209,12 +205,10 @@ def perform_medical_examination(request, pk):
     """
     exam = get_object_or_404(EmployeeMedicalExamination, pk=pk)
 
-    # Проверка прав доступа
-    if not request.user.is_superuser and hasattr(request.user, 'profile'):
-        allowed_orgs = request.user.profile.organizations.all()
-        if exam.employee.organization not in allowed_orgs:
-            messages.error(request, 'У вас нет прав для выполнения этой операции')
-            return redirect('deadline_control:medical:list')
+    # Проверка прав доступа через AccessControlHelper (поддерживает иерархию)
+    if not AccessControlHelper.can_access_object(request.user, exam.employee):
+        messages.error(request, 'У вас нет прав для выполнения этой операции')
+        return redirect('deadline_control:medical:list')
 
     # Получаем дату прохождения медосмотра из формы (или используем сегодня)
     date_str = request.POST.get('examination_date')
@@ -267,11 +261,10 @@ def update_multiple_medical_examinations(request):
     # Получаем queryset сотрудников для обновления
     qs = Employee.objects.filter(id__in=employee_ids)
 
-    # Проверка прав доступа: все выбранные сотрудники должны быть в доступных организациях
-    if not request.user.is_superuser and hasattr(request.user, 'profile'):
-        allowed_orgs = request.user.profile.organizations.all()
-        # Проверяем, что все сотрудники из qs принадлежат к разрешенным организациям
-        if qs.exclude(organization__in=allowed_orgs).exists():
+    # Проверка прав доступа через AccessControlHelper (поддерживает иерархию)
+    if not request.user.is_superuser:
+        accessible_qs = AccessControlHelper.filter_queryset(qs, request.user, request)
+        if accessible_qs.count() != qs.count():
             return JsonResponse({'success': False, 'error': 'You do not have permission to update one or more of the selected employees.'}, status=403)
 
     updated_employee_count = 0
@@ -305,10 +298,8 @@ class EmployeeMedicalDetailView(LoginRequiredMixin, DetailView):
     def get_queryset(self):
         qs = super().get_queryset()
 
-        # Фильтрация по организациям
-        if not self.request.user.is_superuser and hasattr(self.request.user, 'profile'):
-            allowed_orgs = self.request.user.profile.organizations.all()
-            qs = qs.filter(organization__in=allowed_orgs)
+        # Фильтрация по правам доступа через AccessControlHelper (поддерживает иерархию)
+        qs = AccessControlHelper.filter_queryset(qs, self.request.user, self.request)
 
         return qs.select_related(
             'organization',

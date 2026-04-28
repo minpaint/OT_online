@@ -318,15 +318,8 @@ class NewEmployeeReferralView(LoginRequiredMixin, View):
         from django.shortcuts import render
         from directory.models import Position, Organization
 
-        # Получаем организации пользователя
-        if request.user.is_superuser:
-            organizations = Organization.objects.all()
-        else:
-            # Проверяем наличие profile
-            if hasattr(request.user, 'profile'):
-                organizations = request.user.profile.organizations.all()
-            else:
-                organizations = Organization.objects.none()
+        # Получаем организации пользователя через AccessControlHelper (поддерживает иерархию)
+        organizations = AccessControlHelper.get_accessible_organizations(request.user, request)
 
         # Автовыбор организации, если она одна
         selected_organization_id = None
@@ -370,15 +363,8 @@ class NewEmployeeReferralView(LoginRequiredMixin, View):
         if not organization_id:
             errors.append('Организация обязательна')
 
-        # Получаем организации пользователя для формы
-        if request.user.is_superuser:
-            organizations = Organization.objects.all()
-        else:
-            # Проверяем наличие profile
-            if hasattr(request.user, 'profile'):
-                organizations = request.user.profile.organizations.all()
-            else:
-                organizations = Organization.objects.none()
+        # Получаем организации пользователя через AccessControlHelper (поддерживает иерархию)
+        organizations = AccessControlHelper.get_accessible_organizations(request.user, request)
 
         position_names = Position.objects.values_list(
             'position_name', flat=True
